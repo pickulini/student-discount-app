@@ -1,0 +1,42 @@
+# Binaries
+/bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Docker
+*.pid
+*.log
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env
+
+# OS
+.DS_Store
+Thumbs.db

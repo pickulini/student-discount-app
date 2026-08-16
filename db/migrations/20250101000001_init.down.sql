@@ -1,0 +1,6 @@
+DROP TABLE IF EXISTS user_sessions;
+DROP TABLE IF EXISTS student_verifications;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS universities;
+DROP EXTENSION IF EXISTS postgis;
+DROP EXTENSION IF EXISTS "uuid-ossp";
