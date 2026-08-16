@@ -2,6 +2,7 @@ package usecase
 
 import (
     "context"
+    "log"
     "your-project/internal/domain"
     "your-project/internal/repository"
 )
@@ -30,14 +31,17 @@ func NewUserUsecase(
 func (u *UserUsecase) GetProfile(ctx context.Context, userID int64) (*domain.User, float64, float64, error) {
     user, err := u.userRepo.GetByID(ctx, userID)
     if err != nil {
+        log.Printf("GetProfile: GetByID error: %v", err)
         return nil, 0, 0, err
     }
     account, err := u.accountRepo.GetByUserIDAndType(ctx, userID, "cash")
     if err != nil {
+        log.Printf("GetProfile: GetByUserIDAndType error for user %d: %v", userID, err)
         return nil, 0, 0, err
     }
     bonusAcc, err := u.bonusRepo.GetByUserID(ctx, userID)
     if err != nil {
+        log.Printf("GetProfile: GetByUserID error for bonus account user %d: %v", userID, err)
         return nil, 0, 0, err
     }
     user.Balance = account.Balance

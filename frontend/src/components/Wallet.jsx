@@ -24,7 +24,6 @@ const Wallet = () => {
       const res = await api.post('/payments/deposit', { amount });
       setBalance(res.data.new_balance);
       alert(`Пополнено на ${amount} ₽`);
-      fetchWallet(); // обновляем после пополнения
     } catch (err) {
       alert('Ошибка пополнения: ' + err.response?.data?.error || 'Неизвестная ошибка');
     }
@@ -34,9 +33,7 @@ const Wallet = () => {
     fetchWallet();
   }, []);
 
-  if (error) {
-    return <div className="max-w-md mx-auto bg-white p-6 rounded shadow text-red-500">{error}</div>;
-  }
+  if (error) return <div className="max-w-md mx-auto bg-white p-6 rounded shadow text-red-500">{error}</div>;
 
   return (
     <div className="max-w-md mx-auto bg-white p-6 rounded shadow">
@@ -56,7 +53,7 @@ const Wallet = () => {
           onClick={handleDeposit}
           className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
         >
-          Пополнить (заглушка)
+          Пополнить
         </button>
       </div>
       <p className="text-xs text-gray-500 mt-2">* Пополнение через СБП — заглушка</p>

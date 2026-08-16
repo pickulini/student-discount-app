@@ -14,8 +14,8 @@ type User struct {
     ReferralCode   string     `json:"referral_code"`
     ReferredBy     *int64     `json:"referred_by,omitempty"`
     IsActive       bool       `json:"is_active"`
-    Role         string     `json:"role"`
-    Balance        float64    `json:"balance"`          // Добавляем поле
+    Balance        float64    `json:"balance"`
+    Role           string     `json:"role"` // student, merchant, admin
     CreatedAt      time.Time  `json:"created_at"`
     UpdatedAt      time.Time  `json:"updated_at"`
 }

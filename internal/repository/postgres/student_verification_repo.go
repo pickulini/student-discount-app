@@ -96,27 +96,24 @@ func (r *StudentVerificationRepo) List(ctx context.Context, limit, offset int) (
 }
 
 func (r *StudentVerificationRepo) UpdateStatus(ctx context.Context, id int64, status string, verifiedBy int64, rejectionReason string) error {
-    // Обновляем целевую запись
-    query := `UPDATE student_verifications SET status=$1, verified_by=$2, verified_at=NOW(), rejection_reason=$3, updated_at=NOW() WHERE id=$4`
-    _, err := r.db.Pool.Exec(ctx, query, status, verifiedBy, rejectionReason, id)
+    var query string
+    var args []interface{}
+    if verifiedBy == 0 {
+        query = `UPDATE student_verifications SET status=$1, verified_at=NOW(), rejection_reason=$2, updated_at=NOW() WHERE id=$3`
+        args = []interface{}{status, rejectionReason, id}
+    } else {
+        query = `UPDATE student_verifications SET status=$1, verified_by=$2, verified_at=NOW(), rejection_reason=$3, updated_at=NOW() WHERE id=$4`
+        args = []interface{}{status, verifiedBy, rejectionReason, id}
+    }
+    _, err := r.db.Pool.Exec(ctx, query, args...)
     if err != nil {
         return err
     }
-
-    // Закрываем все остальные pending заявки этого пользователя
     var userID int64
     err = r.db.Pool.QueryRow(ctx, `SELECT user_id FROM student_verifications WHERE id=$1`, id).Scan(&userID)
     if err != nil {
         return err
     }
-
-    // Обновляем все другие записи с тем же user_id (кроме только что обновлённой)
-    _, err = r.db.Pool.Exec(ctx, `UPDATE student_verifications SET status=$1, updated_at=NOW() WHERE user_id=$2 AND id!=$3 AND status='pending'`, status, userID, id)
-    if err != nil {
-        return err
-    }
-
-    // Обновляем статус студента в users
     var userStatus string
     if status == "verified" {
         userStatus = "verified"

@@ -25,11 +25,6 @@ type RegisterRequest struct {
     ReferralCode string `json:"referral_code,omitempty"`
 }
 
-type LoginRequest struct {
-    Email    string `json:"email"`
-    Password string `json:"password"`
-}
-
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
     var req RegisterRequest
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -52,6 +47,11 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
     })
 }
 
+type LoginRequest struct {
+    Email    string `json:"email"`
+    Password string `json:"password"`
+}
+
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
     var req LoginRequest
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -71,21 +71,16 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
     })
 }
 
-// RequestVerification – обработчик для запроса верификации студента
 func (h *AuthHandler) RequestVerification(w http.ResponseWriter, r *http.Request) {
-    // Получаем user_id из контекста
+    // Получаем userID из контекста (установлен middleware.Auth)
     userID, ok := r.Context().Value(middleware.UserIDKey).(int64)
     if !ok {
         writeError(w, http.StatusUnauthorized, "unauthorized")
         return
     }
-
-    // Вызываем метод usecase (возвращает только ошибку)
-    err := h.authUsecase.RequestVerification(r.Context(), userID)
-    if err != nil {
+    if err := h.authUsecase.RequestVerification(r.Context(), userID); err != nil {
         writeError(w, http.StatusInternalServerError, "failed to request verification")
         return
     }
-
     writeJSON(w, http.StatusOK, map[string]string{"status": "pending"})
 }

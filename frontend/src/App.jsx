@@ -10,12 +10,18 @@ import Wallet from './components/Wallet';
 import Referral from './components/Referral';
 import Order from './components/Order';
 import TransactionHistory from './components/TransactionHistory';
+import Support from './components/Support';
+import MerchantLayout from './components/MerchantLayout';
+import MerchantDashboard from './components/MerchantDashboard';
+import MerchantCompanies from './components/MerchantCompanies';
+import MerchantOffers from './components/MerchantOffers';
 import AdminLayout from './components/AdminLayout';
 import AdminDashboard from './components/AdminDashboard';
 import AdminUsers from './components/AdminUsers';
 import AdminCompanies from './components/AdminCompanies';
 import AdminOffers from './components/AdminOffers';
 import AdminVerifications from './components/AdminVerifications';
+import AdminSupport from './components/AdminSupport';
 
 function App() {
   return (
@@ -31,6 +37,13 @@ function App() {
             <Route path="referral" element={<Referral />} />
             <Route path="order" element={<Order />} />
             <Route path="history" element={<TransactionHistory />} />
+            <Route path="support" element={<Support />} />
+          </Route>
+          <Route path="/merchant" element={<MerchantLayout />}>
+            <Route index element={<MerchantDashboard />} />
+            <Route path="companies" element={<MerchantCompanies />} />
+            <Route path="offers" element={<MerchantOffers />} />
+            <Route path="statistics" element={<div className="text-center py-8 text-gray-500">Статистика партнёра (в разработке)</div>} />
           </Route>
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
@@ -38,6 +51,7 @@ function App() {
             <Route path="companies" element={<AdminCompanies />} />
             <Route path="offers" element={<AdminOffers />} />
             <Route path="verifications" element={<AdminVerifications />} />
+            <Route path="support" element={<AdminSupport />} />
           </Route>
         </Routes>
       </BrowserRouter>

@@ -35,6 +35,7 @@ func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
         "balance":        cashBalance,
         "bonus_balance":  bonusBalance,
         "is_active":      user.IsActive,
+        "role":           user.Role,   // <-- добавляем роль
         "created_at":     user.CreatedAt,
         "updated_at":     user.UpdatedAt,
     }
@@ -47,7 +48,6 @@ func (h *UserHandler) GetTransactionHistory(w http.ResponseWriter, r *http.Reque
         writeError(w, http.StatusUnauthorized, "unauthorized")
         return
     }
-    // Пагинация
     limit := 50
     offset := 0
     if l := r.URL.Query().Get("limit"); l != "" {

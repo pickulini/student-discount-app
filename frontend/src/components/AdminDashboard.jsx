@@ -4,15 +4,22 @@ import api from '../api/client';
 const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     api.get('/admin/statistics')
-      .then(res => setStats(res.data))
-      .catch(console.error)
+      .then(res => {
+        setStats(res.data);
+      })
+      .catch(err => {
+        console.error('Failed to load statistics:', err);
+        setError('Не удалось загрузить статистику');
+      })
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) return <div>Загрузка...</div>;
+  if (error) return <div className="text-red-500">{error}</div>;
 
   return (
     <div>

@@ -24,7 +24,7 @@ const Referral = () => {
 
   if (loading) return <div className="text-center py-8">Загрузка...</div>;
 
-  const referralLink = `${window.location.origin}/register?ref=${code}`;
+  const referralLink = `http://localhost:5173/register?ref=${code}`;
 
   return (
     <div className="max-w-md mx-auto bg-white p-6 rounded shadow">
@@ -35,14 +35,9 @@ const Referral = () => {
           <div className="flex items-center gap-2">
             <code className="bg-gray-100 px-3 py-1 rounded font-mono text-lg">{code}</code>
             <button
-              onClick={() => {
-                navigator.clipboard.writeText(code);
-                alert('Код скопирован!');
-              }}
+              onClick={() => { navigator.clipboard.writeText(code); alert('Код скопирован!'); }}
               className="text-blue-500 hover:text-blue-700 text-sm"
-            >
-              Копировать
-            </button>
+            >Копировать</button>
           </div>
         </div>
         <div>
@@ -50,14 +45,9 @@ const Referral = () => {
           <div className="flex items-center gap-2">
             <code className="bg-gray-100 px-3 py-1 rounded text-sm truncate max-w-xs">{referralLink}</code>
             <button
-              onClick={() => {
-                navigator.clipboard.writeText(referralLink);
-                alert('Ссылка скопирована!');
-              }}
+              onClick={() => { navigator.clipboard.writeText(referralLink); alert('Ссылка скопирована!'); }}
               className="text-blue-500 hover:text-blue-700 text-sm"
-            >
-              Копировать
-            </button>
+            >Копировать</button>
           </div>
         </div>
         <div className="border-t pt-3 mt-2">
@@ -65,9 +55,7 @@ const Referral = () => {
           <p><strong>Активных:</strong> {stats.active}</p>
           <p><strong>Заработано бонусов:</strong> {stats.bonus_total} баллов</p>
         </div>
-        <p className="text-xs text-gray-500 mt-2">
-          * Бонус начисляется за каждого приглашённого пользователя после регистрации.
-        </p>
+        <p className="text-xs text-gray-500 mt-2">* Бонус начисляется за каждого приглашённого пользователя после регистрации.</p>
       </div>
     </div>
   );

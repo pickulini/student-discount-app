@@ -30,7 +30,6 @@ const Profile = () => {
     try {
       const res = await api.post('/students/verify');
       setVerifyMessage(res.data.message || 'Заявка отправлена');
-      // обновляем профиль, чтобы статус изменился (если нужно)
       fetchProfile();
     } catch (err) {
       setVerifyMessage(err.response?.data?.error || 'Ошибка отправки заявки');
@@ -62,7 +61,6 @@ const Profile = () => {
         <p><strong>Баланс:</strong> {data.balance} ₽</p>
       </div>
 
-      {/* Кнопка верификации – только если не верифицирован */}
       {!isVerified && (
         <div className="mt-4 border-t pt-4">
           <button

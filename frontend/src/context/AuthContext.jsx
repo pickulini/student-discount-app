@@ -40,11 +40,15 @@ export const AuthProvider = ({ children }) => {
   };
 
   const isAdmin = () => {
-    return user && (user.email === 'admin@example.com' || user.role === 'admin');
+    return user && (user.role === 'admin');
+  };
+
+  const isMerchant = () => {
+    return user && (user.role === 'merchant');
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, fetchUser }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, isMerchant, fetchUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -92,6 +92,7 @@ func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName st
         ReferredBy:     referredBy,
         IsActive:       true,
         Balance:        0,
+        Role:           "student",
     }
     if err := u.userRepo.Create(ctx, user); err != nil {
         return nil, "", err
@@ -106,7 +107,6 @@ func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName st
         Status:   "active",
     }
     if err := u.accountRepo.Create(ctx, account); err != nil {
-        log.Printf("failed to create account for user %d: %v", user.ID, err)
         return nil, "", err
     }
 
@@ -116,19 +116,16 @@ func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName st
         Balance: 0,
     }
     if err := u.bonusRepo.CreateAccount(ctx, bonusAcc); err != nil {
-        log.Printf("failed to create bonus account for user %d: %v", user.ID, err)
         return nil, "", err
     }
 
     // Если есть реферер – начисляем бонус и создаём записи
     if referrer != nil {
-        // Получаем бонусный счёт реферера
         referrerBonusAcc, err := u.bonusRepo.GetByUserID(ctx, referrer.ID)
         if err != nil {
             log.Printf("failed to get bonus account for referrer %d: %v", referrer.ID, err)
         } else {
             bonusAmount := 100.0
-            // 1. Создаём бонусную транзакцию
             bonusTx := &domain.BonusTransaction{
                 UserID:        referrer.ID,
                 Amount:        bonusAmount,
@@ -139,14 +136,11 @@ func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName st
             if err := u.bonusRepo.CreateTransaction(ctx, bonusTx); err != nil {
                 log.Printf("failed to create bonus transaction for referrer %d: %v", referrer.ID, err)
             } else {
-                // 2. Обновляем баланс бонусного счёта
                 newBalance := referrerBonusAcc.Balance + bonusAmount
                 if err := u.bonusRepo.UpdateBalance(ctx, referrerBonusAcc.ID, newBalance); err != nil {
                     log.Printf("failed to update bonus balance for referrer %d: %v", referrer.ID, err)
                 } else {
                     log.Printf("referrer %d received %f bonus points for inviting user %d", referrer.ID, bonusAmount, user.ID)
-
-                    // 3. Создаём запись в referral_rewards (ВАЖНО!)
                     reward := &domain.ReferralReward{
                         ReferrerID:     referrer.ID,
                         ReferredUserID: user.ID,
@@ -156,14 +150,11 @@ func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName st
                     }
                     if err := u.referralRepo.CreateReward(ctx, reward); err != nil {
                         log.Printf("failed to create referral reward for referrer %d: %v", referrer.ID, err)
-                    } else {
-                        log.Printf("referral reward created for referrer %d: amount %f", referrer.ID, bonusAmount)
                     }
                 }
             }
         }
 
-        // Создаём запись в referral_invites
         invite := &domain.ReferralInvite{
             ReferrerID:     referrer.ID,
             ReferredUserID: user.ID,
@@ -182,17 +173,28 @@ func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName st
 }
 
 func (u *AuthUsecase) Login(ctx context.Context, email, password, deviceName, userAgent, ip string) (accessToken, refreshToken string, err error) {
+    log.Printf("Login attempt for email: %s", email)
     user, err := u.userRepo.GetByEmail(ctx, email)
     if err != nil || user == nil {
+        log.Printf("user not found")
         return "", "", domain.ErrInvalidCredentials
     }
     if !user.IsActive {
+        log.Printf("user not active")
         return "", "", domain.ErrInvalidCredentials
     }
+    log.Printf("user found: %+v", user)
+    log.Printf("checking password")
     ok, err := u.hasher.Verify(password, user.PasswordHash)
-    if err != nil || !ok {
+    if err != nil {
+        log.Printf("Verify error: %v", err)
+        return "", "", err
+    }
+    if !ok {
+        log.Printf("password mismatch")
         return "", "", domain.ErrInvalidCredentials
     }
+    log.Printf("password ok")
 
     refreshToken = generateRandomToken(40)
     hash := sha256.Sum256([]byte(refreshToken))
@@ -207,6 +209,7 @@ func (u *AuthUsecase) Login(ctx context.Context, email, password, deviceName, us
         ExpiresAt:        time.Now().Add(7 * 24 * time.Hour),
     }
     if err := u.sessionRepo.Create(ctx, session); err != nil {
+        log.Printf("failed to create session: %v", err)
         return "", "", err
     }
 
@@ -215,21 +218,6 @@ func (u *AuthUsecase) Login(ctx context.Context, email, password, deviceName, us
         return "", "", err
     }
     return accessToken, refreshToken, nil
-}
-
-// Метод для запроса верификации (добавлен ранее)
-func (u *AuthUsecase) RequestVerification(ctx context.Context, userID int64) error {
-    // Проверяем, есть ли уже активная заявка
-    existing, _ := u.studentVerifRepo.GetByUserID(ctx, userID)
-    if existing != nil && existing.Status == "pending" {
-        return domain.ErrVerificationPending
-    }
-    verif := &domain.StudentVerification{
-        UserID: userID,
-        Method: "manual",
-        Status: "pending",
-    }
-    return u.studentVerifRepo.Create(ctx, verif)
 }
 
 func generateReferralCode() string {
@@ -242,4 +230,27 @@ func generateRandomToken(length int) string {
     b := make([]byte, length)
     rand.Read(b)
     return hex.EncodeToString(b)
+}
+
+// RequestVerification создаёт заявку на верификацию студента
+func (u *AuthUsecase) RequestVerification(ctx context.Context, userID int64) error {
+    log.Printf("RequestVerification called for user %d", userID)
+    // Проверяем, есть ли уже pending заявка
+    existing, err := u.studentVerifRepo.GetByUserID(ctx, userID)
+    if err == nil && existing != nil && existing.Status == "pending" {
+        log.Printf("pending verification already exists for user %d", userID)
+        return nil
+    }
+    verif := &domain.StudentVerification{
+        UserID: userID,
+        Method: "manual",
+        Status: "pending",
+    }
+    err = u.studentVerifRepo.Create(ctx, verif)
+    if err != nil {
+        log.Printf("RequestVerification: Create error: %v", err)
+        return err
+    }
+    log.Printf("RequestVerification: created verification with id %d for user %d", verif.ID, userID)
+    return nil
 }

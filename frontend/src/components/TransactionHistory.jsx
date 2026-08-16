@@ -8,13 +8,8 @@ const TransactionHistory = () => {
 
   useEffect(() => {
     api.get('/users/transactions')
-      .then(res => {
-        setTransactions(res.data || []);
-      })
-      .catch(err => {
-        console.error('Failed to load transactions:', err);
-        setError('Не удалось загрузить историю');
-      })
+      .then(res => { setTransactions(res.data || []); })
+      .catch(err => { console.error('Failed to load transactions:', err); setError('Не удалось загрузить историю'); })
       .finally(() => setLoading(false));
   }, []);
 

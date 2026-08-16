@@ -17,4 +17,8 @@ var (
     ErrBonusAccountNotFound  = errors.New("bonus account not found")
     ErrInsufficientBonuses   = errors.New("insufficient bonus points")
     ErrIdempotencyKeyExists  = errors.New("idempotency key already exists")
+    ErrUnauthorized          = errors.New("unauthorized")
+    ErrForbidden             = errors.New("forbidden")
 )
+
+var ErrInvalidStatus = errors.New("invalid status transition")

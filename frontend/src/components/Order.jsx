@@ -10,13 +10,8 @@ const Order = () => {
 
   useEffect(() => {
     api.get('/offers')
-      .then(res => {
-        setOffers(Array.isArray(res.data) ? res.data : []);
-      })
-      .catch(err => {
-        console.error('Failed to load offers for order:', err);
-        setOffers([]);
-      })
+      .then(res => { setOffers(Array.isArray(res.data) ? res.data : []); })
+      .catch(err => { console.error('Failed to load offers for order:', err); setOffers([]); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -33,9 +28,7 @@ const Order = () => {
     }
   };
 
-  if (loading) {
-    return <div className="text-center py-8">Загрузка...</div>;
-  }
+  if (loading) return <div className="text-center py-8">Загрузка...</div>;
 
   return (
     <div className="max-w-md mx-auto bg-white p-6 rounded shadow">

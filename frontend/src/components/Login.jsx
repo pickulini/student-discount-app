@@ -18,15 +18,10 @@ const Login = () => {
     try {
       const res = await api.post('/auth/login', { email, password });
       const { access_token } = res.data;
-      console.log('Получен токен:', access_token);
-      // Сохраняем в localStorage напрямую
-      localStorage.setItem('access_token', access_token);
-      // Затем загружаем пользователя
       await login(access_token);
       navigate('/');
     } catch (err) {
       setError(err.response?.data?.error || 'Ошибка входа');
-      console.error('Login error:', err);
     } finally {
       setLoading(false);
     }

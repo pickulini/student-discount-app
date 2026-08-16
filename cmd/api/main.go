@@ -26,12 +26,12 @@ func main() {
     }
     defer db.Close()
 
-    // Все репозитории — PostgreSQL
+    // Репозитории
     userRepo := postgres.NewUserRepo(db)
     sessionRepo := &postgres.SessionRepo{}
     studentVerifRepo := postgres.NewStudentVerificationRepo(db)
     uniRepo := &postgres.UniversityRepo{}
-    orderRepo := postgres.NewOrderRepo(db)  // теперь реальный
+    orderRepo := postgres.NewOrderRepo(db)
     accountRepo := postgres.NewAccountRepo(db)
     ledgerRepo := postgres.NewLedgerRepo(db)
     bonusRepo := postgres.NewBonusRepo(db)
@@ -39,6 +39,9 @@ func main() {
     companyRepo := postgres.NewCompanyRepo(db)
     locationRepo := postgres.NewLocationRepo(db)
     offerRepo := postgres.NewOfferRepo(db)
+    ticketRepo := postgres.NewSupportTicketRepo(db)
+    msgRepo := postgres.NewSupportMessageRepo(db)
+    companyUserRepo := postgres.NewCompanyUserRepo(db)
 
     hasher := crypto.NewPasswordHasher(cfg.Argon2Time, cfg.Argon2Memory, cfg.Argon2Threads, cfg.Argon2KeyLen)
     jwtManager := crypto.NewJWTManager(cfg.JWTSecret, cfg.JWTExpiryMin)
@@ -54,10 +57,15 @@ func main() {
     orderUsecase := usecase.NewOrderUsecase(orderRepo, offerRepo, userRepo, accountRepo, ledgerRepo, bonusRepo)
     paymentUsecase := usecase.NewPaymentUsecase(accountRepo, ledgerRepo, bonusRepo)
     referralUsecase := usecase.NewReferralUsecase(referralRepo, userRepo)
-    adminUsecase := usecase.NewAdminUsecase(userRepo, companyRepo, locationRepo, offerRepo, studentVerifRepo, db.Pool)
+    supportUsecase := usecase.NewSupportUsecase(ticketRepo, msgRepo, userRepo)
+    adminUsecase := usecase.NewAdminUsecase(userRepo, companyRepo, locationRepo, offerRepo, studentVerifRepo, accountRepo, bonusRepo, db.Pool)
+    merchantUsecase := usecase.NewMerchantUsecase(companyRepo, locationRepo, offerRepo, companyUserRepo, userRepo, db.Pool)
 
+    // Handlers
     walletHandler := handlers.NewWalletHandler(accountRepo, bonusRepo)
     adminHandler := handlers.NewAdminHandler(adminUsecase)
+    supportHandler := handlers.NewSupportHandler(supportUsecase)
+    merchantHandler := handlers.NewMerchantHandler(merchantUsecase)
 
     router := transport.NewRouterProto(
         authUsecase,
@@ -66,8 +74,12 @@ func main() {
         orderUsecase,
         paymentUsecase,
         referralUsecase,
+        supportUsecase,
+        merchantUsecase,
         walletHandler,
         adminHandler,
+        supportHandler,
+        merchantHandler,
         userRepo,
         jwtManager,
     )

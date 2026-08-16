@@ -5,7 +5,7 @@ import (
     "your-project/internal/repository"
 )
 
-func AdminOnly(userRepo repository.UserRepository) func(http.Handler) http.Handler {
+func MerchantOnly(userRepo repository.UserRepository) func(http.Handler) http.Handler {
     return func(next http.Handler) http.Handler {
         return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
             userID, ok := r.Context().Value(UserIDKey).(int64)
@@ -18,9 +18,8 @@ func AdminOnly(userRepo repository.UserRepository) func(http.Handler) http.Handl
                 http.Error(w, "user not found", http.StatusUnauthorized)
                 return
             }
-            // Проверяем роль
-            if user.Role != "admin" {
-                http.Error(w, "forbidden", http.StatusForbidden)
+            if user.Role != "merchant" {
+                http.Error(w, "forbidden: merchant role required", http.StatusForbidden)
                 return
             }
             next.ServeHTTP(w, r)
