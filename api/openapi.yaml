@@ -154,8 +154,57 @@ components:
         created_at:
           type: string
           format: date-time
+    Company:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        logo_key:
+          type: string
+        website:
+          type: string
+        phone:
+          type: string
+        category_id:
+          type: integer
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    UserDetailedStats:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        balance:
+          type: number
+        bonus_balance:
+          type: number
+        total_deposits:
+          type: number
+        total_purchases:
+          type: number
+        total_orders:
+          type: integer
+        bonus_earned:
+          type: number
+        bonus_spent:
+          type: number
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionHistory'
 
 paths:
+  # ---- Аутентификация ----
   /auth/register:
     post:
       summary: Регистрация нового пользователя
@@ -227,6 +276,7 @@ paths:
         '401':
           description: Неверные учётные данные
 
+  # ---- Пользовательские ----
   /users/me:
     get:
       summary: Получить профиль текущего пользователя
@@ -241,6 +291,21 @@ paths:
                 $ref: '#/components/schemas/User'
         '401':
           description: Не авторизован
+
+  /users/transactions:
+    get:
+      summary: История транзакций
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Список транзакций
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransactionHistory'
 
   /wallet:
     get:
@@ -277,21 +342,6 @@ paths:
       responses:
         '200':
           description: Баланс пополнен
-
-  /users/transactions:
-    get:
-      summary: История транзакций
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Список транзакций
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/TransactionHistory'
 
   /referral/code:
     get:
@@ -365,7 +415,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Order'
-
     get:
       summary: История заказов пользователя
       security:
@@ -397,6 +446,51 @@ paths:
                     type: string
                     enum: [pending]
 
+  /statistics/student:
+    get:
+      summary: Статистика студента (заглушка)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Статистика
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_saved:
+                    type: number
+                  orders_count:
+                    type: integer
+                  top_category:
+                    type: string
+                  bonus_earned:
+                    type: number
+
+  /statistics/company:
+    get:
+      summary: Статистика компании (заглушка)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Статистика
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_orders:
+                    type: integer
+                  unique_students:
+                    type: integer
+                  avg_check:
+                    type: number
+                  total_revenue:
+                    type: number
+
+  # ---- Поддержка (пользователь) ----
   /support/tickets:
     post:
       summary: Создать тикет поддержки
@@ -416,7 +510,6 @@ paths:
       responses:
         '201':
           description: Тикет создан
-
     get:
       summary: Список тикетов пользователя
       security:
@@ -451,7 +544,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/SupportMessage'
-
     post:
       summary: Отправить сообщение в тикет
       security:
@@ -475,7 +567,7 @@ paths:
         '201':
           description: Сообщение отправлено
 
-  # Админские эндпоинты (требуют роль admin)
+  # ---- Админские эндпоинты (требуют роль admin) ----
   /admin/statistics:
     get:
       summary: Общая статистика (админ)
@@ -514,6 +606,62 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/User'
+  /admin/users/{id}:
+    get:
+      summary: Получить пользователя по ID (админ)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Данные пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+  /admin/users/{id}/stats:
+    get:
+      summary: Детальная статистика пользователя (админ)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Детальная статистика
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetailedStats'
+  /admin/users/role:
+    put:
+      summary: Обновить роль пользователя (админ)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: integer
+                role:
+                  type: string
+                  enum: [student, merchant, admin, support]
+      responses:
+        '200':
+          description: Роль обновлена
 
   /admin/companies:
     get:
@@ -523,6 +671,58 @@ paths:
       responses:
         '200':
           description: Список компаний
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Company'
+    post:
+      summary: Создать компанию (админ)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Company'
+      responses:
+        '201':
+          description: Компания создана
+  /admin/companies/{id}:
+    put:
+      summary: Обновить компанию (админ)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Company'
+      responses:
+        '200':
+          description: Компания обновлена
+    delete:
+      summary: Удалить компанию (админ)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Компания удалена
 
   /admin/offers:
     get:
@@ -538,6 +738,52 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Offer'
+    post:
+      summary: Создать предложение (админ)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Offer'
+      responses:
+        '201':
+          description: Предложение создано
+  /admin/offers/{id}:
+    put:
+      summary: Обновить предложение (админ)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Offer'
+      responses:
+        '200':
+          description: Предложение обновлено
+    delete:
+      summary: Удалить предложение (админ)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Предложение удалено
 
   /admin/offers/{id}/moderate:
     put:
@@ -572,7 +818,6 @@ paths:
       responses:
         '200':
           description: Список заявок
-
   /admin/verifications/{id}:
     put:
       summary: Обновить статус верификации (админ)
@@ -594,6 +839,8 @@ paths:
                 status:
                   type: string
                   enum: [verified, rejected]
+                rejection_reason:
+                  type: string
       responses:
         '200':
           description: Статус обновлён
@@ -606,8 +853,63 @@ paths:
       responses:
         '200':
           description: Список тикетов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SupportTicket'
 
-  # Партнёрские эндпоинты (требуют роль merchant)
+  /admin/support/tickets/{id}/status:
+    put:
+      summary: Обновить статус тикета (админ)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [open, in_progress, resolved, closed]
+      responses:
+        '200':
+          description: Статус обновлён
+
+  /admin/support/tickets/{id}/messages:
+    post:
+      summary: Отправить сообщение как админ (внутреннее)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+      responses:
+        '201':
+          description: Сообщение отправлено
+
+  # ---- Партнёрские эндпоинты (требуют роль merchant) ----
   /merchant/companies:
     get:
       summary: Компании партнёра
@@ -616,6 +918,12 @@ paths:
       responses:
         '200':
           description: Список компаний
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Company'
 
   /merchant/offers:
     get:
@@ -625,7 +933,12 @@ paths:
       responses:
         '200':
           description: Список предложений
-
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Offer'
     post:
       summary: Создать предложение (партнёр)
       security:
@@ -691,3 +1004,20 @@ paths:
       responses:
         '200':
           description: Статистика
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  daily:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date:
+                          type: string
+                          format: date
+                        orders:
+                          type: integer
+                        revenue:
+                          type: number
