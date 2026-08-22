@@ -28,26 +28,15 @@ func (r *StudentVerificationRepo) GetByUserID(ctx context.Context, userID int64)
     query := `SELECT id, user_id, method, status, university_id, student_identifier, document_key, verified_by, verified_at, expires_at, rejection_reason, created_at, updated_at 
               FROM student_verifications WHERE user_id = $1 ORDER BY id DESC LIMIT 1`
     var v domain.StudentVerification
-    var universityID sql.NullInt64
-    var studentIdentifier, documentKey, rejectionReason sql.NullString
     var verifiedBy sql.NullInt64
     var verifiedAt, expiresAt sql.NullTime
     err := r.db.Pool.QueryRow(ctx, query, userID).Scan(
-        &v.ID, &v.UserID, &v.Method, &v.Status, &universityID,
-        &studentIdentifier, &documentKey, &verifiedBy, &verifiedAt,
-        &expiresAt, &rejectionReason, &v.CreatedAt, &v.UpdatedAt,
+        &v.ID, &v.UserID, &v.Method, &v.Status, &v.UniversityID,
+        &v.StudentIdentifier, &v.DocumentKey, &verifiedBy, &verifiedAt,
+        &expiresAt, &v.RejectionReason, &v.CreatedAt, &v.UpdatedAt,
     )
     if err != nil {
         return nil, err
-    }
-    if universityID.Valid {
-        v.UniversityID = &universityID.Int64
-    }
-    if studentIdentifier.Valid {
-        v.StudentIdentifier = studentIdentifier.String
-    }
-    if documentKey.Valid {
-        v.DocumentKey = documentKey.String
     }
     if verifiedBy.Valid {
         v.VerifiedBy = &verifiedBy.Int64
@@ -58,8 +47,31 @@ func (r *StudentVerificationRepo) GetByUserID(ctx context.Context, userID int64)
     if expiresAt.Valid {
         v.ExpiresAt = &expiresAt.Time
     }
-    if rejectionReason.Valid {
-        v.RejectionReason = rejectionReason.String
+    return &v, nil
+}
+
+func (r *StudentVerificationRepo) GetByID(ctx context.Context, id int64) (*domain.StudentVerification, error) {
+    query := `SELECT id, user_id, method, status, university_id, student_identifier, document_key, verified_by, verified_at, expires_at, rejection_reason, created_at, updated_at 
+              FROM student_verifications WHERE id = $1`
+    var v domain.StudentVerification
+    var verifiedBy sql.NullInt64
+    var verifiedAt, expiresAt sql.NullTime
+    err := r.db.Pool.QueryRow(ctx, query, id).Scan(
+        &v.ID, &v.UserID, &v.Method, &v.Status, &v.UniversityID,
+        &v.StudentIdentifier, &v.DocumentKey, &verifiedBy, &verifiedAt,
+        &expiresAt, &v.RejectionReason, &v.CreatedAt, &v.UpdatedAt,
+    )
+    if err != nil {
+        return nil, err
+    }
+    if verifiedBy.Valid {
+        v.VerifiedBy = &verifiedBy.Int64
+    }
+    if verifiedAt.Valid {
+        v.VerifiedAt = &verifiedAt.Time
+    }
+    if expiresAt.Valid {
+        v.ExpiresAt = &expiresAt.Time
     }
     return &v, nil
 }
@@ -96,21 +108,18 @@ func (r *StudentVerificationRepo) List(ctx context.Context, limit, offset int) (
 }
 
 func (r *StudentVerificationRepo) UpdateStatus(ctx context.Context, id int64, status string, verifiedBy int64, rejectionReason string) error {
-    var query string
-    var args []interface{}
-    if verifiedBy == 0 {
-        query = `UPDATE student_verifications SET status=$1, verified_at=NOW(), rejection_reason=$2, updated_at=NOW() WHERE id=$3`
-        args = []interface{}{status, rejectionReason, id}
-    } else {
-        query = `UPDATE student_verifications SET status=$1, verified_by=$2, verified_at=NOW(), rejection_reason=$3, updated_at=NOW() WHERE id=$4`
-        args = []interface{}{status, verifiedBy, rejectionReason, id}
-    }
-    _, err := r.db.Pool.Exec(ctx, query, args...)
+    query := `UPDATE student_verifications SET status=$1, verified_by=$2, verified_at=NOW(), rejection_reason=$3, updated_at=NOW() WHERE id=$4`
+    _, err := r.db.Pool.Exec(ctx, query, status, verifiedBy, rejectionReason, id)
     if err != nil {
         return err
     }
+    // Закрываем все остальные pending заявки этого пользователя
     var userID int64
     err = r.db.Pool.QueryRow(ctx, `SELECT user_id FROM student_verifications WHERE id=$1`, id).Scan(&userID)
+    if err != nil {
+        return err
+    }
+    _, err = r.db.Pool.Exec(ctx, `UPDATE student_verifications SET status=$1, updated_at=NOW() WHERE user_id=$2 AND id!=$3 AND status='pending'`, status, userID, id)
     if err != nil {
         return err
     }

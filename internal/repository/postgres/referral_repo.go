@@ -76,3 +76,9 @@ func (r *ReferralRepo) GetRewardsByReferrer(ctx context.Context, referrerID int6
     }
     return rewards, nil
 }
+
+func (r *ReferralRepo) UpdateInviteStatus(ctx context.Context, referredUserID int64, status string) error {
+    query := `UPDATE referral_invites SET status = $1 WHERE referred_user_id = $2`
+    _, err := r.db.Pool.Exec(ctx, query, status, referredUserID)
+    return err
+}

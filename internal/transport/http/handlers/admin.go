@@ -8,6 +8,7 @@ import (
     "strconv"
     "time"
     "your-project/internal/domain"
+    "your-project/internal/transport/http/middleware"
     "your-project/internal/usecase"
     "github.com/go-chi/chi/v5"
     "github.com/jackc/pgx/v5/pgconn"
@@ -122,7 +123,6 @@ func (h *AdminHandler) ListOffers(w http.ResponseWriter, r *http.Request) {
 func (h *AdminHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
     var req AdminCreateOfferRequest
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-        log.Printf("CreateOffer decode error: %v", err)
         writeError(w, http.StatusBadRequest, "invalid request: "+err.Error())
         return
     }
@@ -199,7 +199,6 @@ func (h *AdminHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
     }
 
     if err := h.adminUsecase.CreateOffer(r.Context(), offer); err != nil {
-        log.Printf("CreateOffer usecase error: %v", err)
         writeError(w, http.StatusInternalServerError, "failed to create offer")
         return
     }
@@ -221,7 +220,6 @@ func (h *AdminHandler) DeleteOffer(w http.ResponseWriter, r *http.Request) {
         writeError(w, http.StatusBadRequest, "invalid id")
         return
     }
-
     err = h.adminUsecase.DeleteOffer(r.Context(), id)
     if err != nil {
         var pgErr *pgconn.PgError
@@ -229,7 +227,6 @@ func (h *AdminHandler) DeleteOffer(w http.ResponseWriter, r *http.Request) {
             writeError(w, http.StatusConflict, "cannot delete offer with existing orders")
             return
         }
-        log.Printf("DeleteOffer error: %v", err)
         writeError(w, http.StatusInternalServerError, "failed to delete offer")
         return
     }
@@ -297,7 +294,13 @@ func (h *AdminHandler) UpdateVerification(w http.ResponseWriter, r *http.Request
         writeError(w, http.StatusBadRequest, "invalid request")
         return
     }
-    if err := h.adminUsecase.UpdateVerification(r.Context(), id, req.Status, req.RejectionReason); err != nil {
+    // Получаем ID админа из контекста
+    adminID, ok := r.Context().Value(middleware.UserIDKey).(int64)
+    if !ok {
+        writeError(w, http.StatusUnauthorized, "unauthorized")
+        return
+    }
+    if err := h.adminUsecase.UpdateVerification(r.Context(), id, req.Status, req.RejectionReason, adminID); err != nil {
         log.Printf("UpdateVerification error: %v", err)
         writeError(w, http.StatusInternalServerError, "failed to update verification")
         return
@@ -315,6 +318,7 @@ func (h *AdminHandler) GetStatistics(w http.ResponseWriter, r *http.Request) {
     writeJSON(w, http.StatusOK, stats)
 }
 
+// ---- Детальная статистика пользователя ----
 func (h *AdminHandler) GetUserDetailedStats(w http.ResponseWriter, r *http.Request) {
     idStr := chi.URLParam(r, "id")
     id, err := strconv.ParseInt(idStr, 10, 64)
