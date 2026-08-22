@@ -44,3 +44,19 @@ func (r *AccountRepo) UpdateBalance(ctx context.Context, id int64, newBalance fl
     _, err := r.db.Pool.Exec(ctx, query, newBalance, id)
     return err
 }
+
+func (r *AccountRepo) GetByUserIDAndTypeTx(ctx context.Context, tx pgx.Tx, userID int64, accType string) (*domain.Account, error) {
+    query := `SELECT id, user_id, type, currency, balance, status, created_at, updated_at 
+              FROM accounts WHERE user_id = $1 AND type = $2 FOR UPDATE`
+    var a domain.Account
+    err := tx.QueryRow(ctx, query, userID, accType).Scan(
+        &a.ID, &a.UserID, &a.Type, &a.Currency, &a.Balance, &a.Status, &a.CreatedAt, &a.UpdatedAt,
+    )
+    return &a, err
+}
+
+func (r *AccountRepo) UpdateBalanceTx(ctx context.Context, tx pgx.Tx, id int64, newBalance float64) error {
+    query := `UPDATE accounts SET balance = $1, updated_at = NOW() WHERE id = $2`
+    _, err := tx.Exec(ctx, query, newBalance, id)
+    return err
+}

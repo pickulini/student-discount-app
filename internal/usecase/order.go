@@ -9,6 +9,7 @@ import (
     "time"
     "your-project/internal/domain"
     "your-project/internal/repository"
+    "github.com/jackc/pgx/v5/pgxpool"
 )
 
 type OrderUsecase struct {
@@ -18,6 +19,7 @@ type OrderUsecase struct {
     accountRepo repository.AccountRepository
     ledgerRepo  repository.LedgerRepository
     bonusRepo   repository.BonusRepository
+    db          *pgxpool.Pool
 }
 
 func NewOrderUsecase(
@@ -27,6 +29,7 @@ func NewOrderUsecase(
     accountRepo repository.AccountRepository,
     ledgerRepo repository.LedgerRepository,
     bonusRepo repository.BonusRepository,
+    db *pgxpool.Pool,
 ) *OrderUsecase {
     return &OrderUsecase{
         orderRepo:   orderRepo,
@@ -35,6 +38,7 @@ func NewOrderUsecase(
         accountRepo: accountRepo,
         ledgerRepo:  ledgerRepo,
         bonusRepo:   bonusRepo,
+        db:          db,
     }
 }
 
@@ -46,6 +50,14 @@ type CreateOrderInput struct {
 }
 
 func (u *OrderUsecase) CreateOrder(ctx context.Context, input CreateOrderInput) (*domain.Order, error) {
+    // Начинаем транзакцию
+    tx, err := u.db.Begin(ctx)
+    if err != nil {
+        return nil, err
+    }
+    defer tx.Rollback(ctx)
+
+    // 1. Получаем предложение (без транзакции, т.к. только чтение)
     offer, err := u.offerRepo.GetByID(ctx, input.OfferID)
     if err != nil {
         return nil, errors.New("offer not found")
@@ -57,16 +69,19 @@ func (u *OrderUsecase) CreateOrder(ctx context.Context, input CreateOrderInput) 
         return nil, errors.New("offer expired")
     }
 
-    account, err := u.accountRepo.GetByUserIDAndType(ctx, input.UserID, "cash")
+    // 2. Получаем счёт с блокировкой
+    account, err := u.accountRepo.GetByUserIDAndTypeTx(ctx, tx, input.UserID, "cash")
     if err != nil {
         return nil, errors.New("account not found")
     }
 
-    bonusAcc, err := u.bonusRepo.GetByUserID(ctx, input.UserID)
+    // 3. Получаем бонусный счёт с блокировкой
+    bonusAcc, err := u.bonusRepo.GetByUserIDTx(ctx, tx, input.UserID)
     if err != nil {
         return nil, errors.New("bonus account not found")
     }
 
+    // 4. Расчёт
     subtotal := 1000.0
     discount := 0.0
     if offer.DiscountType == "percentage" {
@@ -93,6 +108,7 @@ func (u *OrderUsecase) CreateOrder(ctx context.Context, input CreateOrderInput) 
         return nil, domain.ErrInsufficientBalance
     }
 
+    // 5. Создаём заказ
     order := &domain.Order{
         UserID:         input.UserID,
         CompanyID:      offer.CompanyID,
@@ -106,13 +122,12 @@ func (u *OrderUsecase) CreateOrder(ctx context.Context, input CreateOrderInput) 
         Status:         "created",
         CreatedAt:      time.Now(),
     }
-
-    if err := u.orderRepo.Create(ctx, order); err != nil {
+    if err := u.orderRepo.CreateTx(ctx, tx, order); err != nil {
         return nil, err
     }
 
-    idempotencyKey := generateIdempotencyKey(input.UserID, input.OfferID)
-
+    // 6. Ledger транзакция
+    idempotencyKey := generateOrderIdempotencyKey(input.UserID, input.OfferID)
     ledgerTx := &domain.LedgerTransaction{
         Type:           "purchase",
         Status:         "pending",
@@ -121,24 +136,27 @@ func (u *OrderUsecase) CreateOrder(ctx context.Context, input CreateOrderInput) 
         ReferenceID:    order.ID,
         Description:    "Оплата заказа",
     }
-    if err := u.ledgerRepo.CreateTransaction(ctx, ledgerTx); err != nil {
+    if err := u.ledgerRepo.CreateTransactionTx(ctx, tx, ledgerTx); err != nil {
         return nil, err
     }
 
+    // 7. Ledger entry
     entry := &domain.LedgerEntry{
         TransactionID: ledgerTx.ID,
         AccountID:     account.ID,
         Amount:        -total,
     }
-    if err := u.ledgerRepo.CreateEntry(ctx, entry); err != nil {
+    if err := u.ledgerRepo.CreateEntryTx(ctx, tx, entry); err != nil {
         return nil, err
     }
 
+    // 8. Обновляем баланс счёта
     newBalance := account.Balance - total
-    if err := u.accountRepo.UpdateBalance(ctx, account.ID, newBalance); err != nil {
+    if err := u.accountRepo.UpdateBalanceTx(ctx, tx, account.ID, newBalance); err != nil {
         return nil, err
     }
 
+    // 9. Бонусы
     if bonusUsed > 0 {
         bonusTx := &domain.BonusTransaction{
             UserID:        input.UserID,
@@ -147,20 +165,29 @@ func (u *OrderUsecase) CreateOrder(ctx context.Context, input CreateOrderInput) 
             ReferenceType: "order",
             ReferenceID:   order.ID,
         }
-        if err := u.bonusRepo.CreateTransaction(ctx, bonusTx); err != nil {
+        if err := u.bonusRepo.CreateTransactionTx(ctx, tx, bonusTx); err != nil {
             return nil, err
         }
         newBonus := bonusAcc.Balance - bonusUsed
-        if err := u.bonusRepo.UpdateBalance(ctx, bonusAcc.ID, newBonus); err != nil {
+        if err := u.bonusRepo.UpdateBalanceTx(ctx, tx, bonusAcc.ID, newBonus); err != nil {
             return nil, err
         }
     }
 
-    if err := u.ledgerRepo.UpdateTransactionStatus(ctx, ledgerTx.ID, "completed"); err != nil {
+    // 10. Завершаем ledger
+    if err := u.ledgerRepo.UpdateTransactionStatusTx(ctx, tx, ledgerTx.ID, "completed"); err != nil {
         return nil, err
     }
 
-    u.offerRepo.IncrementUses(ctx, offer.ID)
+    // 11. Увеличиваем счётчик использований
+    if err := u.offerRepo.IncrementUsesTx(ctx, tx, offer.ID); err != nil {
+        return nil, err
+    }
+
+    // Фиксируем транзакцию
+    if err := tx.Commit(ctx); err != nil {
+        return nil, err
+    }
 
     return order, nil
 }
@@ -169,8 +196,8 @@ func (u *OrderUsecase) GetUserOrders(ctx context.Context, userID int64) ([]domai
     return u.orderRepo.GetByUserID(ctx, userID)
 }
 
-func generateIdempotencyKey(userID, offerID int64) string {
+func generateOrderIdempotencyKey(userID, offerID int64) string {
     b := make([]byte, 16)
     rand.Read(b)
-    return fmt.Sprintf("%d-%d-%x", userID, offerID, b)
+    return fmt.Sprintf("order-%d-%d-%x", userID, offerID, b)
 }

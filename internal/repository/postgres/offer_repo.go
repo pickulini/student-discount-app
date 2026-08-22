@@ -1,6 +1,7 @@
 package postgres
 
 import (
+    "github.com/jackc/pgx/v5"
     "context"
     "your-project/internal/domain"
     "your-project/internal/repository"
@@ -146,5 +147,11 @@ func (r *OfferRepo) ExpireOffers(ctx context.Context) error {
     query := `UPDATE offers SET status = 'expired', updated_at = NOW() 
               WHERE status = 'published' AND end_at < NOW()`
     _, err := r.db.Pool.Exec(ctx, query)
+    return err
+}
+
+func (r *OfferRepo) IncrementUsesTx(ctx context.Context, tx pgx.Tx, id int64) error {
+    query := `UPDATE offers SET current_uses = current_uses + 1, updated_at = NOW() WHERE id = $1`
+    _, err := tx.Exec(ctx, query, id)
     return err
 }

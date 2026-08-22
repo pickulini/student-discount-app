@@ -1,6 +1,7 @@
 package postgres
 
 import (
+    "github.com/jackc/pgx/v5"
     "context"
     "your-project/internal/domain"
     "your-project/internal/repository"
@@ -124,4 +125,25 @@ func (r *LedgerRepo) GetTransactionsByUserID(ctx context.Context, userID int64, 
         transactions = append(transactions, t)
     }
     return transactions, nil
+}
+
+func (r *LedgerRepo) CreateTransactionTx(ctx context.Context, tx pgx.Tx, txObj *domain.LedgerTransaction) error {
+    query := `INSERT INTO ledger_transactions (type, status, idempotency_key, reference_type, reference_id, description) 
+              VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, created_at`
+    err := tx.QueryRow(ctx, query,
+        txObj.Type, txObj.Status, txObj.IdempotencyKey, txObj.ReferenceType, txObj.ReferenceID, txObj.Description,
+    ).Scan(&txObj.ID, &txObj.CreatedAt)
+    return err
+}
+
+func (r *LedgerRepo) CreateEntryTx(ctx context.Context, tx pgx.Tx, entry *domain.LedgerEntry) error {
+    query := `INSERT INTO ledger_entries (transaction_id, account_id, amount) VALUES ($1, $2, $3) RETURNING id, created_at`
+    err := tx.QueryRow(ctx, query, entry.TransactionID, entry.AccountID, entry.Amount).Scan(&entry.ID, &entry.CreatedAt)
+    return err
+}
+
+func (r *LedgerRepo) UpdateTransactionStatusTx(ctx context.Context, tx pgx.Tx, id int64, status string) error {
+    query := `UPDATE ledger_transactions SET status = $1, completed_at = NOW() WHERE id = $2`
+    _, err := tx.Exec(ctx, query, status, id)
+    return err
 }

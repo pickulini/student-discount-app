@@ -1,6 +1,7 @@
 package postgres
 
 import (
+    "github.com/jackc/pgx/v5"
     "context"
     "log"
     "your-project/internal/domain"
@@ -67,5 +68,16 @@ func (r *OrderRepo) GetByUserID(ctx context.Context, userID int64) ([]domain.Ord
 func (r *OrderRepo) UpdateStatus(ctx context.Context, id int64, status string) error {
     query := `UPDATE orders SET status=$1, updated_at=NOW() WHERE id=$2`
     _, err := r.db.Pool.Exec(ctx, query, status, id)
+    return err
+}
+
+func (r *OrderRepo) CreateTx(ctx context.Context, tx pgx.Tx, o *domain.Order) error {
+    query := `INSERT INTO orders (user_id, company_id, location_id, offer_id, subtotal, discount_amount, bonus_amount, total_amount, commission, status, created_at) 
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`
+    err := tx.QueryRow(ctx, query,
+        o.UserID, o.CompanyID, o.LocationID, o.OfferID,
+        o.Subtotal, o.DiscountAmount, o.BonusAmount, o.TotalAmount,
+        o.Commission, o.Status, o.CreatedAt,
+    ).Scan(&o.ID)
     return err
 }
