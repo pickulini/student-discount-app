@@ -43,6 +43,9 @@ func main() {
 	msgRepo := postgres.NewSupportMessageRepo(db)
 	companyUserRepo := postgres.NewCompanyUserRepo(db)
 	paymentRepo := postgres.NewPaymentRepo(db)
+	merchantAccountRepo := postgres.NewMerchantAccountRepo(db)
+	merchantTxRepo := postgres.NewMerchantTransactionRepo(db)
+	//settlementRepo := postgres.NewSettlementRepo(db)
 
 	hasher := crypto.NewPasswordHasher(cfg.Argon2Time, cfg.Argon2Memory, cfg.Argon2Threads, cfg.Argon2KeyLen)
 	jwtManager := crypto.NewJWTManager(cfg.JWTSecret, cfg.JWTExpiryMin)
@@ -55,7 +58,7 @@ func main() {
 	)
 	userUsecase := usecase.NewUserUsecase(userRepo, accountRepo, bonusRepo, ledgerRepo)
 	companyUsecase := usecase.NewCompanyUsecase(companyRepo, locationRepo, offerRepo)
-	orderUsecase := usecase.NewOrderUsecase(orderRepo, offerRepo, userRepo, accountRepo, ledgerRepo, bonusRepo, db.Pool)
+	orderUsecase := usecase.NewOrderUsecase(orderRepo, offerRepo, userRepo, accountRepo, ledgerRepo, bonusRepo, merchantAccountRepo, merchantTxRepo, db.Pool)
 	paymentUsecase := usecase.NewPaymentUsecase(accountRepo, ledgerRepo, bonusRepo, paymentRepo)
 	referralUsecase := usecase.NewReferralUsecase(referralRepo, userRepo)
 	supportUsecase := usecase.NewSupportUsecase(ticketRepo, msgRepo, userRepo)
@@ -86,18 +89,6 @@ func main() {
 		userRepo,
 		jwtManager,
 	)
-
-	// Фоновая задача для архивации истекших предложений (каждый час)
-	go func() {
-		ticker := time.NewTicker(1 * time.Hour)
-		defer ticker.Stop()
-		for {
-			<-ticker.C
-			if err := offerRepo.ExpireOffers(context.Background()); err != nil {
-				log.Printf("Failed to expire offers: %v", err)
-			}
-		}
-	}()
 
 	srv := &http.Server{
 		Addr:         cfg.AppPort,

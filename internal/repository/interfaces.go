@@ -151,3 +151,26 @@ type CompanyUserRepository interface {
 	Delete(ctx context.Context, id int64) error
 	UpdateRole(ctx context.Context, id int64, role string) error
 }
+
+// ---- Merchant ----
+
+type MerchantAccountRepository interface {
+    Create(ctx context.Context, acc *domain.MerchantAccount) error
+    GetByCompanyID(ctx context.Context, companyID int64) (*domain.MerchantAccount, error)
+    UpdateBalance(ctx context.Context, id int64, newBalance float64) error
+    UpdateBalanceTx(ctx context.Context, tx pgx.Tx, id int64, newBalance float64) error
+    GetByCompanyIDTx(ctx context.Context, tx pgx.Tx, companyID int64) (*domain.MerchantAccount, error)
+}
+
+type MerchantTransactionRepository interface {
+    Create(ctx context.Context, mt *domain.MerchantTransaction) error
+    CreateTx(ctx context.Context, tx pgx.Tx, mt *domain.MerchantTransaction) error
+    GetByCompanyID(ctx context.Context, companyID int64) ([]domain.MerchantTransaction, error)
+    UpdateStatus(ctx context.Context, id int64, status string) error
+}
+
+type SettlementRepository interface {
+    Create(ctx context.Context, s *domain.Settlement) error
+    GetByCompanyID(ctx context.Context, companyID int64) ([]domain.Settlement, error)
+    UpdateStatus(ctx context.Context, id int64, status string) error
+}
