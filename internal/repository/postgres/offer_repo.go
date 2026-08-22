@@ -15,11 +15,11 @@ func NewOfferRepo(db *DB) repository.OfferRepository {
 }
 
 func (r *OfferRepo) Create(ctx context.Context, o *domain.Offer) error {
-    query := `INSERT INTO offers (company_id, title, description, discount_type, discount_value, special_price, start_at, end_at, status, max_uses, current_uses, bonus_allowed, max_bonus_percent) 
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id, created_at, updated_at`
+    query := `INSERT INTO offers (company_id, title, description, discount_type, discount_value, start_at, end_at, status, max_uses, current_uses, bonus_allowed, max_bonus_percent) 
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id, created_at, updated_at`
     err := r.db.Pool.QueryRow(ctx, query,
         o.CompanyID, o.Title, o.Description, o.DiscountType, o.DiscountValue,
-        o.SpecialPrice, o.StartAt, o.EndAt, o.Status, o.MaxUses, o.CurrentUses,
+        o.StartAt, o.EndAt, o.Status, o.MaxUses, o.CurrentUses,
         o.BonusAllowed, o.MaxBonusPercent,
     ).Scan(&o.ID, &o.CreatedAt, &o.UpdatedAt)
     return err
@@ -139,5 +139,12 @@ func (r *OfferRepo) Delete(ctx context.Context, id int64) error {
 func (r *OfferRepo) UpdateStatus(ctx context.Context, id int64, status string) error {
     query := `UPDATE offers SET status=$1, updated_at=NOW() WHERE id=$2`
     _, err := r.db.Pool.Exec(ctx, query, status, id)
+    return err
+}
+
+func (r *OfferRepo) ExpireOffers(ctx context.Context) error {
+    query := `UPDATE offers SET status = 'expired', updated_at = NOW() 
+              WHERE status = 'published' AND end_at < NOW()`
+    _, err := r.db.Pool.Exec(ctx, query)
     return err
 }

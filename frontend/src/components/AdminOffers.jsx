@@ -5,6 +5,7 @@ const AdminOffers = () => {
   const [offers, setOffers] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filterStatus, setFilterStatus] = useState('all');
   const [form, setForm] = useState({
     company_id: '',
     title: '',
@@ -13,14 +14,14 @@ const AdminOffers = () => {
     discount_value: 10,
     start_at: '',
     end_at: '',
-    status: 'draft',
+    status: 'pending_review', // <-- изменено с 'draft' на 'pending_review'
     bonus_allowed: false,
     max_bonus_percent: 20,
   });
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [filterStatus]);
 
   const fetchData = async () => {
     try {
@@ -28,7 +29,11 @@ const AdminOffers = () => {
         api.get('/admin/offers'),
         api.get('/admin/companies'),
       ]);
-      setOffers(offersRes.data || []);
+      let offersData = offersRes.data || [];
+      if (filterStatus !== 'all') {
+        offersData = offersData.filter(o => o.status === filterStatus);
+      }
+      setOffers(offersData);
       setCompanies(companiesRes.data || []);
     } catch (err) {
       console.error(err);
@@ -40,15 +45,12 @@ const AdminOffers = () => {
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
-      const payload = {
+      await api.post('/admin/offers', {
         ...form,
-        start_at: form.start_at ? new Date(form.start_at).toISOString() : '',
-        end_at: form.end_at ? new Date(form.end_at).toISOString() : '',
-        company_id: parseInt(form.company_id),
+        company_id: form.company_id ? parseInt(form.company_id) : '',
         discount_value: parseFloat(form.discount_value),
         max_bonus_percent: parseInt(form.max_bonus_percent || 0),
-      };
-      await api.post('/admin/offers', payload);
+      });
       setForm({ ...form, title: '', description: '' });
       fetchData();
     } catch (err) {
@@ -62,7 +64,7 @@ const AdminOffers = () => {
       await api.delete(`/admin/offers?id=${id}`);
       fetchData();
     } catch (err) {
-      alert('Ошибка удаления');
+      alert('Ошибка удаления: ' + (err.response?.data?.error || err.message));
     }
   };
 
@@ -75,11 +77,37 @@ const AdminOffers = () => {
     }
   };
 
+  const handleArchive = async (id) => {
+    if (!confirm('Архивировать предложение? Оно перестанет отображаться на главной.')) return;
+    try {
+      await api.put(`/admin/offers/${id}/archive`, {});
+      fetchData();
+    } catch (err) {
+      alert('Ошибка архивации: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
   if (loading) return <div>Загрузка...</div>;
 
   return (
     <div>
       <h2 className="text-2xl font-bold mb-4">Предложения (модерация)</h2>
+      <div className="mb-4 flex gap-2">
+        <label className="text-sm">Фильтр по статусу:</label>
+        <select
+          value={filterStatus}
+          onChange={e => setFilterStatus(e.target.value)}
+          className="border rounded p-1 text-sm"
+        >
+          <option value="all">Все</option>
+          <option value="draft">Черновики</option>
+          <option value="pending_review">На модерации</option>
+          <option value="published">Опубликованные</option>
+          <option value="expired">Истекшие</option>
+          <option value="archived">Архив</option>
+        </select>
+      </div>
+
       <form onSubmit={handleCreate} className="mb-6 grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm">Компания</label>
@@ -168,10 +196,11 @@ const AdminOffers = () => {
             <option value="archived">Архив</option>
           </select>
         </div>
-        <div className="col-span-2">
+        <div className="col-span-2 flex gap-2">
           <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">Создать предложение</button>
         </div>
       </form>
+
       <table className="w-full border-collapse">
         <thead>
           <tr className="bg-gray-100">
@@ -191,13 +220,15 @@ const AdminOffers = () => {
               <td className="p-2">
                 <span className={`px-2 py-1 rounded text-white text-sm ${
                   offer.status === 'published' ? 'bg-green-500' :
-                  offer.status === 'pending_review' ? 'bg-yellow-500' : 'bg-gray-500'
+                  offer.status === 'pending_review' ? 'bg-yellow-500' :
+                  offer.status === 'archived' ? 'bg-gray-500' :
+                  offer.status === 'expired' ? 'bg-red-300' : 'bg-gray-400'
                 }`}>
                   {offer.status}
                 </span>
               </td>
               <td className="p-2 space-x-2">
-                {offer.status === 'pending_review' && (
+                {(offer.status && offer.status.toLowerCase() === 'pending_review') && (
                   <>
                     <button
                       onClick={() => handleModerate(offer.id, 'publish')}
@@ -212,6 +243,14 @@ const AdminOffers = () => {
                       Отклонить
                     </button>
                   </>
+                )}
+                {(offer.status === 'published' || offer.status === 'expired') && (
+                  <button
+                    onClick={() => handleArchive(offer.id)}
+                    className="bg-yellow-500 text-white px-2 py-1 rounded text-sm hover:bg-yellow-600"
+                  >
+                    Архивировать
+                  </button>
                 )}
                 <button
                   onClick={() => handleDelete(offer.id)}

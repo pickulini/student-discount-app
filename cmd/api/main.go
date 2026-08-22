@@ -42,6 +42,7 @@ func main() {
     ticketRepo := postgres.NewSupportTicketRepo(db)
     msgRepo := postgres.NewSupportMessageRepo(db)
     companyUserRepo := postgres.NewCompanyUserRepo(db)
+    paymentRepo := postgres.NewPaymentRepo(db)
 
     hasher := crypto.NewPasswordHasher(cfg.Argon2Time, cfg.Argon2Memory, cfg.Argon2Threads, cfg.Argon2KeyLen)
     jwtManager := crypto.NewJWTManager(cfg.JWTSecret, cfg.JWTExpiryMin)
@@ -55,7 +56,7 @@ func main() {
     userUsecase := usecase.NewUserUsecase(userRepo, accountRepo, bonusRepo, ledgerRepo)
     companyUsecase := usecase.NewCompanyUsecase(companyRepo, locationRepo, offerRepo)
     orderUsecase := usecase.NewOrderUsecase(orderRepo, offerRepo, userRepo, accountRepo, ledgerRepo, bonusRepo)
-    paymentUsecase := usecase.NewPaymentUsecase(accountRepo, ledgerRepo, bonusRepo)
+    paymentUsecase := usecase.NewPaymentUsecase(accountRepo, ledgerRepo, bonusRepo, paymentRepo)
     referralUsecase := usecase.NewReferralUsecase(referralRepo, userRepo)
     supportUsecase := usecase.NewSupportUsecase(ticketRepo, msgRepo, userRepo)
     adminUsecase := usecase.NewAdminUsecase(userRepo, companyRepo, locationRepo, offerRepo, studentVerifRepo, accountRepo, bonusRepo, db.Pool)
@@ -66,6 +67,7 @@ func main() {
     adminHandler := handlers.NewAdminHandler(adminUsecase)
     supportHandler := handlers.NewSupportHandler(supportUsecase)
     merchantHandler := handlers.NewMerchantHandler(merchantUsecase)
+    paymentHandler := handlers.NewPaymentHandler(paymentUsecase)
 
     router := transport.NewRouterProto(
         authUsecase,
@@ -80,9 +82,22 @@ func main() {
         adminHandler,
         supportHandler,
         merchantHandler,
+        paymentHandler,
         userRepo,
         jwtManager,
     )
+
+    // Фоновая задача для архивации истекших предложений (каждый час)
+    go func() {
+        ticker := time.NewTicker(1 * time.Hour)
+        defer ticker.Stop()
+        for {
+            <-ticker.C
+            if err := offerRepo.ExpireOffers(context.Background()); err != nil {
+                log.Printf("Failed to expire offers: %v", err)
+            }
+        }
+    }()
 
     srv := &http.Server{
         Addr:         cfg.AppPort,

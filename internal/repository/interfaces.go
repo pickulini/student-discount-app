@@ -2,10 +2,9 @@ package repository
 
 import (
     "context"
+    "time"
     "your-project/internal/domain"
 )
-
-// ---- Существующие интерфейсы ----
 
 type UserRepository interface {
     Create(ctx context.Context, user *domain.User) error
@@ -40,8 +39,6 @@ type UniversityRepository interface {
     GetByID(ctx context.Context, id int64) (*domain.University, error)
 }
 
-// ---- Новые интерфейсы для прототипа ----
-
 type CompanyRepository interface {
     Create(ctx context.Context, c *domain.Company) error
     GetByID(ctx context.Context, id int64) (*domain.Company, error)
@@ -67,6 +64,7 @@ type OfferRepository interface {
     Update(ctx context.Context, o *domain.Offer) error
     Delete(ctx context.Context, id int64) error
     UpdateStatus(ctx context.Context, id int64, status string) error
+    ExpireOffers(ctx context.Context) error
 }
 
 type OrderRepository interface {
@@ -75,8 +73,6 @@ type OrderRepository interface {
     GetByUserID(ctx context.Context, userID int64) ([]domain.Order, error)
     UpdateStatus(ctx context.Context, id int64, status string) error
 }
-
-// ---- Финансовые репозитории ----
 
 type AccountRepository interface {
     Create(ctx context.Context, account *domain.Account) error
@@ -98,8 +94,6 @@ type BonusRepository interface {
     CreateTransaction(ctx context.Context, tx *domain.BonusTransaction) error
 }
 
-// ---- Реферальные репозитории ----
-
 type ReferralRepository interface {
     CreateInvite(ctx context.Context, invite *domain.ReferralInvite) error
     GetInvitesByReferrer(ctx context.Context, referrerID int64) ([]domain.ReferralInvite, error)
@@ -108,7 +102,14 @@ type ReferralRepository interface {
     GetRewardsByReferrer(ctx context.Context, referrerID int64) ([]domain.ReferralReward, error)
 }
 
-// ---- Поддержка ----
+type PaymentRepository interface {
+    Create(ctx context.Context, p *domain.Payment) error
+    GetByID(ctx context.Context, id int64) (*domain.Payment, error)
+    GetByExternalID(ctx context.Context, externalID string) (*domain.Payment, error)
+    GetByIdempotencyKey(ctx context.Context, key string) (*domain.Payment, error)
+    UpdateStatus(ctx context.Context, id int64, status string, externalID *string, completedAt *time.Time) error
+    UpdatePaymentURL(ctx context.Context, id int64, url string) error
+}
 
 type SupportTicketRepository interface {
     Create(ctx context.Context, ticket *domain.SupportTicket) error
@@ -123,8 +124,6 @@ type SupportMessageRepository interface {
     Create(ctx context.Context, msg *domain.SupportMessage) error
     GetByTicketID(ctx context.Context, ticketID int64) ([]domain.SupportMessage, error)
 }
-
-// ---- Партнёр ----
 
 type CompanyUserRepository interface {
     Create(ctx context.Context, cu *domain.CompanyUser) error
