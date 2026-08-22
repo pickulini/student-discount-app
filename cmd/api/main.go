@@ -63,7 +63,7 @@ func main() {
 	referralUsecase := usecase.NewReferralUsecase(referralRepo, userRepo)
 	supportUsecase := usecase.NewSupportUsecase(ticketRepo, msgRepo, userRepo)
 	adminUsecase := usecase.NewAdminUsecase(userRepo, companyRepo, locationRepo, offerRepo, studentVerifRepo, accountRepo, bonusRepo, db.Pool)
-	merchantUsecase := usecase.NewMerchantUsecase(companyRepo, locationRepo, offerRepo, companyUserRepo, userRepo, db.Pool)
+	merchantUsecase := usecase.NewMerchantUsecase(companyRepo, locationRepo, offerRepo, companyUserRepo, userRepo, merchantAccountRepo, merchantTxRepo, db.Pool)
 
 	// Handlers
 	walletHandler := handlers.NewWalletHandler(accountRepo, bonusRepo)

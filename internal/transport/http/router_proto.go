@@ -98,7 +98,7 @@ func NewRouterProto(
 			r.Get("/api/v1/admin/users", adminHandler.ListUsers)
 			r.Put("/api/v1/admin/users/role", adminHandler.UpdateUserRole)
 			r.Get("/api/v1/admin/users/{id}", adminHandler.GetUser)
-            r.Get("/api/v1/admin/users/{id}/stats", adminHandler.GetUserDetailedStats)
+			r.Get("/api/v1/admin/users/{id}/stats", adminHandler.GetUserDetailedStats)
 
 			// Компании
 			r.Get("/api/v1/admin/companies", adminHandler.ListCompanies)
@@ -112,7 +112,7 @@ func NewRouterProto(
 			r.Put("/api/v1/admin/offers/{id}", adminHandler.UpdateOffer)
 			r.Delete("/api/v1/admin/offers", adminHandler.DeleteOffer)
 			r.Put("/api/v1/admin/offers/{id}/moderate", adminHandler.ModerateOffer)
-            r.Put("/api/v1/admin/offers/{id}/archive", adminHandler.ArchiveOffer)
+			r.Put("/api/v1/admin/offers/{id}/archive", adminHandler.ArchiveOffer)
 
 			// Верификации
 			r.Get("/api/v1/admin/verifications", adminHandler.ListVerifications)
@@ -135,6 +135,8 @@ func NewRouterProto(
 			r.Post("/api/v1/merchant/offers", merchantHandler.CreateOffer)
 			r.Post("/api/v1/merchant/offers/{id}/submit", merchantHandler.SubmitForReview)
 			r.Get("/api/v1/merchant/statistics/daily", merchantHandler.GetDailyStats)
+			r.Get("/api/v1/merchant/balance", merchantHandler.GetBalance)
+			r.Get("/api/v1/merchant/transactions", merchantHandler.GetTransactions)
 		})
 	})
 

@@ -160,3 +160,45 @@ func (h *MerchantHandler) GetDailyStats(w http.ResponseWriter, r *http.Request) 
     }
     writeJSON(w, http.StatusOK, stats)
 }
+
+// ---- Новые хендлеры для баланса и транзакций ----
+
+func (h *MerchantHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
+    userID, ok := r.Context().Value(middleware.UserIDKey).(int64)
+    if !ok {
+        writeError(w, http.StatusUnauthorized, "unauthorized")
+        return
+    }
+    balance, err := h.merchantUsecase.GetBalance(r.Context(), userID)
+    if err != nil {
+        writeError(w, http.StatusInternalServerError, "failed to load balance")
+        return
+    }
+    writeJSON(w, http.StatusOK, balance)
+}
+
+func (h *MerchantHandler) GetTransactions(w http.ResponseWriter, r *http.Request) {
+    userID, ok := r.Context().Value(middleware.UserIDKey).(int64)
+    if !ok {
+        writeError(w, http.StatusUnauthorized, "unauthorized")
+        return
+    }
+    limit := 50
+    offset := 0
+    if l := r.URL.Query().Get("limit"); l != "" {
+        if v, err := strconv.Atoi(l); err == nil && v > 0 {
+            limit = v
+        }
+    }
+    if o := r.URL.Query().Get("offset"); o != "" {
+        if v, err := strconv.Atoi(o); err == nil && v >= 0 {
+            offset = v
+        }
+    }
+    tx, err := h.merchantUsecase.GetTransactions(r.Context(), userID, limit, offset)
+    if err != nil {
+        writeError(w, http.StatusInternalServerError, "failed to load transactions")
+        return
+    }
+    writeJSON(w, http.StatusOK, tx)
+}
