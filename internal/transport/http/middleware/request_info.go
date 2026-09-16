@@ -2,7 +2,9 @@ package middleware
 
 import (
     "context"
+    "net"
     "net/http"
+    "strings"
 )
 
 type contextKeyInfo string
@@ -20,6 +22,14 @@ func RequestInfo(next http.Handler) http.Handler {
         }
         if ip == "" {
             ip = r.RemoteAddr
+        }
+        // Убираем порт, если он есть (например, "192.168.1.1:26799")
+        if host, _, err := net.SplitHostPort(ip); err == nil {
+            ip = host
+        }
+        // Если X-Forwarded-For содержит несколько адресов — берём первый
+        if idx := strings.Index(ip, ","); idx != -1 {
+            ip = strings.TrimSpace(ip[:idx])
         }
         userAgent := r.Header.Get("User-Agent")
         ctx := context.WithValue(r.Context(), RequestIPKey, ip)

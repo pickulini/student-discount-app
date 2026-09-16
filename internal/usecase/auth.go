@@ -5,6 +5,7 @@ import (
     "crypto/rand"
     "crypto/sha256"
     "encoding/hex"
+    "errors"
     "log"
     "time"
     "your-project/internal/domain"
@@ -13,16 +14,17 @@ import (
 )
 
 type AuthUsecase struct {
-    userRepo       repository.UserRepository
-    sessionRepo    repository.SessionRepository
+    userRepo         repository.UserRepository
+    sessionRepo      repository.SessionRepository
     studentVerifRepo repository.StudentVerificationRepository
-    uniRepo        repository.UniversityRepository
-    accountRepo    repository.AccountRepository
-    bonusRepo      repository.BonusRepository
-    referralRepo   repository.ReferralRepository
-    hasher         *crypto.PasswordHasher
-    jwtManager     *crypto.JWTManager
-    frontendURL    string
+    uniRepo          repository.UniversityRepository
+    accountRepo      repository.AccountRepository
+    bonusRepo        repository.BonusRepository
+    referralRepo     repository.ReferralRepository
+    antifraudRepo    repository.AntifraudRepository
+    hasher           *crypto.PasswordHasher
+    jwtManager       *crypto.JWTManager
+    frontendURL      string
 }
 
 func NewAuthUsecase(
@@ -33,25 +35,36 @@ func NewAuthUsecase(
     accountRepo repository.AccountRepository,
     bonusRepo repository.BonusRepository,
     referralRepo repository.ReferralRepository,
+    antifraudRepo repository.AntifraudRepository,
     hasher *crypto.PasswordHasher,
     jwtManager *crypto.JWTManager,
     frontendURL string,
 ) *AuthUsecase {
     return &AuthUsecase{
-        userRepo:       userRepo,
-        sessionRepo:    sessionRepo,
+        userRepo:         userRepo,
+        sessionRepo:      sessionRepo,
         studentVerifRepo: studentVerifRepo,
-        uniRepo:        uniRepo,
-        accountRepo:    accountRepo,
-        bonusRepo:      bonusRepo,
-        referralRepo:   referralRepo,
-        hasher:         hasher,
-        jwtManager:     jwtManager,
-        frontendURL:    frontendURL,
+        uniRepo:          uniRepo,
+        accountRepo:      accountRepo,
+        bonusRepo:        bonusRepo,
+        referralRepo:     referralRepo,
+        antifraudRepo:    antifraudRepo,
+        hasher:           hasher,
+        jwtManager:       jwtManager,
+        frontendURL:      frontendURL,
     }
 }
 
-func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName string, universityID *int64, course *int, referralCode string) (*domain.User, string, error) {
+// Register — с проверками антифрода
+func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName string, universityID *int64, course *int, referralCode, clientIP string) (*domain.User, string, error) {
+    // TODO: в продакшене заменить на device fingerprint + 2FA (email/SMS)
+    // === ANTIFRAUD: Rate limit по IP (100 регистраций в час) ===
+    ipHash := hashString(clientIP)
+    count, err := u.antifraudRepo.CountRegistrationsByIPHash(ctx, ipHash, 60)
+    if err == nil && count >= 100 {
+        return nil, "", errors.New("too many registrations from your IP, try again later")
+    }
+
     existing, _ := u.userRepo.GetByEmail(ctx, email)
     if existing != nil {
         return nil, "", domain.ErrEmailAlreadyExists
@@ -74,6 +87,12 @@ func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName st
     var referrer *domain.User
     if referralCode != "" {
         referrer, _ = u.userRepo.GetByReferralCode(ctx, referralCode)
+
+        // === ANTIFRAUD: нельзя пригласить самого себя ===
+        // Проверяем по email (поскольку новый пользователь ещё не создан)
+        if referrer != nil && referrer.Email == email {
+            return nil, "", errors.New("cannot refer yourself")
+        }
     }
 
     var referredBy *int64
@@ -82,23 +101,27 @@ func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName st
     }
 
     user := &domain.User{
-        Email:          email,
-        PasswordHash:   hash,
-        FullName:       fullName,
-        UniversityID:   universityID,
-        Course:         course,
-        StudentStatus:  "pending",
-        ReferralCode:   code,
-        ReferredBy:     referredBy,
-        IsActive:       true,
-        Balance:        0,
-        Role:           "student",
+        Email:         email,
+        PasswordHash:  hash,
+        FullName:      fullName,
+        UniversityID:  universityID,
+        Course:        course,
+        StudentStatus: "pending",
+        ReferralCode:  code,
+        ReferredBy:    referredBy,
+        IsActive:      true,
+        Balance:       0,
+        Role:          "student",
     }
     if err := u.userRepo.Create(ctx, user); err != nil {
         return nil, "", err
     }
 
-    // Создаём денежный счёт
+    // Логируем попытку регистрации для антифрода
+    if err := u.antifraudRepo.LogRegistrationAttempt(ctx, ipHash, email); err != nil {
+        log.Printf("failed to log registration attempt: %v", err)
+    }
+
     account := &domain.Account{
         UserID:   user.ID,
         Type:     "cash",
@@ -111,7 +134,6 @@ func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName st
         return nil, "", err
     }
 
-    // Создаём бонусный счёт
     bonusAcc := &domain.BonusAccount{
         UserID:  user.ID,
         Balance: 0,
@@ -121,7 +143,7 @@ func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName st
         return nil, "", err
     }
 
-    // Если есть реферер – создаём запись в referral_invites (даже если бонус ещё не начислен)
+    // Создаём referral_invite
     if referrer != nil {
         invite := &domain.ReferralInvite{
             ReferrerID:     referrer.ID,
@@ -177,15 +199,12 @@ func (u *AuthUsecase) Login(ctx context.Context, email, password, deviceName, us
 }
 
 func (u *AuthUsecase) RequestVerification(ctx context.Context, userID int64) error {
-    // Проверяем, есть ли уже верификация
     existing, err := u.studentVerifRepo.GetByUserID(ctx, userID)
     if err == nil && existing != nil {
-        // Если уже есть заявка, не создаём новую
         if existing.Status == "pending" || existing.Status == "verified" {
             return nil
         }
     }
-    // Создаём новую заявку
     verif := &domain.StudentVerification{
         UserID: userID,
         Method: "manual",
@@ -204,4 +223,9 @@ func generateRandomToken(length int) string {
     b := make([]byte, length)
     rand.Read(b)
     return hex.EncodeToString(b)
+}
+
+func hashString(s string) string {
+    h := sha256.Sum256([]byte(s))
+    return hex.EncodeToString(h[:])
 }

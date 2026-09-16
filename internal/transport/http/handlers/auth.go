@@ -31,13 +31,21 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
         writeError(w, http.StatusBadRequest, "invalid request")
         return
     }
-    user, token, err := h.authUsecase.Register(r.Context(), req.Email, req.Password, req.FullName, req.UniversityID, req.Course, req.ReferralCode)
+
+    // Получаем IP из middleware
+    clientIP := middleware.GetIP(r.Context())
+    if clientIP == "" {
+        clientIP = r.RemoteAddr
+    }
+
+    user, token, err := h.authUsecase.Register(r.Context(), req.Email, req.Password, req.FullName,
+        req.UniversityID, req.Course, req.ReferralCode, clientIP)
     if err != nil {
         switch err {
         case domain.ErrEmailAlreadyExists:
             writeError(w, http.StatusConflict, err.Error())
         default:
-            writeError(w, http.StatusInternalServerError, "registration failed")
+            writeError(w, http.StatusBadRequest, err.Error())
         }
         return
     }
@@ -72,7 +80,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) RequestVerification(w http.ResponseWriter, r *http.Request) {
-    // Получаем userID из контекста (установлен middleware.Auth)
     userID, ok := r.Context().Value(middleware.UserIDKey).(int64)
     if !ok {
         writeError(w, http.StatusUnauthorized, "unauthorized")

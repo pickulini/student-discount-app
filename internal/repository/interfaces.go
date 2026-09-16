@@ -193,3 +193,11 @@ type AuditRepository interface {
     ListByActor(ctx context.Context, actorID int64, limit, offset int) ([]domain.AuditLog, error)
     ListByEntity(ctx context.Context, entityType string, entityID int64) ([]domain.AuditLog, error)
 }
+
+// ---- Antifraud ----
+
+type AntifraudRepository interface {
+    CountRegistrationsByIPHash(ctx context.Context, ipHash string, sinceMinutes int) (int, error)
+    LogRegistrationAttempt(ctx context.Context, ipHash, email string) error
+    CheckReferralCycle(ctx context.Context, referrerID, newUserID int64) (bool, error)
+}
