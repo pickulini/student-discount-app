@@ -367,3 +367,30 @@ func generateRefundIdempotencyKey(userID, orderID int64) string {
     rand.Read(b)
     return fmt.Sprintf("refund-%d-%d-%x", userID, orderID, b)
 }
+
+// GetOrderByID возвращает заказ по ID с проверкой принадлежности пользователю
+func (u *OrderUsecase) GetOrderByID(ctx context.Context, userID, orderID int64) (*domain.Order, error) {
+    order, err := u.orderRepo.GetByID(ctx, orderID)
+    if err != nil {
+        return nil, errors.New("order not found")
+    }
+    if order.UserID != userID {
+        return nil, errors.New("access denied")
+    }
+    return order, nil
+}
+
+// ConfirmOrderPayment подтверждает оплату заказа (created → paid) от имени пользователя
+func (u *OrderUsecase) ConfirmOrderPayment(ctx context.Context, userID, orderID int64) error {
+    order, err := u.orderRepo.GetByID(ctx, orderID)
+    if err != nil {
+        return errors.New("order not found")
+    }
+    if order.UserID != userID {
+        return errors.New("access denied")
+    }
+    if order.Status != domain.OrderStatusCreated {
+        return errors.New("order already processed")
+    }
+    return u.orderRepo.UpdateStatus(ctx, orderID, domain.OrderStatusPaid)
+}

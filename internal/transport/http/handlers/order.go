@@ -128,3 +128,44 @@ func (h *OrderHandler) RefundOrder(w http.ResponseWriter, r *http.Request) {
     }
     writeJSON(w, http.StatusOK, map[string]string{"message": "order refunded"})
 }
+
+// GetOrder – получить заказ по ID
+func (h *OrderHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
+    idStr := chi.URLParam(r, "id")
+    id, err := strconv.ParseInt(idStr, 10, 64)
+    if err != nil {
+        writeError(w, http.StatusBadRequest, "invalid order id")
+        return
+    }
+    userID, ok := r.Context().Value(middleware.UserIDKey).(int64)
+    if !ok {
+        writeError(w, http.StatusUnauthorized, "unauthorized")
+        return
+    }
+    order, err := h.orderUsecase.GetOrderByID(r.Context(), userID, id)
+    if err != nil {
+        writeError(w, http.StatusNotFound, err.Error())
+        return
+    }
+    writeJSON(w, http.StatusOK, order)
+}
+
+// ConfirmOrder – подтвердить оплату заказа (created → paid)
+func (h *OrderHandler) ConfirmOrder(w http.ResponseWriter, r *http.Request) {
+    idStr := chi.URLParam(r, "id")
+    id, err := strconv.ParseInt(idStr, 10, 64)
+    if err != nil {
+        writeError(w, http.StatusBadRequest, "invalid order id")
+        return
+    }
+    userID, ok := r.Context().Value(middleware.UserIDKey).(int64)
+    if !ok {
+        writeError(w, http.StatusUnauthorized, "unauthorized")
+        return
+    }
+    if err := h.orderUsecase.ConfirmOrderPayment(r.Context(), userID, id); err != nil {
+        writeError(w, http.StatusBadRequest, err.Error())
+        return
+    }
+    writeJSON(w, http.StatusOK, map[string]string{"message": "order paid"})
+}

@@ -22,6 +22,7 @@ import AdminCompanies from './components/AdminCompanies';
 import AdminOffers from './components/AdminOffers';
 import AdminVerifications from './components/AdminVerifications';
 import AdminSupport from './components/AdminSupport';
+import AdminAudit from './components/AdminAudit';
 
 function App() {
   return (
@@ -43,7 +44,6 @@ function App() {
             <Route index element={<MerchantDashboard />} />
             <Route path="companies" element={<MerchantCompanies />} />
             <Route path="offers" element={<MerchantOffers />} />
-            <Route path="statistics" element={<div className="text-center py-8 text-gray-500">Статистика партнёра (в разработке)</div>} />
           </Route>
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
@@ -52,6 +52,7 @@ function App() {
             <Route path="offers" element={<AdminOffers />} />
             <Route path="verifications" element={<AdminVerifications />} />
             <Route path="support" element={<AdminSupport />} />
+            <Route path="audit" element={<AdminAudit />} />
           </Route>
         </Routes>
       </BrowserRouter>
