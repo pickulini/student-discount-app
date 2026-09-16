@@ -21,6 +21,19 @@ services:
     ports:
       - "6379:6379"
 
+  migrate:
+    image: migrate/migrate
+    volumes:
+      - ./db/migrations:/migrations
+    command:
+      - "-path=/migrations"
+      - "-database=postgres://studentapp:secret@postgres:5432/discount_db?sslmode=disable"
+      - "up"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
   api:
     build:
       context: .
@@ -30,6 +43,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+      migrate:
+        condition: service_completed_successfully
     environment:
       DATABASE_URL: postgres://studentapp:secret@postgres:5432/discount_db?sslmode=disable
       REDIS_URL: redis://redis:6379
