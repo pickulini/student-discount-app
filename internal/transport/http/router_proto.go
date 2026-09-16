@@ -50,7 +50,7 @@ func NewRouterProto(
 	r.Post("/api/v1/auth/login", authHandler.Login)
 	r.Get("/api/v1/companies", companyHandler.ListCompanies)
 	r.Get("/api/v1/offers", companyHandler.ListOffers)
-    r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
+    r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir("/app/uploads"))))
 	r.Get("/api/v1/offers/nearby", companyHandler.GetNearbyOffers)
     r.Get("/api/v1/tags", tagHandler.List)
 

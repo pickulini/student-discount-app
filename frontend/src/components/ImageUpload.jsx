@@ -34,7 +34,7 @@ const ImageUpload = ({ value, onChange, uploadEndpoint = '/merchant/upload' }) =
       {value ? (
         <div className="relative inline-block">
           <img
-            src={`http://localhost:8080${value}`}
+            src={value}
             alt="Обложка"
             className="w-48 h-32 object-cover rounded border"
           />

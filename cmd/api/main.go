@@ -84,7 +84,7 @@ func main() {
     paymentHandler := handlers.NewPaymentHandler(paymentUsecase)
     auditHandler := handlers.NewAuditHandler(auditUsecase)
     tagHandler := handlers.NewTagHandler(tagUsecase)
-    uploadHandler := handlers.NewUploadHandler("./uploads")
+    uploadHandler := handlers.NewUploadHandler("/app/uploads")
 
     router := transport.NewRouterProto(
         authUsecase,

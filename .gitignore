@@ -40,3 +40,10 @@ frontend/.env
 # OS
 .DS_Store
 Thumbs.db
+
+# Uploads (пользовательские файлы)
+uploads/
+
+# Production env
+.env.prod
+.env.production

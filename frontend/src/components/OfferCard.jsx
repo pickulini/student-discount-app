@@ -6,7 +6,7 @@ const OfferCard = ({ offer, onClick }) => {
     : `${offer.discount_value} ₽`;
 
   const imageSrc = offer.image_url
-    ? (offer.image_url.startsWith('http') ? offer.image_url : `http://localhost:8080${offer.image_url}`)
+    ? (offer.image_url.startsWith('http') ? offer.image_url : offer.image_url)
     : null;
 
   return (
