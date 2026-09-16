@@ -140,6 +140,14 @@ func (u *AdminUsecase) UpdateVerification(ctx context.Context, id int64, status 
         return err
     }
 
+    // Если статус verified — устанавливаем expires_at (30 сентября следующего года)
+    if status == "verified" {
+        expiresAt := calculateVerificationExpiry(time.Now())
+        if err := u.verificationRepo.SetExpiresAt(ctx, id, expiresAt); err != nil {
+            log.Printf("Failed to set expires_at: %v", err)
+        }
+    }
+
     // 2. Если статус стал verified
     if status == "verified" {
         log.Printf("Verification %d set to verified, processing referral rewards", id)
@@ -396,4 +404,11 @@ func (u *AdminUsecase) GetUserDetailedStats(ctx context.Context, userID int64) (
         "transactions":    transactions,
         "orders":          orders,
     }, nil
+}
+
+// calculateVerificationExpiry возвращает 30 сентября следующего года
+// (или текущего, если сейчас до октября)
+func calculateVerificationExpiry(now time.Time) time.Time {
+    // Верификация действует до 30 сентября следующего года
+    return time.Date(now.Year()+1, time.September, 30, 23, 59, 59, 0, time.UTC)
 }

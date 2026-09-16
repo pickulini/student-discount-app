@@ -29,6 +29,8 @@ type StudentVerificationRepository interface {
     List(ctx context.Context, limit, offset int) ([]domain.StudentVerification, error)
     UpdateStatus(ctx context.Context, id int64, status string, verifiedBy int64, rejectionReason string) error
     Update(ctx context.Context, v *domain.StudentVerification) error
+    SetExpiresAt(ctx context.Context, id int64, expiresAt time.Time) error
+    ExpireOldVerifications(ctx context.Context) (int, error)
 }
 
 // ---- Session ----

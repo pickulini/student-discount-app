@@ -3,6 +3,8 @@ package postgres
 import (
     "context"
     "database/sql"
+    "log"
+    "time"
     "your-project/internal/domain"
     "your-project/internal/repository"
 )
@@ -139,4 +141,49 @@ func (r *StudentVerificationRepo) Update(ctx context.Context, v *domain.StudentV
     query := `UPDATE student_verifications SET method=$1, status=$2, university_id=$3, student_identifier=$4, document_key=$5, updated_at=NOW() WHERE id=$6`
     _, err := r.db.Pool.Exec(ctx, query, v.Method, v.Status, v.UniversityID, v.StudentIdentifier, v.DocumentKey, v.ID)
     return err
+}
+
+func (r *StudentVerificationRepo) SetExpiresAt(ctx context.Context, id int64, expiresAt time.Time) error {
+    query := `UPDATE student_verifications SET expires_at = $1, updated_at = NOW() WHERE id = $2`
+    _, err := r.db.Pool.Exec(ctx, query, expiresAt, id)
+    return err
+}
+
+// ExpireOldVerifications переводит истёкшие верификации в статус expired
+// и обновляет student_status пользователей
+func (r *StudentVerificationRepo) ExpireOldVerifications(ctx context.Context) (int, error) {
+    // Обновляем верификации
+    query := `
+        UPDATE student_verifications
+        SET status = 'expired', updated_at = NOW()
+        WHERE status = 'verified' AND expires_at IS NOT NULL AND expires_at < NOW()
+        RETURNING user_id
+    `
+    rows, err := r.db.Pool.Query(ctx, query)
+    if err != nil {
+        return 0, err
+    }
+    defer rows.Close()
+
+    var userIDs []int64
+    for rows.Next() {
+        var uid int64
+        if err := rows.Scan(&uid); err != nil {
+            return 0, err
+        }
+        userIDs = append(userIDs, uid)
+    }
+
+    // Обновляем статус пользователей
+    for _, uid := range userIDs {
+        _, err := r.db.Pool.Exec(ctx,
+            `UPDATE users SET student_status = 'expired', updated_at = NOW() WHERE id = $1`,
+            uid,
+        )
+        if err != nil {
+            log.Printf("Failed to update user %d status to expired: %v", uid, err)
+        }
+    }
+
+    return len(userIDs), nil
 }

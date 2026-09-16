@@ -14,6 +14,7 @@ import (
     transport "your-project/internal/transport/http"
     "your-project/internal/transport/http/handlers"
     "your-project/internal/usecase"
+    "your-project/internal/worker"
 )
 
 func main() {
@@ -47,6 +48,9 @@ func main() {
     merchantTxRepo := postgres.NewMerchantTransactionRepo(db)
     settlementRepo := postgres.NewSettlementRepo(db)
     auditRepo := postgres.NewAuditRepo(db)
+
+    // Запускаем фоновые воркеры
+    worker.StartVerificationExpiryWorker(context.Background(), studentVerifRepo)
     antifraudRepo := postgres.NewAntifraudRepo(db)
     tagRepo := postgres.NewTagRepo(db)
 
