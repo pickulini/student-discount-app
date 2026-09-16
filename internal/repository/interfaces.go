@@ -201,3 +201,15 @@ type AntifraudRepository interface {
     LogRegistrationAttempt(ctx context.Context, ipHash, email string) error
     CheckReferralCycle(ctx context.Context, referrerID, newUserID int64) (bool, error)
 }
+
+// ---- Tags ----
+
+type TagRepository interface {
+    List(ctx context.Context) ([]domain.Tag, error)
+    GetBySlug(ctx context.Context, slug string) (*domain.Tag, error)
+    GetByIDs(ctx context.Context, ids []int64) ([]domain.Tag, error)
+    // Связь с офферами
+    SetOfferTags(ctx context.Context, offerID int64, tagIDs []int64) error
+    SetOfferTagsTx(ctx context.Context, tx pgx.Tx, offerID int64, tagIDs []int64) error
+    GetTagsByOfferIDs(ctx context.Context, offerIDs []int64) (map[int64][]domain.Tag, error)
+}

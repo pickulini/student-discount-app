@@ -29,6 +29,7 @@ type CreateOfferRequest struct {
     EndAt           string  `json:"end_at"`
     BonusAllowed    *bool   `json:"bonus_allowed,omitempty"`
     MaxBonusPercent int     `json:"max_bonus_percent"`
+    TagIDs          []int64 `json:"tag_ids,omitempty"`
 }
 
 func (h *MerchantHandler) GetUserCompanies(w http.ResponseWriter, r *http.Request) {
@@ -122,7 +123,7 @@ func (h *MerchantHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
         writeError(w, http.StatusUnauthorized, "unauthorized")
         return
     }
-    if err := h.merchantUsecase.CreateOffer(r.Context(), userID, offer); err != nil {
+    if err := h.merchantUsecase.CreateOffer(r.Context(), userID, offer, req.TagIDs); err != nil {
         writeError(w, http.StatusInternalServerError, "failed to create offer")
         return
     }

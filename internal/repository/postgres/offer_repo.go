@@ -36,7 +36,15 @@ func (r *OfferRepo) GetByID(ctx context.Context, id int64) (*domain.Offer, error
         &o.StartAt, &o.EndAt, &o.Status, &o.MaxUses, &o.CurrentUses,
         &o.BonusAllowed, &o.MaxBonusPercent, &o.CreatedAt, &o.UpdatedAt,
     )
-    return &o, err
+    if err != nil {
+        return nil, err
+    }
+    // Загружаем теги
+    offers := []domain.Offer{o}
+    if err := r.loadTags(ctx, offers); err != nil {
+        return nil, err
+    }
+    return &offers[0], nil
 }
 
 func (r *OfferRepo) List(ctx context.Context, filters map[string]interface{}, limit, offset int) ([]domain.Offer, error) {
@@ -61,6 +69,9 @@ func (r *OfferRepo) List(ctx context.Context, filters map[string]interface{}, li
     if offers == nil {
         return []domain.Offer{}, nil
     }
+	if err := r.loadTags(ctx, offers); err != nil {
+		return nil, err
+	}
     return offers, nil
 }
 
@@ -86,6 +97,9 @@ func (r *OfferRepo) ListAll(ctx context.Context, limit, offset int) ([]domain.Of
     if offers == nil {
         return []domain.Offer{}, nil
     }
+	if err := r.loadTags(ctx, offers); err != nil {
+		return nil, err
+	}
     return offers, nil
 }
 
@@ -112,6 +126,9 @@ func (r *OfferRepo) GetByCompanyID(ctx context.Context, companyID int64) ([]doma
         }
         offers = append(offers, o)
     }
+	if err := r.loadTags(ctx, offers); err != nil {
+		return nil, err
+	}
     return offers, nil
 }
 
@@ -154,4 +171,42 @@ func (r *OfferRepo) IncrementUsesTx(ctx context.Context, tx pgx.Tx, id int64) er
     query := `UPDATE offers SET current_uses = current_uses + 1, updated_at = NOW() WHERE id = $1`
     _, err := tx.Exec(ctx, query, id)
     return err
+}
+
+
+// loadTags загружает теги для списка офферов
+func (r *OfferRepo) loadTags(ctx context.Context, offers []domain.Offer) error {
+    if len(offers) == 0 {
+        return nil
+    }
+    ids := make([]int64, len(offers))
+    for i, o := range offers {
+        ids[i] = o.ID
+    }
+    query := `
+        SELECT ot.offer_id, t.id, t.name, t.slug
+        FROM offer_tags ot
+        JOIN tags t ON t.id = ot.tag_id
+        WHERE ot.offer_id = ANY($1)
+    `
+    rows, err := r.db.Pool.Query(ctx, query, ids)
+    if err != nil {
+        return err
+    }
+    defer rows.Close()
+    tagMap := make(map[int64][]domain.Tag)
+    for rows.Next() {
+        var offerID int64
+        var t domain.Tag
+        if err := rows.Scan(&offerID, &t.ID, &t.Name, &t.Slug); err != nil {
+            return err
+        }
+        tagMap[offerID] = append(tagMap[offerID], t)
+    }
+    for i := range offers {
+        if tags, ok := tagMap[offers[i].ID]; ok {
+            offers[i].Tags = tags
+        }
+    }
+    return nil
 }

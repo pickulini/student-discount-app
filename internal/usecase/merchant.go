@@ -15,6 +15,7 @@ type MerchantUsecase struct {
     userRepo         repository.UserRepository
     merchantAccRepo  repository.MerchantAccountRepository
     merchantTxRepo   repository.MerchantTransactionRepository
+    tagRepo         repository.TagRepository
     db               *pgxpool.Pool
 }
 
@@ -26,6 +27,7 @@ func NewMerchantUsecase(
     userRepo repository.UserRepository,
     merchantAccRepo repository.MerchantAccountRepository,
     merchantTxRepo repository.MerchantTransactionRepository,
+    tagRepo repository.TagRepository,
     db *pgxpool.Pool,
 ) *MerchantUsecase {
     return &MerchantUsecase{
@@ -36,6 +38,7 @@ func NewMerchantUsecase(
         userRepo:        userRepo,
         merchantAccRepo: merchantAccRepo,
         merchantTxRepo:  merchantTxRepo,
+        tagRepo:         tagRepo,
         db:              db,
     }
 }
@@ -78,7 +81,7 @@ func (u *MerchantUsecase) GetUserOffers(ctx context.Context, userID int64) ([]do
     return offers, nil
 }
 
-func (u *MerchantUsecase) CreateOffer(ctx context.Context, userID int64, offer *domain.Offer) error {
+func (u *MerchantUsecase) CreateOffer(ctx context.Context, userID int64, offer *domain.Offer, tagIDs []int64) error {
     companyUsers, err := u.companyUserRepo.GetByUserID(ctx, userID)
     if err != nil {
         return err
@@ -94,7 +97,15 @@ func (u *MerchantUsecase) CreateOffer(ctx context.Context, userID int64, offer *
         return domain.ErrUnauthorized
     }
     offer.Status = "draft"
-    return u.offerRepo.Create(ctx, offer)
+    if err := u.offerRepo.Create(ctx, offer); err != nil {
+        return err
+    }
+    if len(tagIDs) > 0 {
+        if err := u.tagRepo.SetOfferTags(ctx, offer.ID, tagIDs); err != nil {
+            return err
+        }
+    }
+    return nil
 }
 
 func (u *MerchantUsecase) SubmitForReview(ctx context.Context, userID, offerID int64) error {

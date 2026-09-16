@@ -28,6 +28,7 @@ func NewRouterProto(
 	paymentHandler *handlers.PaymentHandler,
 	auditUsecase *usecase.AuditUsecase,
 	auditHandler *handlers.AuditHandler,
+    tagHandler *handlers.TagHandler,
 	userRepo repository.UserRepository,
 	jwtManager *crypto.JWTManager,
 ) *chi.Mux {
@@ -49,6 +50,7 @@ func NewRouterProto(
 	r.Get("/api/v1/companies", companyHandler.ListCompanies)
 	r.Get("/api/v1/offers", companyHandler.ListOffers)
 	r.Get("/api/v1/offers/nearby", companyHandler.GetNearbyOffers)
+    r.Get("/api/v1/tags", tagHandler.List)
 
 	// Публичные страницы оплаты (эмуляция СБП)
 	r.Get("/payments/sbp/checkout/{id}", paymentHandler.ConfirmPayment)

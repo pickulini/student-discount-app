@@ -18,6 +18,7 @@ type AdminUsecase struct {
     accountRepo    repository.AccountRepository
     bonusRepo      repository.BonusRepository
     referralRepo   repository.ReferralRepository
+    tagRepo        repository.TagRepository
     db             *pgxpool.Pool
 }
 
@@ -30,6 +31,7 @@ func NewAdminUsecase(
     accountRepo repository.AccountRepository,
     bonusRepo repository.BonusRepository,
     referralRepo repository.ReferralRepository,
+    tagRepo repository.TagRepository,
     db *pgxpool.Pool,
 ) *AdminUsecase {
     return &AdminUsecase{
@@ -41,6 +43,7 @@ func NewAdminUsecase(
         accountRepo:    accountRepo,
         bonusRepo:      bonusRepo,
         referralRepo:   referralRepo,
+        tagRepo:        tagRepo,
         db:             db,
     }
 }
@@ -97,8 +100,16 @@ func (u *AdminUsecase) DeleteCompany(ctx context.Context, id int64) error {
 func (u *AdminUsecase) ListOffers(ctx context.Context, limit, offset int) ([]domain.Offer, error) {
     return u.offerRepo.ListAll(ctx, limit, offset)
 }
-func (u *AdminUsecase) CreateOffer(ctx context.Context, offer *domain.Offer) error {
-    return u.offerRepo.Create(ctx, offer)
+func (u *AdminUsecase) CreateOffer(ctx context.Context, offer *domain.Offer, tagIDs []int64) error {
+    if err := u.offerRepo.Create(ctx, offer); err != nil {
+        return err
+    }
+    if len(tagIDs) > 0 {
+        if err := u.tagRepo.SetOfferTags(ctx, offer.ID, tagIDs); err != nil {
+            return err
+        }
+    }
+    return nil
 }
 func (u *AdminUsecase) UpdateOffer(ctx context.Context, offer *domain.Offer) error {
     return u.offerRepo.Update(ctx, offer)

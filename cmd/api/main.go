@@ -48,6 +48,7 @@ func main() {
     settlementRepo := postgres.NewSettlementRepo(db)
     auditRepo := postgres.NewAuditRepo(db)
     antifraudRepo := postgres.NewAntifraudRepo(db)
+    tagRepo := postgres.NewTagRepo(db)
 
     _ = settlementRepo // пока не используется напрямую
 
@@ -66,9 +67,10 @@ func main() {
     paymentUsecase := usecase.NewPaymentUsecase(accountRepo, ledgerRepo, bonusRepo, paymentRepo)
     referralUsecase := usecase.NewReferralUsecase(referralRepo, userRepo)
     supportUsecase := usecase.NewSupportUsecase(ticketRepo, msgRepo, userRepo)
-    adminUsecase := usecase.NewAdminUsecase(userRepo, companyRepo, locationRepo, offerRepo, studentVerifRepo, accountRepo, bonusRepo, referralRepo, db.Pool)
-    merchantUsecase := usecase.NewMerchantUsecase(companyRepo, locationRepo, offerRepo, companyUserRepo, userRepo, merchantAccountRepo, merchantTxRepo, db.Pool)
+    adminUsecase := usecase.NewAdminUsecase(userRepo, companyRepo, locationRepo, offerRepo, studentVerifRepo, accountRepo, bonusRepo, referralRepo, tagRepo, db.Pool)
+    merchantUsecase := usecase.NewMerchantUsecase(companyRepo, locationRepo, offerRepo, companyUserRepo, userRepo, merchantAccountRepo, merchantTxRepo, tagRepo, db.Pool)
     auditUsecase := usecase.NewAuditUsecase(auditRepo)
+    tagUsecase := usecase.NewTagUsecase(tagRepo)
 
     // Handlers
     walletHandler := handlers.NewWalletHandler(accountRepo, bonusRepo)
@@ -77,6 +79,7 @@ func main() {
     merchantHandler := handlers.NewMerchantHandler(merchantUsecase)
     paymentHandler := handlers.NewPaymentHandler(paymentUsecase)
     auditHandler := handlers.NewAuditHandler(auditUsecase)
+    tagHandler := handlers.NewTagHandler(tagUsecase)
 
     router := transport.NewRouterProto(
         authUsecase,
@@ -94,6 +97,7 @@ func main() {
         paymentHandler,
         auditUsecase,
         auditHandler,
+        tagHandler,
         userRepo,
         jwtManager,
     )

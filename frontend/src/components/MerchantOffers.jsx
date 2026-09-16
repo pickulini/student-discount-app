@@ -4,6 +4,8 @@ import api from '../api/client';
 const MerchantOffers = () => {
   const [offers, setOffers] = useState([]);
   const [companies, setCompanies] = useState([]);
+  const [tags, setTags] = useState([]);
+  const [selectedTagIDs, setSelectedTagIDs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({
@@ -20,12 +22,14 @@ const MerchantOffers = () => {
 
   const fetchData = async () => {
     try {
-      const [offersRes, companiesRes] = await Promise.all([
+      const [offersRes, companiesRes, tagsRes] = await Promise.all([
         api.get('/merchant/offers'),
         api.get('/merchant/companies'),
+        api.get('/tags'),
       ]);
       setOffers(offersRes.data || []);
       setCompanies(companiesRes.data || []);
+      setTags(tagsRes.data || []);
     } catch (err) {
       console.error('Failed to load data:', err);
     } finally {
@@ -42,6 +46,7 @@ const MerchantOffers = () => {
     try {
       await api.post('/merchant/offers', form);
       setShowCreate(false);
+      setSelectedTagIDs([]);
       setForm({
         company_id: '',
         title: '',
@@ -176,6 +181,27 @@ const MerchantOffers = () => {
                 onChange={e => setForm({...form, max_bonus_percent: parseInt(e.target.value)})}
                 className="w-full border p-2 rounded"
               />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm mb-1">Теги (хештеги)</label>
+              <div className="flex flex-wrap gap-2">
+                {tags.map(tag => (
+                  <button
+                    type="button"
+                    key={tag.id}
+                    onClick={() => setSelectedTagIDs(prev =>
+                      prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id]
+                    )}
+                    className={`px-3 py-1 rounded-full text-sm border ${
+                      selectedTagIDs.includes(tag.id)
+                        ? 'bg-blue-500 text-white border-blue-500'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                    }`}
+                  >
+                    #{tag.name}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="md:col-span-2 flex gap-2">
               <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Создать</button>

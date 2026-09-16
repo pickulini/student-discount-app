@@ -25,6 +25,18 @@ const OfferCard = ({ offer, onClick }) => {
           </span>
         </div>
         <p className="text-gray-600 text-sm mt-1 line-clamp-2 flex-1">{offer.description}</p>
+
+        {/* Теги */}
+        {offer.tags && offer.tags.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {offer.tags.slice(0, 4).map(tag => (
+              <span key={tag.id} className="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-0.5 rounded-full">
+                #{tag.name}
+              </span>
+            ))}
+          </div>
+        )}
+
         <div className="mt-3 flex items-center justify-between text-xs text-gray-400">
           <span>До {new Date(offer.end_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</span>
           <span className="flex items-center gap-1 text-blue-600">

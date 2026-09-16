@@ -109,6 +109,7 @@ type AdminCreateOfferRequest struct {
     Status          string      `json:"status"`
     BonusAllowed    *bool       `json:"bonus_allowed,omitempty"`
     MaxBonusPercent int         `json:"max_bonus_percent"`
+    TagIDs          []int64     `json:"tag_ids,omitempty"`
 }
 
 func (h *AdminHandler) ListOffers(w http.ResponseWriter, r *http.Request) {
@@ -198,7 +199,7 @@ func (h *AdminHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
         MaxBonusPercent: req.MaxBonusPercent,
     }
 
-    if err := h.adminUsecase.CreateOffer(r.Context(), offer); err != nil {
+    if err := h.adminUsecase.CreateOffer(r.Context(), offer, req.TagIDs); err != nil {
         writeError(w, http.StatusInternalServerError, "failed to create offer")
         return
     }
