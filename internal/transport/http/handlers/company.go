@@ -39,6 +39,9 @@ func (h *CompanyHandler) ListOffers(w http.ResponseWriter, r *http.Request) {
     if r.URL.Query().Get("category") != "" {
         filters["category"] = r.URL.Query().Get("category")
     }
+    if tags := r.URL.Query().Get("tags"); tags != "" {
+        filters["tags"] = tags
+    }
     offers, err := h.companyUsecase.ListOffers(r.Context(), filters, 50, 0)
     if err != nil {
         writeError(w, http.StatusInternalServerError, "failed to load offers")
