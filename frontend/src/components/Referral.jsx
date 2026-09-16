@@ -24,7 +24,7 @@ const Referral = () => {
 
   if (loading) return <div className="text-center py-8">Загрузка...</div>;
 
-  const referralLink = `http://localhost:5173/register?ref=${code}`;
+  const referralLink = `${window.location.origin}/register?ref=${code}`;
 
   return (
     <div className="max-w-md mx-auto bg-white p-6 rounded shadow">

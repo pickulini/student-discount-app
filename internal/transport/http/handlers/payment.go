@@ -71,7 +71,7 @@ func (h *PaymentHandler) ConfirmPayment(w http.ResponseWriter, r *http.Request) 
             http.Error(w, "failed to confirm payment: "+err.Error(), http.StatusInternalServerError)
             return
         }
-        http.Redirect(w, r, "http://localhost:5173/wallet", http.StatusFound)
+        http.Redirect(w, r, "/wallet", http.StatusFound)
         return
     }
 
@@ -133,7 +133,7 @@ func (h *PaymentHandler) ConfirmPayment(w http.ResponseWriter, r *http.Request) 
             <form method="POST" action="` + r.URL.Path + `">
                 <button type="submit" class="btn btn-primary">Подтвердить</button>
             </form>
-            <a href="http://localhost:5173/wallet" class="btn btn-secondary">Отмена</a>
+            <a href="/wallet" class="btn btn-secondary">Отмена</a>
         </div>
         <div class="footer">Студенческая платформа скидок</div>
     </div>
