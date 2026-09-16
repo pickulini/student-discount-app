@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
+import UserStatsModal from './UserStatsModal';
 
 const AdminSupport = () => {
   const [tickets, setTickets] = useState([]);
@@ -8,6 +9,7 @@ const AdminSupport = () => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [status, setStatus] = useState('');
+  const [statsUserId, setStatsUserId] = useState(null);
 
   const fetchTickets = async () => {
     try {
@@ -77,31 +79,57 @@ const AdminSupport = () => {
               {tickets.map(t => (
                 <li
                   key={t.id}
-                  onClick={() => openTicket(t)}
-                  className={`py-2 cursor-pointer hover:bg-gray-50 px-2 rounded ${selectedTicket?.id === t.id ? 'bg-blue-50' : ''}`}
+                  className={`py-2 px-2 rounded ${selectedTicket?.id === t.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
                 >
-                  <div className="font-medium text-sm">{t.subject}</div>
-                  <div className="text-xs text-gray-500">Статус: {t.status}</div>
+                  <div
+                    onClick={() => openTicket(t)}
+                    className="cursor-pointer"
+                  >
+                    <div className="font-medium text-sm">{t.subject}</div>
+                    <div className="text-xs text-gray-500">
+                      Пользователь #{t.user_id} • Статус: {t.status}
+                    </div>
+                  </div>
                 </li>
               ))}
             </ul>
           )}
         </div>
+
         <div className="md:col-span-2 bg-white rounded shadow p-3">
           {selectedTicket ? (
             <>
-              <div className="flex justify-between items-center">
-                <h4 className="font-semibold">{selectedTicket.subject}</h4>
+              <div className="flex justify-between items-center flex-wrap gap-2">
+                <div>
+                  <h4 className="font-semibold">{selectedTicket.subject}</h4>
+                  <p className="text-xs text-gray-500">Пользователь #{selectedTicket.user_id}</p>
+                </div>
                 <div className="flex gap-2">
-                  <select value={status} onChange={e => setStatus(e.target.value)} className="border rounded p-1 text-sm">
+                  <button
+                    onClick={() => setStatsUserId(selectedTicket.user_id)}
+                    className="bg-purple-500 text-white px-3 py-1 rounded text-sm hover:bg-purple-600"
+                  >
+                    📊 Статистика пользователя
+                  </button>
+                  <select
+                    value={status}
+                    onChange={e => setStatus(e.target.value)}
+                    className="border rounded p-1 text-sm"
+                  >
                     <option value="open">Открыт</option>
                     <option value="in_progress">В работе</option>
                     <option value="resolved">Решён</option>
                     <option value="closed">Закрыт</option>
                   </select>
-                  <button onClick={handleUpdateStatus} className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600">Обновить статус</button>
+                  <button
+                    onClick={handleUpdateStatus}
+                    className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600"
+                  >
+                    Обновить статус
+                  </button>
                 </div>
               </div>
+
               <div className="border rounded p-3 h-64 overflow-y-auto bg-gray-50 mt-3">
                 {messages.map(m => (
                   <div key={m.id} className={`mb-2 ${m.is_internal ? 'bg-yellow-50 border-l-4 border-yellow-400' : m.user_id === selectedTicket.user_id ? 'text-right' : ''}`}>
@@ -112,6 +140,7 @@ const AdminSupport = () => {
                   </div>
                 ))}
               </div>
+
               <form onSubmit={handleSendMessage} className="mt-3 flex gap-2">
                 <input
                   type="text"
@@ -120,7 +149,9 @@ const AdminSupport = () => {
                   placeholder="Ответ..."
                   className="flex-1 border p-2 rounded"
                 />
-                <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Отправить</button>
+                <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                  Отправить
+                </button>
               </form>
             </>
           ) : (
@@ -128,6 +159,11 @@ const AdminSupport = () => {
           )}
         </div>
       </div>
+
+      {/* Модалка статистики пользователя */}
+      {statsUserId && (
+        <UserStatsModal userId={statsUserId} onClose={() => setStatsUserId(null)} />
+      )}
     </div>
   );
 };

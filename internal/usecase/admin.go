@@ -341,6 +341,38 @@ func (u *AdminUsecase) GetUserDetailedStats(ctx context.Context, userID int64) (
         })
     }
 
+    // Загружаем заказы пользователя
+    orderRows, err := u.db.Query(ctx, `
+        SELECT id, company_id, offer_id, subtotal, discount_amount, bonus_amount, total_amount, commission, status, created_at
+        FROM orders WHERE user_id = $1 ORDER BY id DESC LIMIT 50
+    `, userID)
+    if err != nil {
+        return nil, err
+    }
+    defer orderRows.Close()
+    var orders []map[string]interface{}
+    for orderRows.Next() {
+        var id, companyID, offerID int64
+        var subtotal, discountAmount, bonusAmount, totalAmount, commission float64
+        var status string
+        var createdAt time.Time
+        if err := orderRows.Scan(&id, &companyID, &offerID, &subtotal, &discountAmount, &bonusAmount, &totalAmount, &commission, &status, &createdAt); err != nil {
+            return nil, err
+        }
+        orders = append(orders, map[string]interface{}{
+            "id":              id,
+            "company_id":      companyID,
+            "offer_id":        offerID,
+            "subtotal":        subtotal,
+            "discount_amount": discountAmount,
+            "bonus_amount":    bonusAmount,
+            "total_amount":    totalAmount,
+            "commission":      commission,
+            "status":          status,
+            "created_at":      createdAt,
+        })
+    }
+
     return map[string]interface{}{
         "user":            user,
         "balance":         account.Balance,
@@ -351,5 +383,6 @@ func (u *AdminUsecase) GetUserDetailedStats(ctx context.Context, userID int64) (
         "bonus_earned":    totalBonusEarned,
         "bonus_spent":     totalBonusSpent,
         "transactions":    transactions,
+        "orders":          orders,
     }, nil
 }
