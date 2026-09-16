@@ -17,6 +17,10 @@ const OfferDetailModal = ({ offer, onClose }) => {
     ? `${offer.discount_value}%`
     : `${offer.discount_value} ₽`;
 
+  const imageSrc = offer.image_url
+    ? (offer.image_url.startsWith('http') ? offer.image_url : `http://localhost:8080${offer.image_url}`)
+    : null;
+
   const handleUse = async () => {
     if (!user) {
       onClose();
@@ -43,7 +47,6 @@ const OfferDetailModal = ({ offer, onClose }) => {
     }
   };
 
-  // Если заказ создан — показываем модалку оплаты
   if (order) {
     return (
       <OrderPaymentModal
@@ -64,31 +67,59 @@ const OfferDetailModal = ({ offer, onClose }) => {
             <h2 className="text-2xl font-bold text-gray-800">{offer.title}</h2>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">✕</button>
           </div>
-          <div className="mt-2">
+
+          <div className="mt-2 flex flex-wrap gap-2">
             <span className="inline-block bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
               {discountText}
             </span>
             {offer.bonus_allowed && (
-              <span className="ml-2 inline-block bg-green-100 text-green-800 text-sm font-medium px-3 py-1 rounded-full">
+              <span className="inline-block bg-green-100 text-green-800 text-sm font-medium px-3 py-1 rounded-full">
                 Бонусы до {offer.max_bonus_percent}%
               </span>
             )}
           </div>
+
+          {imageSrc && (
+            <div
+              className="mt-4 w-full h-56 bg-cover bg-center rounded-lg bg-gray-100"
+              style={{ backgroundImage: `url('${imageSrc}')` }}
+            />
+          )}
+
           <p className="mt-4 text-gray-700">{offer.description}</p>
 
           <div className="mt-6 border-t pt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="font-semibold text-gray-600">Адрес</p>
-              <p className="text-gray-800">г. Москва, ул. Примерная, д. 1</p>
-            </div>
-            <div>
-              <p className="font-semibold text-gray-600">Телефон</p>
-              <p className="text-gray-800">+7 (999) 123-45-67</p>
-            </div>
-            <div className="md:col-span-2">
-              <p className="font-semibold text-gray-600">Условия</p>
-              <p className="text-gray-800">Действует при предъявлении студенческого билета.</p>
-            </div>
+            {offer.address && (
+              <div>
+                <p className="font-semibold text-gray-600">Адрес</p>
+                <p className="text-gray-800">{offer.address}</p>
+              </div>
+            )}
+            {offer.phone && (
+              <div>
+                <p className="font-semibold text-gray-600">Телефон</p>
+                <p className="text-gray-800">{offer.phone}</p>
+              </div>
+            )}
+            {offer.website && (
+              <div>
+                <p className="font-semibold text-gray-600">Сайт</p>
+                <a
+                  href={offer.website.startsWith('http') ? offer.website : `https://${offer.website}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline"
+                >
+                  {offer.website}
+                </a>
+              </div>
+            )}
+            {offer.working_hours && (
+              <div>
+                <p className="font-semibold text-gray-600">Часы работы</p>
+                <p className="text-gray-800">{offer.working_hours}</p>
+              </div>
+            )}
             <div className="md:col-span-2">
               <p className="font-semibold text-gray-600">Действует до</p>
               <p className="text-gray-800">{new Date(offer.end_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}</p>

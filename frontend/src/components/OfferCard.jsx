@@ -1,22 +1,29 @@
 import React from 'react';
 
-const PlaceholderImage = ({ title }) => (
-  <div className="w-full h-40 bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-gray-500 text-sm font-medium">
-    {title || 'Изображение'}
-  </div>
-);
-
 const OfferCard = ({ offer, onClick }) => {
   const discountText = offer.discount_type === 'percentage'
     ? `${offer.discount_value}%`
     : `${offer.discount_value} ₽`;
+
+  const imageSrc = offer.image_url
+    ? (offer.image_url.startsWith('http') ? offer.image_url : `http://localhost:8080${offer.image_url}`)
+    : null;
 
   return (
     <div
       onClick={() => onClick(offer)}
       className="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 cursor-pointer overflow-hidden border border-gray-100 hover:border-blue-300 flex flex-col h-full"
     >
-      <PlaceholderImage title={offer.title} />
+      {imageSrc ? (
+        <div
+          className="w-full h-40 bg-cover bg-center bg-gray-100"
+          style={{ backgroundImage: `url('${imageSrc}')` }}
+        />
+      ) : (
+        <div className="w-full h-40 bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-gray-500 text-sm font-medium">
+          {offer.title}
+        </div>
+      )}
       <div className="p-4 flex flex-col flex-1">
         <div className="flex justify-between items-start">
           <h3 className="text-lg font-semibold text-gray-800 line-clamp-1">{offer.title}</h3>
@@ -26,7 +33,6 @@ const OfferCard = ({ offer, onClick }) => {
         </div>
         <p className="text-gray-600 text-sm mt-1 line-clamp-2 flex-1">{offer.description}</p>
 
-        {/* Теги */}
         {offer.tags && offer.tags.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
             {offer.tags.slice(0, 4).map(tag => (

@@ -110,6 +110,11 @@ type AdminCreateOfferRequest struct {
     BonusAllowed    *bool       `json:"bonus_allowed,omitempty"`
     MaxBonusPercent int         `json:"max_bonus_percent"`
     TagIDs          []int64     `json:"tag_ids,omitempty"`
+    ImageURL        *string     `json:"image_url,omitempty"`
+    Address         *string     `json:"address,omitempty"`
+    Phone           *string     `json:"phone,omitempty"`
+    Website         *string     `json:"website,omitempty"`
+    WorkingHours    *string     `json:"working_hours,omitempty"`
 }
 
 func (h *AdminHandler) ListOffers(w http.ResponseWriter, r *http.Request) {
@@ -197,6 +202,11 @@ func (h *AdminHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
         Status:          req.Status,
         BonusAllowed:    bonusAllowed,
         MaxBonusPercent: req.MaxBonusPercent,
+        ImageURL:        req.ImageURL,
+        Address:         req.Address,
+        Phone:           req.Phone,
+        Website:         req.Website,
+        WorkingHours:    req.WorkingHours,
     }
 
     if err := h.adminUsecase.CreateOffer(r.Context(), offer, req.TagIDs); err != nil {

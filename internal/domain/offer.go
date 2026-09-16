@@ -19,6 +19,11 @@ type Offer struct {
     BonusAllowed    bool       `json:"bonus_allowed"`
     MaxBonusPercent int        `json:"max_bonus_percent"`
     Tags            []Tag      `json:"tags,omitempty"`
+    ImageURL        *string    `json:"image_url,omitempty"`
+    Address         *string    `json:"address,omitempty"`
+    Phone           *string    `json:"phone,omitempty"`
+    Website         *string    `json:"website,omitempty"`
+    WorkingHours    *string    `json:"working_hours,omitempty"`
     CreatedAt       time.Time  `json:"created_at"`
     UpdatedAt       time.Time  `json:"updated_at"`
 }

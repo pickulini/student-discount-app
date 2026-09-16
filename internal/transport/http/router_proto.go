@@ -29,6 +29,7 @@ func NewRouterProto(
 	auditUsecase *usecase.AuditUsecase,
 	auditHandler *handlers.AuditHandler,
     tagHandler *handlers.TagHandler,
+    uploadHandler *handlers.UploadHandler,
 	userRepo repository.UserRepository,
 	jwtManager *crypto.JWTManager,
 ) *chi.Mux {
@@ -49,6 +50,7 @@ func NewRouterProto(
 	r.Post("/api/v1/auth/login", authHandler.Login)
 	r.Get("/api/v1/companies", companyHandler.ListCompanies)
 	r.Get("/api/v1/offers", companyHandler.ListOffers)
+    r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
 	r.Get("/api/v1/offers/nearby", companyHandler.GetNearbyOffers)
     r.Get("/api/v1/tags", tagHandler.List)
 
@@ -132,6 +134,7 @@ func NewRouterProto(
 			// Статистика общая
 			r.Get("/api/v1/admin/statistics", adminHandler.GetStatistics)
 			r.Get("/api/v1/admin/audit-logs", auditHandler.List)
+            r.Post("/api/v1/admin/upload", uploadHandler.Upload)
 
 			// Поддержка (админ)
 			r.Get("/api/v1/admin/support/tickets", supportHandler.AdminListTickets)
@@ -143,6 +146,7 @@ func NewRouterProto(
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.MerchantOnly(userRepo))
 			r.Get("/api/v1/merchant/companies", merchantHandler.GetUserCompanies)
+            r.Post("/api/v1/merchant/upload", uploadHandler.Upload)
 			r.Get("/api/v1/merchant/offers", merchantHandler.ListOffers)
 			r.Post("/api/v1/merchant/offers", merchantHandler.CreateOffer)
 			r.Post("/api/v1/merchant/offers/{id}/submit", merchantHandler.SubmitForReview)

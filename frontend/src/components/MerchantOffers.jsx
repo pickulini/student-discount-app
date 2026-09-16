@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
+import ImageUpload from './ImageUpload';
 
 const MerchantOffers = () => {
   const [offers, setOffers] = useState([]);
@@ -8,6 +9,7 @@ const MerchantOffers = () => {
   const [selectedTagIDs, setSelectedTagIDs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [error, setError] = useState('');
   const [form, setForm] = useState({
     company_id: '',
     title: '',
@@ -18,6 +20,11 @@ const MerchantOffers = () => {
     end_at: '',
     bonus_allowed: false,
     max_bonus_percent: 20,
+    image_url: '',
+    address: '',
+    phone: '',
+    website: '',
+    working_hours: '',
   });
 
   const fetchData = async () => {
@@ -41,26 +48,54 @@ const MerchantOffers = () => {
     fetchData();
   }, []);
 
+  const resetForm = () => {
+    setForm({
+      company_id: '',
+      title: '',
+      description: '',
+      discount_type: 'percentage',
+      discount_value: 10,
+      start_at: '',
+      end_at: '',
+      bonus_allowed: false,
+      max_bonus_percent: 20,
+      image_url: '',
+      address: '',
+      phone: '',
+      website: '',
+      working_hours: '',
+    });
+    setSelectedTagIDs([]);
+    setError('');
+  };
+
   const handleCreate = async (e) => {
     e.preventDefault();
+    setError('');
+    const payload = {
+      company_id: parseInt(form.company_id),
+      title: form.title,
+      description: form.description,
+      discount_type: form.discount_type,
+      discount_value: parseFloat(form.discount_value),
+      start_at: form.start_at ? new Date(form.start_at).toISOString() : '',
+      end_at: form.end_at ? new Date(form.end_at).toISOString() : '',
+      bonus_allowed: form.bonus_allowed,
+      max_bonus_percent: parseInt(form.max_bonus_percent || 0),
+      tag_ids: selectedTagIDs,
+      image_url: form.image_url || undefined,
+      address: form.address || undefined,
+      phone: form.phone || undefined,
+      website: form.website || undefined,
+      working_hours: form.working_hours || undefined,
+    };
     try {
-      await api.post('/merchant/offers', form);
+      await api.post('/merchant/offers', payload);
       setShowCreate(false);
-      setSelectedTagIDs([]);
-      setForm({
-        company_id: '',
-        title: '',
-        description: '',
-        discount_type: 'percentage',
-        discount_value: 10,
-        start_at: '',
-        end_at: '',
-        bonus_allowed: false,
-        max_bonus_percent: 20,
-      });
+      resetForm();
       fetchData();
     } catch (err) {
-      alert('Ошибка создания предложения');
+      setError('Ошибка создания: ' + (err.response?.data?.error || err.message));
     }
   };
 
@@ -90,6 +125,7 @@ const MerchantOffers = () => {
       {showCreate && (
         <div className="bg-gray-50 p-4 rounded shadow mb-6">
           <h3 className="text-lg font-semibold mb-2">Новое предложение</h3>
+          {error && <div className="text-red-500 mb-2 text-sm">{error}</div>}
           <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm">Компания</label>
@@ -124,6 +160,56 @@ const MerchantOffers = () => {
                 rows="2"
               />
             </div>
+
+            <div className="md:col-span-2">
+              <ImageUpload
+                value={form.image_url}
+                onChange={(url) => setForm({ ...form, image_url: url })}
+                uploadEndpoint="/merchant/upload"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm">Адрес</label>
+              <input
+                type="text"
+                value={form.address}
+                onChange={e => setForm({...form, address: e.target.value})}
+                className="w-full border p-2 rounded"
+                placeholder="г. Москва, ул. Примерная, д. 1"
+              />
+            </div>
+            <div>
+              <label className="block text-sm">Телефон</label>
+              <input
+                type="text"
+                value={form.phone}
+                onChange={e => setForm({...form, phone: e.target.value})}
+                className="w-full border p-2 rounded"
+                placeholder="+7 (999) 123-45-67"
+              />
+            </div>
+            <div>
+              <label className="block text-sm">Сайт</label>
+              <input
+                type="text"
+                value={form.website}
+                onChange={e => setForm({...form, website: e.target.value})}
+                className="w-full border p-2 rounded"
+                placeholder="example.com"
+              />
+            </div>
+            <div>
+              <label className="block text-sm">Часы работы</label>
+              <input
+                type="text"
+                value={form.working_hours}
+                onChange={e => setForm({...form, working_hours: e.target.value})}
+                className="w-full border p-2 rounded"
+                placeholder="Пн–Пт 10:00–20:00"
+              />
+            </div>
+
             <div>
               <label className="block text-sm">Тип скидки</label>
               <select
@@ -182,6 +268,7 @@ const MerchantOffers = () => {
                 className="w-full border p-2 rounded"
               />
             </div>
+
             <div className="md:col-span-2">
               <label className="block text-sm mb-1">Теги (хештеги)</label>
               <div className="flex flex-wrap gap-2">
@@ -203,9 +290,10 @@ const MerchantOffers = () => {
                 ))}
               </div>
             </div>
+
             <div className="md:col-span-2 flex gap-2">
               <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Создать</button>
-              <button type="button" onClick={() => setShowCreate(false)} className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400">Отмена</button>
+              <button type="button" onClick={() => { setShowCreate(false); resetForm(); }} className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400">Отмена</button>
             </div>
           </form>
         </div>
