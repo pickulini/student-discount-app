@@ -218,7 +218,6 @@ func (u *OrderUsecase) GetUserOrders(ctx context.Context, userID int64) ([]domai
     return u.orderRepo.GetByUserID(ctx, userID)
 }
 
-// UpdateOrderStatus обновляет статус заказа с проверкой допустимости перехода
 func (u *OrderUsecase) UpdateOrderStatus(ctx context.Context, orderID int64, newStatus string) error {
     order, err := u.orderRepo.GetByID(ctx, orderID)
     if err != nil {
@@ -232,14 +231,12 @@ func (u *OrderUsecase) UpdateOrderStatus(ctx context.Context, orderID int64, new
     return u.orderRepo.UpdateStatus(ctx, orderID, newStatus)
 }
 
-// CancelOrder отменяет заказ – ТОЛЬКО если статус created
 func (u *OrderUsecase) CancelOrder(ctx context.Context, orderID int64) error {
     order, err := u.orderRepo.GetByID(ctx, orderID)
     if err != nil {
         return errors.New("order not found")
     }
 
-    // Отмена разрешена только для created
     if order.Status != domain.OrderStatusCreated {
         return errors.New("order cannot be cancelled in current status")
     }
@@ -247,8 +244,126 @@ func (u *OrderUsecase) CancelOrder(ctx context.Context, orderID int64) error {
     return u.orderRepo.UpdateStatus(ctx, orderID, domain.OrderStatusCancelled)
 }
 
+// RefundOrder – возврат средств по заказу (только для paid или completed)
+func (u *OrderUsecase) RefundOrder(ctx context.Context, orderID int64, reason string) error {
+    tx, err := u.db.Begin(ctx)
+    if err != nil {
+        return err
+    }
+    defer tx.Rollback(ctx)
+
+    // 1. Получаем заказ
+    order, err := u.orderRepo.GetByID(ctx, orderID)
+    if err != nil {
+        return errors.New("order not found")
+    }
+
+    // 2. Проверяем, можно ли делать возврат
+    if order.Status != domain.OrderStatusPaid && order.Status != domain.OrderStatusCompleted {
+        return errors.New("order cannot be refunded in current status")
+    }
+
+    // 3. Возвращаем деньги студенту
+    account, err := u.accountRepo.GetByUserIDAndTypeTx(ctx, tx, order.UserID, "cash")
+    if err != nil {
+        return errors.New("account not found")
+    }
+    newBalance := account.Balance + order.TotalAmount
+    if err := u.accountRepo.UpdateBalanceTx(ctx, tx, account.ID, newBalance); err != nil {
+        return err
+    }
+
+    // 4. Создаём ledger-транзакцию типа refund
+    idempotencyKey := generateRefundIdempotencyKey(order.UserID, order.ID)
+    ledgerTx := &domain.LedgerTransaction{
+        Type:           "refund",
+        Status:         "pending",
+        IdempotencyKey: idempotencyKey,
+        ReferenceType:  "order",
+        ReferenceID:    order.ID,
+        Description:    "Возврат по заказу: " + reason,
+    }
+    if err := u.ledgerRepo.CreateTransactionTx(ctx, tx, ledgerTx); err != nil {
+        return err
+    }
+
+    entry := &domain.LedgerEntry{
+        TransactionID: ledgerTx.ID,
+        AccountID:     account.ID,
+        Amount:        order.TotalAmount,
+    }
+    if err := u.ledgerRepo.CreateEntryTx(ctx, tx, entry); err != nil {
+        return err
+    }
+
+    if err := u.ledgerRepo.UpdateTransactionStatusTx(ctx, tx, ledgerTx.ID, "completed"); err != nil {
+        return err
+    }
+
+    // 5. Возвращаем бонусы (если использовались)
+    if order.BonusAmount > 0 {
+        bonusAcc, err := u.bonusRepo.GetByUserIDTx(ctx, tx, order.UserID)
+        if err != nil {
+            return errors.New("bonus account not found")
+        }
+        bonusTx := &domain.BonusTransaction{
+            UserID:        order.UserID,
+            Amount:        order.BonusAmount,
+            Type:          "refund",
+            ReferenceType: "order",
+            ReferenceID:   order.ID,
+        }
+        if err := u.bonusRepo.CreateTransactionTx(ctx, tx, bonusTx); err != nil {
+            return err
+        }
+        newBonus := bonusAcc.Balance + order.BonusAmount
+        if err := u.bonusRepo.UpdateBalanceTx(ctx, tx, bonusAcc.ID, newBonus); err != nil {
+            return err
+        }
+    }
+
+    // 6. Списываем деньги с merchant-счёта
+    merchantAmount := order.TotalAmount - order.Commission
+    merchantAcc, err := u.merchantAccountRepo.GetByCompanyIDTx(ctx, tx, order.CompanyID)
+    if err == nil && merchantAcc != nil {
+        newMerchantBalance := merchantAcc.Balance - merchantAmount
+        if err := u.merchantAccountRepo.UpdateBalanceTx(ctx, tx, merchantAcc.ID, newMerchantBalance); err != nil {
+            return err
+        }
+
+        merchantTx := &domain.MerchantTransaction{
+            CompanyID:   order.CompanyID,
+            OrderID:     &order.ID,
+            Amount:      -merchantAmount,
+            Type:        "refund",
+            Status:      "completed",
+            Description: "Возврат по заказу",
+        }
+        if err := u.merchantTxRepo.CreateTx(ctx, tx, merchantTx); err != nil {
+            return err
+        }
+    }
+
+    // 7. Обновляем статус заказа
+    if err := u.orderRepo.UpdateStatusTx(ctx, tx, order.ID, domain.OrderStatusRefunded); err != nil {
+        return err
+    }
+
+    if err := tx.Commit(ctx); err != nil {
+        return err
+    }
+
+    return nil
+}
+
 func generateOrderIdempotencyKey(userID, offerID int64) string {
     b := make([]byte, 16)
     rand.Read(b)
     return fmt.Sprintf("order-%d-%d-%x", userID, offerID, b)
+}
+
+func generateRefundIdempotencyKey(userID, orderID int64) string {
+    b := make([]byte, 16)
+    rand.Read(b)
+    return fmt.Sprintf("refund-%d-%d-%x", userID, orderID, b)
 }

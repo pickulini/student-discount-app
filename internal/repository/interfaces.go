@@ -85,6 +85,7 @@ type OrderRepository interface {
     GetByID(ctx context.Context, id int64) (*domain.Order, error)
     GetByUserID(ctx context.Context, userID int64) ([]domain.Order, error)
     UpdateStatus(ctx context.Context, id int64, status string) error
+    UpdateStatusTx(ctx context.Context, tx pgx.Tx, id int64, status string) error
 }
 
 // ---- Account ----
@@ -182,4 +183,13 @@ type SettlementRepository interface {
     Create(ctx context.Context, s *domain.Settlement) error
     GetByCompanyID(ctx context.Context, companyID int64) ([]domain.Settlement, error)
     UpdateStatus(ctx context.Context, id int64, status string) error
+}
+
+// ---- Audit ----
+
+type AuditRepository interface {
+    Create(ctx context.Context, log *domain.AuditLog) error
+    List(ctx context.Context, limit, offset int) ([]domain.AuditLog, error)
+    ListByActor(ctx context.Context, actorID int64, limit, offset int) ([]domain.AuditLog, error)
+    ListByEntity(ctx context.Context, entityType string, entityID int64) ([]domain.AuditLog, error)
 }

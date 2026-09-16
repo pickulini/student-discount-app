@@ -104,3 +104,27 @@ func (h *OrderHandler) CancelOrder(w http.ResponseWriter, r *http.Request) {
     }
     writeJSON(w, http.StatusOK, map[string]string{"message": "order cancelled"})
 }
+
+// RefundOrder – возврат средств (только админ)
+func (h *OrderHandler) RefundOrder(w http.ResponseWriter, r *http.Request) {
+    idStr := chi.URLParam(r, "id")
+    id, err := strconv.ParseInt(idStr, 10, 64)
+    if err != nil {
+        writeError(w, http.StatusBadRequest, "invalid order id")
+        return
+    }
+
+    var req struct {
+        Reason string `json:"reason"`
+    }
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        writeError(w, http.StatusBadRequest, "invalid request")
+        return
+    }
+
+    if err := h.orderUsecase.RefundOrder(r.Context(), id, req.Reason); err != nil {
+        writeError(w, http.StatusBadRequest, err.Error())
+        return
+    }
+    writeJSON(w, http.StatusOK, map[string]string{"message": "order refunded"})
+}

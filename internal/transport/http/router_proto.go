@@ -26,6 +26,8 @@ func NewRouterProto(
 	supportHandler *handlers.SupportHandler,
 	merchantHandler *handlers.MerchantHandler,
 	paymentHandler *handlers.PaymentHandler,
+	auditUsecase *usecase.AuditUsecase,
+	auditHandler *handlers.AuditHandler,
 	userRepo repository.UserRepository,
 	jwtManager *crypto.JWTManager,
 ) *chi.Mux {
@@ -33,6 +35,7 @@ func NewRouterProto(
 	r.Use(chiMiddleware.Logger)
 	r.Use(chiMiddleware.Recoverer)
 	r.Use(middleware.CORS)
+	r.Use(middleware.RequestInfo)
 
 	authHandler := handlers.NewAuthHandler(authUsecase)
 	userHandler := handlers.NewUserHandler(userUsecase)
@@ -76,6 +79,7 @@ func NewRouterProto(
 		r.Post("/api/v1/orders", orderHandler.CreateOrder)
 		r.Get("/api/v1/orders", orderHandler.GetUserOrders)
 		r.Put("/api/v1/orders/{id}/status", orderHandler.UpdateStatus)
+		r.Post("/api/v1/orders/{id}/refund", orderHandler.RefundOrder)
 		r.Post("/api/v1/orders/{id}/cancel", orderHandler.CancelOrder)
 
 		// Поддержка (пользователь)
@@ -95,6 +99,7 @@ func NewRouterProto(
 		// ---- Админ-роуты (только для администраторов) ----
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.AdminOnly(userRepo))
+			r.Use(middleware.AuditLog(auditUsecase))
 
 			// Пользователи
 			r.Get("/api/v1/admin/users", adminHandler.ListUsers)
@@ -122,6 +127,7 @@ func NewRouterProto(
 
 			// Статистика общая
 			r.Get("/api/v1/admin/statistics", adminHandler.GetStatistics)
+			r.Get("/api/v1/admin/audit-logs", auditHandler.List)
 
 			// Поддержка (админ)
 			r.Get("/api/v1/admin/support/tickets", supportHandler.AdminListTickets)

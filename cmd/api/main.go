@@ -43,6 +43,7 @@ func main() {
 	msgRepo := postgres.NewSupportMessageRepo(db)
 	companyUserRepo := postgres.NewCompanyUserRepo(db)
 	paymentRepo := postgres.NewPaymentRepo(db)
+    auditRepo := postgres.NewAuditRepo(db)
 	merchantAccountRepo := postgres.NewMerchantAccountRepo(db)
 	merchantTxRepo := postgres.NewMerchantTransactionRepo(db)
 	//settlementRepo := postgres.NewSettlementRepo(db)
@@ -63,6 +64,7 @@ func main() {
 	referralUsecase := usecase.NewReferralUsecase(referralRepo, userRepo)
 	supportUsecase := usecase.NewSupportUsecase(ticketRepo, msgRepo, userRepo)
 	adminUsecase := usecase.NewAdminUsecase(userRepo, companyRepo, locationRepo, offerRepo, studentVerifRepo, accountRepo, bonusRepo, referralRepo, db.Pool)
+    auditUsecase := usecase.NewAuditUsecase(auditRepo)
 	merchantUsecase := usecase.NewMerchantUsecase(companyRepo, locationRepo, offerRepo, companyUserRepo, userRepo, merchantAccountRepo, merchantTxRepo, db.Pool)
 
 	// Handlers
@@ -71,6 +73,7 @@ func main() {
 	supportHandler := handlers.NewSupportHandler(supportUsecase)
 	merchantHandler := handlers.NewMerchantHandler(merchantUsecase)
 	paymentHandler := handlers.NewPaymentHandler(paymentUsecase)
+    auditHandler := handlers.NewAuditHandler(auditUsecase)
 
 	router := transport.NewRouterProto(
 		authUsecase,
@@ -86,6 +89,8 @@ func main() {
 		supportHandler,
 		merchantHandler,
 		paymentHandler,
+        auditUsecase,
+        auditHandler,
 		userRepo,
 		jwtManager,
 	)

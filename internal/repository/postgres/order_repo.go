@@ -81,3 +81,9 @@ func (r *OrderRepo) CreateTx(ctx context.Context, tx pgx.Tx, o *domain.Order) er
     ).Scan(&o.ID)
     return err
 }
+
+func (r *OrderRepo) UpdateStatusTx(ctx context.Context, tx pgx.Tx, id int64, status string) error {
+    query := `UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2`
+    _, err := tx.Exec(ctx, query, status, id)
+    return err
+}
