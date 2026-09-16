@@ -75,6 +75,8 @@ func NewRouterProto(
 		// Заказы
 		r.Post("/api/v1/orders", orderHandler.CreateOrder)
 		r.Get("/api/v1/orders", orderHandler.GetUserOrders)
+		r.Put("/api/v1/orders/{id}/status", orderHandler.UpdateStatus)
+		r.Post("/api/v1/orders/{id}/cancel", orderHandler.CancelOrder)
 
 		// Поддержка (пользователь)
 		r.Post("/api/v1/support/tickets", supportHandler.CreateTicket)

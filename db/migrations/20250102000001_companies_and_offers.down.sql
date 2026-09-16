@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS offers;
+DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS company_locations;
+DROP TABLE IF EXISTS companies;

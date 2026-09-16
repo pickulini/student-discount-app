@@ -18,3 +18,36 @@ type Order struct {
     CompletedAt    *time.Time `json:"completed_at,omitempty"`
     CancelledAt    *time.Time `json:"cancelled_at,omitempty"`
 }
+
+// Статусы заказов
+const (
+    OrderStatusCreated   = "created"
+    OrderStatusPaid      = "paid"
+    OrderStatusCompleted = "completed"
+    OrderStatusCancelled = "cancelled"
+    OrderStatusRefunded  = "refunded"
+    OrderStatusFailed    = "failed"
+)
+
+// Допустимые переходы между статусами
+var ValidOrderTransitions = map[string][]string{
+    OrderStatusCreated:   {OrderStatusPaid, OrderStatusCancelled, OrderStatusFailed},
+    OrderStatusPaid:      {OrderStatusCompleted, OrderStatusRefunded},
+    OrderStatusCompleted: {OrderStatusRefunded},
+    OrderStatusCancelled: {},
+    OrderStatusRefunded:  {},
+    OrderStatusFailed:    {},
+}
+
+func IsValidOrderTransition(from, to string) bool {
+    allowed, ok := ValidOrderTransitions[from]
+    if !ok {
+        return false
+    }
+    for _, s := range allowed {
+        if s == to {
+            return true
+        }
+    }
+    return false
+}
