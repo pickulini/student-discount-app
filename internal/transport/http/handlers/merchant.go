@@ -20,7 +20,7 @@ func NewMerchantHandler(mu *usecase.MerchantUsecase) *MerchantHandler {
 }
 
 type CreateOfferRequest struct {
-    CompanyID       string  `json:"company_id"`
+    CompanyID       interface{} `json:"company_id"`
     Title           string  `json:"title"`
     Description     string  `json:"description"`
     DiscountType    string  `json:"discount_type"`
@@ -71,9 +71,23 @@ func (h *MerchantHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
         writeError(w, http.StatusBadRequest, "invalid request: "+err.Error())
         return
     }
-    companyID, err := strconv.ParseInt(req.CompanyID, 10, 64)
-    if err != nil {
-        writeError(w, http.StatusBadRequest, "invalid company_id")
+    var companyID int64
+    switch v := req.CompanyID.(type) {
+    case float64:
+        companyID = int64(v)
+    case string:
+        if v == "" {
+            writeError(w, http.StatusBadRequest, "company_id cannot be empty")
+            return
+        }
+        var err error
+        companyID, err = strconv.ParseInt(v, 10, 64)
+        if err != nil {
+            writeError(w, http.StatusBadRequest, "invalid company_id")
+            return
+        }
+    default:
+        writeError(w, http.StatusBadRequest, "company_id must be number or string")
         return
     }
     var startAt, endAt time.Time
