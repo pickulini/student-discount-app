@@ -1,13 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
+import OrderPaymentModal from './OrderPaymentModal';
 
 const Order = () => {
   const [offers, setOffers] = useState([]);
   const [selectedOffer, setSelectedOffer] = useState('');
   const [bonusPoints, setBonusPoints] = useState(0);
-  const [result, setResult] = useState(null);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [paymentOrder, setPaymentOrder] = useState(null);
+  const [error, setError] = useState('');
+
+  const fetchOrders = async () => {
+    try {
+      const res = await api.get('/orders');
+      setOrders(res.data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     Promise.all([
@@ -22,36 +33,26 @@ const Order = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  const fetchOrders = async () => {
-    try {
-      const res = await api.get('/orders');
-      setOrders(res.data || []);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     try {
       const res = await api.post('/orders', {
         offer_id: Number(selectedOffer),
         bonus_points: bonusPoints,
       });
-      setResult(res.data);
+      setSelectedOffer('');
+      setBonusPoints(0);
+      // Открываем модалку оплаты сразу
+      setPaymentOrder(res.data);
       fetchOrders();
     } catch (err) {
-      alert('Ошибка: ' + (err.response?.data?.error || 'Неизвестная ошибка'));
-    }
-  };
-
-  const handlePay = async (orderId) => {
-    try {
-      await api.post(`/orders/${orderId}/confirm`);
-      alert('Заказ оплачен!');
-      fetchOrders();
-    } catch (err) {
-      alert('Ошибка оплаты: ' + (err.response?.data?.error || err.message));
+      const msg = err.response?.data?.error || 'Неизвестная ошибка';
+      if (msg.includes('insufficient balance')) {
+        setError('Недостаточно средств. Пополните кошелёк.');
+      } else {
+        setError('Ошибка: ' + msg);
+      }
     }
   };
 
@@ -84,14 +85,15 @@ const Order = () => {
             min="0"
           />
           <button type="submit" className="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600">
-            Создать заказ
+            Создать и оплатить
           </button>
         </form>
-        {result && (
-          <div className="mt-4 p-3 bg-blue-50 rounded">
-            <p><strong>Заказ №{result.id} создан</strong></p>
-            <p>Сумма: {result.total_amount} ₽</p>
-            <p>Статус: {result.status}</p>
+        {error && (
+          <div className="mt-3 text-red-500 text-sm">
+            {error}
+            {error.includes('кошелёк') && (
+              <a href="/wallet" className="ml-2 underline text-blue-600">Перейти в кошелёк</a>
+            )}
           </div>
         )}
       </div>
@@ -128,7 +130,7 @@ const Order = () => {
                   <td className="p-2">
                     {o.status === 'created' && (
                       <button
-                        onClick={() => handlePay(o.id)}
+                        onClick={() => setPaymentOrder(o)}
                         className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
                       >
                         Оплатить
@@ -141,8 +143,17 @@ const Order = () => {
           </table>
         )}
       </div>
+
+      {paymentOrder && (
+        <OrderPaymentModal
+          order={paymentOrder}
+          onClose={() => setPaymentOrder(null)}
+          onSuccess={fetchOrders}
+        />
+      )}
     </div>
   );
 };
 
 export default Order;
+
