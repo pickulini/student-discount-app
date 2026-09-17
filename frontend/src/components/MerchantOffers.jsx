@@ -157,6 +157,11 @@ const MerchantOffers = () => {
               При сохранении предложение уйдёт на повторную модерацию.
             </p>
           )}
+          {editingId && offers.find(o => o.id === editingId)?.rejection_reason && (
+            <div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-800 mb-3">
+              <strong>Причина отклонения:</strong> {offers.find(o => o.id === editingId).rejection_reason}
+            </div>
+          )}
           {error && <div className="text-red-500 mb-2 text-sm">{error}</div>}
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -180,6 +185,7 @@ const MerchantOffers = () => {
                 value={form.title}
                 onChange={e => setForm({...form, title: e.target.value})}
                 className="w-full border p-2 rounded"
+                placeholder="Скидка 20% на кофе"
                 required
               />
             </div>
@@ -189,6 +195,7 @@ const MerchantOffers = () => {
                 value={form.description}
                 onChange={e => setForm({...form, description: e.target.value})}
                 className="w-full border p-2 rounded"
+                placeholder="На все напитки в меню"
                 rows="2"
               />
             </div>
@@ -208,6 +215,7 @@ const MerchantOffers = () => {
                 value={form.address}
                 onChange={e => setForm({...form, address: e.target.value})}
                 className="w-full border p-2 rounded"
+                placeholder="г. Москва, ул. Примерная, д. 1"
               />
             </div>
             <div>
@@ -217,6 +225,7 @@ const MerchantOffers = () => {
                 value={form.phone}
                 onChange={e => setForm({...form, phone: e.target.value})}
                 className="w-full border p-2 rounded"
+                placeholder="+7 (999) 123-45-67"
               />
             </div>
             <div>
@@ -226,6 +235,7 @@ const MerchantOffers = () => {
                 value={form.website}
                 onChange={e => setForm({...form, website: e.target.value})}
                 className="w-full border p-2 rounded"
+                placeholder="example.com"
               />
             </div>
             <div>
@@ -235,6 +245,7 @@ const MerchantOffers = () => {
                 value={form.working_hours}
                 onChange={e => setForm({...form, working_hours: e.target.value})}
                 className="w-full border p-2 rounded"
+                placeholder="Пн–Пт 10:00–20:00"
               />
             </div>
 
@@ -256,6 +267,7 @@ const MerchantOffers = () => {
                 value={form.discount_value}
                 onChange={e => setForm({...form, discount_value: parseFloat(e.target.value)})}
                 className="w-full border p-2 rounded"
+                placeholder="20"
                 required
               />
             </div>
@@ -294,6 +306,7 @@ const MerchantOffers = () => {
                 value={form.max_bonus_percent}
                 onChange={e => setForm({...form, max_bonus_percent: parseInt(e.target.value)})}
                 className="w-full border p-2 rounded"
+                placeholder="20"
               />
             </div>
 
@@ -341,6 +354,7 @@ const MerchantOffers = () => {
             <th className="p-2 text-left">Название</th>
             <th className="p-2 text-left">Скидка</th>
             <th className="p-2 text-left">Статус</th>
+            <th className="p-2 text-left">Причина</th>
             <th className="p-2 text-left">Действия</th>
           </tr>
         </thead>
@@ -358,6 +372,9 @@ const MerchantOffers = () => {
                 }`}>
                   {o.status}
                 </span>
+              </td>
+              <td className="p-2 text-xs text-red-600">
+                {o.rejection_reason || '—'}
               </td>
               <td className="p-2 space-x-2">
                 {(o.status === 'draft' || o.status === 'published' || o.status === 'rejected') && (

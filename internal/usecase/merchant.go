@@ -247,6 +247,7 @@ func (u *MerchantUsecase) UpdateOffer(ctx context.Context, userID, offerID int64
     // Если было опубликовано или отклонено — уходит на повторную модерацию
     if offer.Status == "published" || offer.Status == "rejected" || offer.Status == "archived" {
         offer.Status = "pending_review"
+        offer.RejectionReason = nil
     }
 
     if err := u.offerRepo.Update(ctx, offer); err != nil {

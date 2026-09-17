@@ -77,6 +77,7 @@ type OfferRepository interface {
     Update(ctx context.Context, o *domain.Offer) error
     Delete(ctx context.Context, id int64) error
     UpdateStatus(ctx context.Context, id int64, status string) error
+    UpdateStatusWithReason(ctx context.Context, id int64, status string, reason string) error
     ExpireOffers(ctx context.Context) error
 }
 

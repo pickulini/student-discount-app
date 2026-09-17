@@ -125,11 +125,14 @@ func (u *AdminUsecase) UpdateOffer(ctx context.Context, offer *domain.Offer, tag
 func (u *AdminUsecase) DeleteOffer(ctx context.Context, id int64) error {
     return u.offerRepo.Delete(ctx, id)
 }
-func (u *AdminUsecase) ModerateOffer(ctx context.Context, id int64, action string) error {
+func (u *AdminUsecase) ModerateOffer(ctx context.Context, id int64, action string, reason string) error {
     if action == "publish" {
-        return u.offerRepo.UpdateStatus(ctx, id, "published")
+        return u.offerRepo.UpdateStatusWithReason(ctx, id, "published", "")
     } else if action == "reject" {
-        return u.offerRepo.UpdateStatus(ctx, id, "rejected")
+        if reason == "" {
+            reason = "Предложение отклонено администратором"
+        }
+        return u.offerRepo.UpdateStatusWithReason(ctx, id, "rejected", reason)
     }
     return nil
 }

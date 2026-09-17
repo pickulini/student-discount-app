@@ -69,8 +69,17 @@ const AdminOffers = () => {
   };
 
   const handleModerate = async (id, action) => {
+    let reason = '';
+    if (action === 'reject') {
+      reason = window.prompt('Укажите причину отклонения:');
+      if (reason === null) return; // отмена
+      if (!reason.trim()) {
+        alert('Нужно указать причину');
+        return;
+      }
+    }
     try {
-      await api.put(`/admin/offers/${id}/moderate`, { action });
+      await api.put(`/admin/offers/${id}/moderate`, { action, reason });
       fetchData();
     } catch (err) {
       alert('Ошибка модерации');
@@ -208,6 +217,7 @@ const AdminOffers = () => {
             <th className="p-2 text-left">Скидка</th>
             <th className="p-2 text-left">Компания</th>
             <th className="p-2 text-left">Статус</th>
+            <th className="p-2 text-left">Причина</th>
             <th className="p-2 text-left">Действия</th>
           </tr>
         </thead>
@@ -226,6 +236,9 @@ const AdminOffers = () => {
                 }`}>
                   {offer.status}
                 </span>
+              </td>
+              <td className="p-2 text-xs text-red-600">
+                {offer.rejection_reason || '—'}
               </td>
               <td className="p-2 space-x-2">
                 {(offer.status && offer.status.toLowerCase() === 'pending_review') && (

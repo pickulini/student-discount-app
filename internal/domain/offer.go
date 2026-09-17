@@ -24,6 +24,7 @@ type Offer struct {
     Phone           *string    `json:"phone,omitempty"`
     Website         *string    `json:"website,omitempty"`
     WorkingHours    *string    `json:"working_hours,omitempty"`
+    RejectionReason *string    `json:"rejection_reason,omitempty"`
     CreatedAt       time.Time  `json:"created_at"`
     UpdatedAt       time.Time  `json:"updated_at"`
 }

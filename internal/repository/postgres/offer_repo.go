@@ -21,13 +21,13 @@ func NewOfferRepo(db *DB) repository.OfferRepository {
 // scanOffer сканирует одну строку в domain.Offer с учётом nullable-полей
 func scanOffer(scan func(dest ...interface{}) error) (domain.Offer, error) {
     var o domain.Offer
-    var imageURL, address, phone, website, workingHours sql.NullString
+    var imageURL, address, phone, website, workingHours, rejectionReason sql.NullString
     err := scan(
         &o.ID, &o.CompanyID, &o.Title, &o.Description,
         &o.DiscountType, &o.DiscountValue, &o.SpecialPrice,
         &o.StartAt, &o.EndAt, &o.Status, &o.MaxUses, &o.CurrentUses,
         &o.BonusAllowed, &o.MaxBonusPercent, &o.CreatedAt, &o.UpdatedAt,
-        &imageURL, &address, &phone, &website, &workingHours,
+        &imageURL, &address, &phone, &website, &workingHours, &rejectionReason,
     )
     if err != nil {
         return o, err
@@ -47,10 +47,13 @@ func scanOffer(scan func(dest ...interface{}) error) (domain.Offer, error) {
     if workingHours.Valid {
         o.WorkingHours = &workingHours.String
     }
+    if rejectionReason.Valid {
+        o.RejectionReason = &rejectionReason.String
+    }
     return o, nil
 }
 
-const offerColumns = `id, company_id, title, description, discount_type, discount_value, special_price, start_at, end_at, status, max_uses, current_uses, bonus_allowed, max_bonus_percent, created_at, updated_at, image_url, address, phone, website, working_hours`
+const offerColumns = `id, company_id, title, description, discount_type, discount_value, special_price, start_at, end_at, status, max_uses, current_uses, bonus_allowed, max_bonus_percent, created_at, updated_at, image_url, address, phone, website, working_hours, rejection_reason`
 
 func (r *OfferRepo) Create(ctx context.Context, o *domain.Offer) error {
     query := `INSERT INTO offers (company_id, title, description, discount_type, discount_value, start_at, end_at, status, max_uses, current_uses, bonus_allowed, max_bonus_percent, image_url, address, phone, website, working_hours) 
@@ -79,7 +82,7 @@ func (r *OfferRepo) GetByID(ctx context.Context, id int64) (*domain.Offer, error
 }
 
 func (r *OfferRepo) List(ctx context.Context, filters map[string]interface{}, limit, offset int) ([]domain.Offer, error) {
-    baseQuery := `SELECT DISTINCT o.id, o.company_id, o.title, o.description, o.discount_type, o.discount_value, o.special_price, o.start_at, o.end_at, o.status, o.max_uses, o.current_uses, o.bonus_allowed, o.max_bonus_percent, o.created_at, o.updated_at, o.image_url, o.address, o.phone, o.website, o.working_hours
+    baseQuery := `SELECT DISTINCT o.id, o.company_id, o.title, o.description, o.discount_type, o.discount_value, o.special_price, o.start_at, o.end_at, o.status, o.max_uses, o.current_uses, o.bonus_allowed, o.max_bonus_percent, o.created_at, o.updated_at, o.image_url, o.address, o.phone, o.website, o.working_hours, o.rejection_reason
               FROM offers o`
 
     where := []string{"o.status = 'published'"}
@@ -201,12 +204,13 @@ func (r *OfferRepo) IncrementUsesTx(ctx context.Context, tx pgx.Tx, id int64) er
 }
 
 func (r *OfferRepo) Update(ctx context.Context, o *domain.Offer) error {
-    query := `UPDATE offers SET title=$1, description=$2, discount_type=$3, discount_value=$4, special_price=$5, start_at=$6, end_at=$7, status=$8, max_uses=$9, bonus_allowed=$10, max_bonus_percent=$11, image_url=$12, address=$13, phone=$14, website=$15, working_hours=$16, updated_at=NOW() WHERE id=$17`
+    query := `UPDATE offers SET title=$1, description=$2, discount_type=$3, discount_value=$4, special_price=$5, start_at=$6, end_at=$7, status=$8, max_uses=$9, bonus_allowed=$10, max_bonus_percent=$11, image_url=$12, address=$13, phone=$14, website=$15, working_hours=$16, rejection_reason=$17, updated_at=NOW() WHERE id=$18`
     _, err := r.db.Pool.Exec(ctx, query,
         o.Title, o.Description, o.DiscountType, o.DiscountValue,
         o.SpecialPrice, o.StartAt, o.EndAt, o.Status, o.MaxUses,
         o.BonusAllowed, o.MaxBonusPercent,
         o.ImageURL, o.Address, o.Phone, o.Website, o.WorkingHours,
+        o.RejectionReason,
         o.ID,
     )
     return err
@@ -266,4 +270,10 @@ func (r *OfferRepo) loadTags(ctx context.Context, offers []domain.Offer) error {
         }
     }
     return nil
+}
+
+func (r *OfferRepo) UpdateStatusWithReason(ctx context.Context, id int64, status string, reason string) error {
+    query := `UPDATE offers SET status=$1, rejection_reason=$2, updated_at=NOW() WHERE id=$3`
+    _, err := r.db.Pool.Exec(ctx, query, status, reason, id)
+    return err
 }

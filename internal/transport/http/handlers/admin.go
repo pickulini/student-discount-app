@@ -316,12 +316,13 @@ func (h *AdminHandler) ModerateOffer(w http.ResponseWriter, r *http.Request) {
     }
     var req struct {
         Action string `json:"action"`
+        Reason string `json:"reason,omitempty"`
     }
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
         writeError(w, http.StatusBadRequest, "invalid request")
         return
     }
-    if err := h.adminUsecase.ModerateOffer(r.Context(), id, req.Action); err != nil {
+    if err := h.adminUsecase.ModerateOffer(r.Context(), id, req.Action, req.Reason); err != nil {
         writeError(w, http.StatusInternalServerError, "failed to moderate offer")
         return
     }
