@@ -227,3 +227,75 @@ func (h *MerchantHandler) GetTransactions(w http.ResponseWriter, r *http.Request
     }
     writeJSON(w, http.StatusOK, tx)
 }
+
+// UpdateOffer — обновление предложения партнёром
+func (h *MerchantHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
+    idStr := chi.URLParam(r, "id")
+    id, err := strconv.ParseInt(idStr, 10, 64)
+    if err != nil {
+        writeError(w, http.StatusBadRequest, "invalid offer id")
+        return
+    }
+
+    var req CreateOfferRequest
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        writeError(w, http.StatusBadRequest, "invalid request: "+err.Error())
+        return
+    }
+
+    var companyID int64
+    switch v := req.CompanyID.(type) {
+    case float64:
+        companyID = int64(v)
+    case string:
+        companyID, _ = strconv.ParseInt(v, 10, 64)
+    }
+
+    var startAt, endAt time.Time
+    if req.StartAt != "" {
+        t, err := time.Parse(time.RFC3339, req.StartAt)
+        if err == nil {
+            startAt = t
+        }
+    }
+    if req.EndAt != "" {
+        t, err := time.Parse(time.RFC3339, req.EndAt)
+        if err == nil {
+            endAt = t
+        }
+    }
+
+    bonusAllowed := false
+    if req.BonusAllowed != nil {
+        bonusAllowed = *req.BonusAllowed
+    }
+
+    updated := &domain.Offer{
+        CompanyID:       companyID,
+        Title:           req.Title,
+        Description:     req.Description,
+        DiscountType:    req.DiscountType,
+        DiscountValue:   req.DiscountValue,
+        StartAt:         startAt,
+        EndAt:           endAt,
+        BonusAllowed:    bonusAllowed,
+        MaxBonusPercent: req.MaxBonusPercent,
+        ImageURL:        req.ImageURL,
+        Address:         req.Address,
+        Phone:           req.Phone,
+        Website:         req.Website,
+        WorkingHours:    req.WorkingHours,
+    }
+
+    userID, ok := r.Context().Value(middleware.UserIDKey).(int64)
+    if !ok {
+        writeError(w, http.StatusUnauthorized, "unauthorized")
+        return
+    }
+
+    if err := h.merchantUsecase.UpdateOffer(r.Context(), userID, id, updated, req.TagIDs); err != nil {
+        writeError(w, http.StatusInternalServerError, "failed to update offer: "+err.Error())
+        return
+    }
+    writeJSON(w, http.StatusOK, map[string]string{"message": "offer updated"})
+}

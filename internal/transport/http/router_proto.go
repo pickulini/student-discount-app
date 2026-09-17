@@ -149,6 +149,7 @@ func NewRouterProto(
             r.Post("/api/v1/merchant/upload", uploadHandler.Upload)
 			r.Get("/api/v1/merchant/offers", merchantHandler.ListOffers)
 			r.Post("/api/v1/merchant/offers", merchantHandler.CreateOffer)
+            r.Put("/api/v1/merchant/offers/{id}", merchantHandler.UpdateOffer)
 			r.Post("/api/v1/merchant/offers/{id}/submit", merchantHandler.SubmitForReview)
 			r.Get("/api/v1/merchant/statistics/daily", merchantHandler.GetDailyStats)
 			r.Get("/api/v1/merchant/balance", merchantHandler.GetBalance)

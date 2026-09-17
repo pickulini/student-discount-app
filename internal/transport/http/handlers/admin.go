@@ -217,7 +217,70 @@ func (h *AdminHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AdminHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
-    writeError(w, http.StatusNotImplemented, "not implemented")
+    idStr := chi.URLParam(r, "id")
+    id, err := strconv.ParseInt(idStr, 10, 64)
+    if err != nil {
+        writeError(w, http.StatusBadRequest, "invalid offer id")
+        return
+    }
+
+    var req AdminCreateOfferRequest
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        writeError(w, http.StatusBadRequest, "invalid request: "+err.Error())
+        return
+    }
+
+    var companyID int64
+    switch v := req.CompanyID.(type) {
+    case float64:
+        companyID = int64(v)
+    case string:
+        companyID, _ = strconv.ParseInt(v, 10, 64)
+    }
+
+    var startAt, endAt time.Time
+    if req.StartAt != "" {
+        t, err := time.Parse(time.RFC3339, req.StartAt)
+        if err == nil {
+            startAt = t
+        }
+    }
+    if req.EndAt != "" {
+        t, err := time.Parse(time.RFC3339, req.EndAt)
+        if err == nil {
+            endAt = t
+        }
+    }
+
+    bonusAllowed := false
+    if req.BonusAllowed != nil {
+        bonusAllowed = *req.BonusAllowed
+    }
+
+    updated := &domain.Offer{
+        ID:              id,
+        CompanyID:       companyID,
+        Title:           req.Title,
+        Description:     req.Description,
+        DiscountType:    req.DiscountType,
+        DiscountValue:   req.DiscountValue,
+        StartAt:         startAt,
+        EndAt:           endAt,
+        Status:          req.Status,
+        BonusAllowed:    bonusAllowed,
+        MaxBonusPercent: req.MaxBonusPercent,
+        ImageURL:        req.ImageURL,
+        Address:         req.Address,
+        Phone:           req.Phone,
+        Website:         req.Website,
+        WorkingHours:    req.WorkingHours,
+    }
+
+    if err := h.adminUsecase.UpdateOffer(r.Context(), updated, req.TagIDs); err != nil {
+        writeError(w, http.StatusInternalServerError, "failed to update offer")
+        return
+    }
+    writeJSON(w, http.StatusOK, map[string]string{"message": "offer updated"})
 }
 
 func (h *AdminHandler) DeleteOffer(w http.ResponseWriter, r *http.Request) {

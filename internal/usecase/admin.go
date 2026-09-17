@@ -111,8 +111,16 @@ func (u *AdminUsecase) CreateOffer(ctx context.Context, offer *domain.Offer, tag
     }
     return nil
 }
-func (u *AdminUsecase) UpdateOffer(ctx context.Context, offer *domain.Offer) error {
-    return u.offerRepo.Update(ctx, offer)
+func (u *AdminUsecase) UpdateOffer(ctx context.Context, offer *domain.Offer, tagIDs []int64) error {
+    if err := u.offerRepo.Update(ctx, offer); err != nil {
+        return err
+    }
+    if tagIDs != nil {
+        if err := u.tagRepo.SetOfferTags(ctx, offer.ID, tagIDs); err != nil {
+            return err
+        }
+    }
+    return nil
 }
 func (u *AdminUsecase) DeleteOffer(ctx context.Context, id int64) error {
     return u.offerRepo.Delete(ctx, id)

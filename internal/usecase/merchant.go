@@ -205,3 +205,59 @@ func (u *MerchantUsecase) GetTransactions(ctx context.Context, userID int64, lim
     // Для MVP просто вернём все.
     return allTx, nil
 }
+
+// UpdateOffer обновляет предложение партнёра. Если было опубликовано — уходит на повторную модерацию.
+func (u *MerchantUsecase) UpdateOffer(ctx context.Context, userID, offerID int64, updated *domain.Offer, tagIDs []int64) error {
+    offer, err := u.offerRepo.GetByID(ctx, offerID)
+    if err != nil {
+        return domain.ErrUserNotFound
+    }
+
+    // Проверяем права: партнёр должен быть привязан к компании этого предложения
+    companyUsers, err := u.companyUserRepo.GetByUserID(ctx, userID)
+    if err != nil {
+        return err
+    }
+    found := false
+    for _, cu := range companyUsers {
+        if cu.CompanyID == offer.CompanyID {
+            found = true
+            break
+        }
+    }
+    if !found {
+        return domain.ErrUnauthorized
+    }
+
+    // Обновляем поля
+    offer.Title = updated.Title
+    offer.Description = updated.Description
+    offer.DiscountType = updated.DiscountType
+    offer.DiscountValue = updated.DiscountValue
+    offer.StartAt = updated.StartAt
+    offer.EndAt = updated.EndAt
+    offer.BonusAllowed = updated.BonusAllowed
+    offer.MaxBonusPercent = updated.MaxBonusPercent
+    offer.ImageURL = updated.ImageURL
+    offer.Address = updated.Address
+    offer.Phone = updated.Phone
+    offer.Website = updated.Website
+    offer.WorkingHours = updated.WorkingHours
+
+    // Если было опубликовано или отклонено — уходит на повторную модерацию
+    if offer.Status == "published" || offer.Status == "rejected" || offer.Status == "archived" {
+        offer.Status = "pending_review"
+    }
+
+    if err := u.offerRepo.Update(ctx, offer); err != nil {
+        return err
+    }
+
+    if tagIDs != nil {
+        if err := u.tagRepo.SetOfferTags(ctx, offerID, tagIDs); err != nil {
+            return err
+        }
+    }
+
+    return nil
+}
