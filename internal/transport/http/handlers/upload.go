@@ -1,6 +1,7 @@
 package handlers
 
 import (
+    "log"
     "crypto/rand"
     "encoding/hex"
     "fmt"
@@ -21,7 +22,10 @@ func NewUploadHandler(uploadDir string) *UploadHandler {
 
 // Upload принимает multipart/form-data с полем "file", возвращает {"url": "/uploads/..."}
 func (h *UploadHandler) Upload(w http.ResponseWriter, r *http.Request) {
+    log.Printf("Upload: content-type=%s, content-length=%d", r.Header.Get("Content-Type"), r.ContentLength)
+
     if err := r.ParseMultipartForm(10 << 20); err != nil { // 10 MB
+        log.Printf("Upload: ParseMultipartForm error: %v", err)
         writeError(w, http.StatusBadRequest, "file too large or invalid form")
         return
     }

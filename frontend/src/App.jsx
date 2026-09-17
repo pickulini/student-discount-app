@@ -15,6 +15,7 @@ import MerchantLayout from './components/MerchantLayout';
 import MerchantDashboard from './components/MerchantDashboard';
 import MerchantCompanies from './components/MerchantCompanies';
 import MerchantOffers from './components/MerchantOffers';
+import MerchantStatistics from './components/MerchantStatistics';
 import AdminLayout from './components/AdminLayout';
 import AdminDashboard from './components/AdminDashboard';
 import AdminUsers from './components/AdminUsers';
@@ -44,6 +45,7 @@ function App() {
             <Route index element={<MerchantDashboard />} />
             <Route path="companies" element={<MerchantCompanies />} />
             <Route path="offers" element={<MerchantOffers />} />
+            <Route path="statistics" element={<MerchantStatistics />} />
           </Route>
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />

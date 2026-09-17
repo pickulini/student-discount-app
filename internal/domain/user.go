@@ -7,6 +7,9 @@ type User struct {
     Email          string     `json:"email"`
     PasswordHash   string     `json:"-"`
     FullName       string     `json:"full_name"`
+    Nickname       *string    `json:"nickname,omitempty"`
+    Username       *string    `json:"username,omitempty"`
+    AvatarURL      *string    `json:"avatar_url,omitempty"`
     UniversityID   *int64     `json:"university_id,omitempty"`
     Course         *int       `json:"course,omitempty"`
     BirthDate      *time.Time `json:"birth_date,omitempty"`
@@ -15,7 +18,8 @@ type User struct {
     ReferredBy     *int64     `json:"referred_by,omitempty"`
     IsActive       bool       `json:"is_active"`
     Balance        float64    `json:"balance"`
-    Role           string     `json:"role"` // student, merchant, admin
+    Role           string     `json:"role"`
+    VerificationExpiresAt *time.Time `json:"student_verification_expires_at,omitempty"` // student, merchant, admin
     CreatedAt      time.Time  `json:"created_at"`
     UpdatedAt      time.Time  `json:"updated_at"`
 }

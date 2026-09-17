@@ -66,6 +66,8 @@ func NewRouterProto(
 
 		// Пользователь
 		r.Get("/api/v1/users/me", userHandler.GetProfile)
+        r.Patch("/api/v1/users/me", userHandler.UpdateProfile)
+        r.Post("/api/v1/users/upload-avatar", uploadHandler.Upload)
 		r.Get("/api/v1/users/transactions", userHandler.GetTransactionHistory)
 
 		// Верификация

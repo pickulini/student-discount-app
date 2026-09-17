@@ -2,7 +2,8 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: '/api/v1',
-  headers: { 'Content-Type': 'application/json' },
+  // НЕ задаём Content-Type здесь — axios сам подставит нужный
+  // (application/json для объектов, multipart/form-data для FormData)
 });
 
 api.interceptors.request.use(

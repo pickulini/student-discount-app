@@ -31,12 +31,13 @@ func (r *UserRepo) Create(ctx context.Context, user *domain.User) error {
 }
 
 func (r *UserRepo) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
-    query := `SELECT id, email, password_hash, full_name, university_id, course, birth_date,
+    query := `SELECT id, email, password_hash, full_name, nickname, username, avatar_url, university_id, course, birth_date,
                      student_status, referral_code, referred_by, is_active, role, created_at, updated_at
               FROM users WHERE email = $1`
     var u domain.User
     err := r.db.Pool.QueryRow(ctx, query, email).Scan(
         &u.ID, &u.Email, &u.PasswordHash, &u.FullName,
+        &u.Nickname, &u.Username, &u.AvatarURL,
         &u.UniversityID, &u.Course, &u.BirthDate,
         &u.StudentStatus, &u.ReferralCode, &u.ReferredBy,
         &u.IsActive, &u.Role, &u.CreatedAt, &u.UpdatedAt,
@@ -51,12 +52,13 @@ func (r *UserRepo) GetByEmail(ctx context.Context, email string) (*domain.User, 
 }
 
 func (r *UserRepo) GetByID(ctx context.Context, id int64) (*domain.User, error) {
-    query := `SELECT id, email, password_hash, full_name, university_id, course, birth_date,
+    query := `SELECT id, email, password_hash, full_name, nickname, username, avatar_url, university_id, course, birth_date,
                      student_status, referral_code, referred_by, is_active, role, created_at, updated_at
               FROM users WHERE id = $1`
     var u domain.User
     err := r.db.Pool.QueryRow(ctx, query, id).Scan(
         &u.ID, &u.Email, &u.PasswordHash, &u.FullName,
+        &u.Nickname, &u.Username, &u.AvatarURL,
         &u.UniversityID, &u.Course, &u.BirthDate,
         &u.StudentStatus, &u.ReferralCode, &u.ReferredBy,
         &u.IsActive, &u.Role, &u.CreatedAt, &u.UpdatedAt,
@@ -71,12 +73,13 @@ func (r *UserRepo) GetByID(ctx context.Context, id int64) (*domain.User, error) 
 }
 
 func (r *UserRepo) GetByReferralCode(ctx context.Context, code string) (*domain.User, error) {
-    query := `SELECT id, email, password_hash, full_name, university_id, course, birth_date,
+    query := `SELECT id, email, password_hash, full_name, nickname, username, avatar_url, university_id, course, birth_date,
                      student_status, referral_code, referred_by, is_active, role, created_at, updated_at
               FROM users WHERE referral_code = $1`
     var u domain.User
     err := r.db.Pool.QueryRow(ctx, query, code).Scan(
         &u.ID, &u.Email, &u.PasswordHash, &u.FullName,
+        &u.Nickname, &u.Username, &u.AvatarURL,
         &u.UniversityID, &u.Course, &u.BirthDate,
         &u.StudentStatus, &u.ReferralCode, &u.ReferredBy,
         &u.IsActive, &u.Role, &u.CreatedAt, &u.UpdatedAt,
@@ -120,7 +123,7 @@ func (r *UserRepo) UpdateRole(ctx context.Context, userID int64, role string) er
 }
 
 func (r *UserRepo) List(ctx context.Context, limit, offset int) ([]domain.User, error) {
-    query := `SELECT id, email, password_hash, full_name, university_id, course, birth_date,
+    query := `SELECT id, email, password_hash, full_name, nickname, username, avatar_url, university_id, course, birth_date,
                      student_status, referral_code, referred_by, is_active, role, created_at, updated_at
               FROM users ORDER BY id LIMIT $1 OFFSET $2`
     rows, err := r.db.Pool.Query(ctx, query, limit, offset)
@@ -140,4 +143,31 @@ func (r *UserRepo) List(ctx context.Context, limit, offset int) ([]domain.User, 
         users = append(users, u)
     }
     return users, nil
+}
+
+func (r *UserRepo) GetByUsername(ctx context.Context, username string) (*domain.User, error) {
+    query := `SELECT id, email, password_hash, full_name, nickname, username, avatar_url, university_id, course, birth_date,
+                     student_status, referral_code, referred_by, is_active, role, created_at, updated_at
+              FROM users WHERE LOWER(username) = LOWER($1)`
+    var u domain.User
+    err := r.db.Pool.QueryRow(ctx, query, username).Scan(
+        &u.ID, &u.Email, &u.PasswordHash, &u.FullName,
+        &u.Nickname, &u.Username, &u.AvatarURL,
+        &u.UniversityID, &u.Course, &u.BirthDate,
+        &u.StudentStatus, &u.ReferralCode, &u.ReferredBy,
+        &u.IsActive, &u.Role, &u.CreatedAt, &u.UpdatedAt,
+    )
+    if err != nil {
+        if errors.Is(err, pgx.ErrNoRows) {
+            return nil, domain.ErrUserNotFound
+        }
+        return nil, err
+    }
+    return &u, nil
+}
+
+func (r *UserRepo) UpdateProfile(ctx context.Context, userID int64, nickname, username, avatarURL *string) error {
+    query := `UPDATE users SET nickname = $1, username = $2, avatar_url = $3, updated_at = NOW() WHERE id = $4`
+    _, err := r.db.Pool.Exec(ctx, query, nickname, username, avatarURL, userID)
+    return err
 }

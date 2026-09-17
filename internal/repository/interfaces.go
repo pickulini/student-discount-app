@@ -14,6 +14,8 @@ type UserRepository interface {
     GetByEmail(ctx context.Context, email string) (*domain.User, error)
     GetByID(ctx context.Context, id int64) (*domain.User, error)
     GetByReferralCode(ctx context.Context, code string) (*domain.User, error)
+    GetByUsername(ctx context.Context, username string) (*domain.User, error)
+    UpdateProfile(ctx context.Context, userID int64, nickname, username, avatarURL *string) error
     Update(ctx context.Context, user *domain.User) error
     UpdateStudentStatus(ctx context.Context, userID int64, status string) error
     UpdateBalance(ctx context.Context, userID int64, amount float64) error

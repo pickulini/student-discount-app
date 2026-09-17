@@ -17,24 +17,28 @@ const ImageUpload = ({ value, onChange, uploadEndpoint = '/merchant/upload' }) =
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const res = await api.post(uploadEndpoint, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      // Явно НЕ устанавливаем Content-Type — axios подставит boundary автоматически
+      const res = await api.post(uploadEndpoint, formData);
       onChange(res.data.url);
     } catch (err) {
+      console.error('Upload error:', err.response?.data || err.message);
       setError(err.response?.data?.error || 'Ошибка загрузки');
     } finally {
       setUploading(false);
     }
   };
 
+  const imageSrc = value
+    ? (value.startsWith('http') ? value : value)
+    : null;
+
   return (
     <div>
-      <label className="block text-sm mb-1">Фото (фон карточки)</label>
-      {value ? (
+      <label className="block text-sm mb-1">Фото (фон карточки / аватар)</label>
+      {imageSrc ? (
         <div className="relative inline-block">
           <img
-            src={value}
+            src={imageSrc}
             alt="Обложка"
             className="w-48 h-32 object-cover rounded border"
           />
