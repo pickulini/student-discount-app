@@ -31,12 +31,15 @@ func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
         "id":             user.ID,
         "email":          user.Email,
         "full_name":      user.FullName,
+        "nickname":       user.Nickname,
+        "username":       user.Username,
+        "avatar_url":     user.AvatarURL,
         "student_status": user.StudentStatus,
         "referral_code":  user.ReferralCode,
         "balance":        cashBalance,
         "bonus_balance":  bonusBalance,
         "is_active":      user.IsActive,
-        "role":           user.Role,   // <-- добавляем роль
+        "role":           user.Role,
         "created_at":     user.CreatedAt,
         "updated_at":     user.UpdatedAt,
     }
@@ -93,7 +96,6 @@ func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    // Возвращаем обновлённый профиль
     user, cashBalance, bonusBalance, err := h.userUsecase.GetProfile(r.Context(), userID)
     if err != nil {
         writeError(w, http.StatusInternalServerError, "failed to load profile")
@@ -112,6 +114,7 @@ func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
         "balance":        cashBalance,
         "bonus_balance":  bonusBalance,
         "is_active":      user.IsActive,
+        "role":           user.Role,
         "created_at":     user.CreatedAt,
         "updated_at":     user.UpdatedAt,
     }
