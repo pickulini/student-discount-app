@@ -262,3 +262,15 @@ type FriendshipRepository interface {
     // Счётчик входящих заявок
     CountIncomingRequests(ctx context.Context, userID int64) (int, error)
 }
+
+
+// ---- Company Subscriptions ----
+
+type CompanySubscriptionRepository interface {
+    Subscribe(ctx context.Context, userID, companyID int64) error
+    Unsubscribe(ctx context.Context, userID, companyID int64) error
+    IsSubscribed(ctx context.Context, userID, companyID int64) (bool, error)
+    CountByCompany(ctx context.Context, companyID int64) (int, error)
+    ListByUser(ctx context.Context, userID int64) ([]domain.Company, error)
+    ListSubscribedCompanyIDs(ctx context.Context, userID int64) ([]int64, error)
+}

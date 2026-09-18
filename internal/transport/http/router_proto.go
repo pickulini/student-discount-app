@@ -29,6 +29,7 @@ func NewRouterProto(
 	auditUsecase *usecase.AuditUsecase,
 	auditHandler *handlers.AuditHandler,
     tagHandler *handlers.TagHandler,
+	subscriptionHandler *handlers.SubscriptionHandler,
     friendHandler *handlers.FriendHandler,
     uploadHandler *handlers.UploadHandler,
 	userRepo repository.UserRepository,
@@ -53,6 +54,7 @@ func NewRouterProto(
 	r.Get("/api/v1/offers", companyHandler.ListOffers)
     r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir("/app/uploads"))))
 	r.Get("/api/v1/offers/nearby", companyHandler.GetNearbyOffers)
+	r.Get("/api/v1/companies/{id}/stats", subscriptionHandler.CompanyStats)
     r.Get("/api/v1/tags", tagHandler.List)
 	r.Get("/api/v1/tags/popular", tagHandler.Popular)
 	r.Get("/api/v1/tags/search", tagHandler.Search)
@@ -96,6 +98,12 @@ func NewRouterProto(
 		// Рефералы
 		r.Get("/api/v1/referral/code", referralHandler.GetCode)
 		r.Get("/api/v1/referral/stats", referralHandler.GetStats)
+
+		// Подписки на компании
+		r.Post("/api/v1/companies/{id}/subscribe", subscriptionHandler.Subscribe)
+		r.Delete("/api/v1/companies/{id}/subscribe", subscriptionHandler.Unsubscribe)
+		r.Get("/api/v1/subscriptions/companies", subscriptionHandler.MyCompanies)
+		r.Get("/api/v1/subscriptions/companies/ids", subscriptionHandler.SubscribedIDs)
 
 		// Заказы
 		r.Post("/api/v1/orders", orderHandler.CreateOrder)

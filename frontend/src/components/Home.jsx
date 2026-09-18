@@ -9,9 +9,17 @@ const Home = () => {
   const [selectedTags, setSelectedTags] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOffer, setSelectedOffer] = useState(null);
+  const [subscribedCompanyIDs, setSubscribedCompanyIDs] = useState(new Set());
 
   useEffect(() => {
-    api.get('/tags').then(res => setTags(res.data || [])).catch(console.error);
+    api.get('/tags/popular?limit=15').then(res => setTags(res.data || [])).catch(console.error);
+
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      api.get('/subscriptions/companies/ids')
+        .then(res => setSubscribedCompanyIDs(new Set(res.data || [])))
+        .catch((err) => console.error('Failed to load subscriptions:', err));
+    }
   }, []);
 
   useEffect(() => {
@@ -39,6 +47,14 @@ const Home = () => {
 
   const handleCardClick = (offer) => setSelectedOffer(offer);
   const handleCloseModal = () => setSelectedOffer(null);
+
+  const handleSubscriptionChange = (companyID, isSubscribed) => {
+    setSubscribedCompanyIDs(prev => {
+      const next = new Set(prev);
+      if (isSubscribed) next.add(companyID); else next.delete(companyID);
+      return next;
+    });
+  };
 
   return (
     <div>
@@ -91,7 +107,12 @@ const Home = () => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {offers.map(offer => (
-            <OfferCard key={offer.id} offer={offer} onClick={handleCardClick} />
+            <OfferCard
+              key={offer.id}
+              offer={offer}
+              onClick={handleCardClick}
+              subscribed={subscribedCompanyIDs.has(offer.company_id)}
+            />
           ))}
         </div>
       )}

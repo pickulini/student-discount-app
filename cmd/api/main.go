@@ -55,6 +55,7 @@ func main() {
     antifraudRepo := postgres.NewAntifraudRepo(db)
     tagRepo := postgres.NewTagRepo(db)
     friendshipRepo := postgres.NewFriendshipRepo(db)
+	companySubRepo := postgres.NewCompanySubscriptionRepo(db)
 
     _ = settlementRepo // пока не используется напрямую
 
@@ -78,6 +79,7 @@ func main() {
     auditUsecase := usecase.NewAuditUsecase(auditRepo)
     tagUsecase := usecase.NewTagUsecase(tagRepo)
     friendUsecase := usecase.NewFriendUsecase(friendshipRepo, userRepo)
+	subscriptionUsecase := usecase.NewSubscriptionUsecase(companySubRepo, companyRepo, userRepo)
 
     // Handlers
     walletHandler := handlers.NewWalletHandler(accountRepo, bonusRepo)
@@ -88,6 +90,7 @@ func main() {
     auditHandler := handlers.NewAuditHandler(auditUsecase)
     tagHandler := handlers.NewTagHandler(tagUsecase)
     friendHandler := handlers.NewFriendHandler(friendUsecase)
+	subscriptionHandler := handlers.NewSubscriptionHandler(subscriptionUsecase)
     uploadHandler := handlers.NewUploadHandler("/app/uploads")
 
     router := transport.NewRouterProto(
@@ -107,6 +110,7 @@ func main() {
         auditUsecase,
         auditHandler,
         tagHandler,
+        subscriptionHandler,
         friendHandler,
         uploadHandler,
         userRepo,

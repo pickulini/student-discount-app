@@ -1,6 +1,6 @@
 import React from 'react';
 
-const OfferCard = ({ offer, onClick }) => {
+const OfferCard = ({ offer, onClick, subscribed = false }) => {
   const discountText = offer.discount_type === 'percentage'
     ? `${offer.discount_value}%`
     : `${offer.discount_value} ₽`;
@@ -12,7 +12,7 @@ const OfferCard = ({ offer, onClick }) => {
   return (
     <div
       onClick={() => onClick(offer)}
-      className="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 cursor-pointer overflow-hidden border border-gray-100 hover:border-blue-300 flex flex-col h-full"
+      className="relative bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 cursor-pointer overflow-hidden border border-gray-100 hover:border-blue-300 flex flex-col h-full"
     >
       {imageSrc ? (
         <div
@@ -23,6 +23,14 @@ const OfferCard = ({ offer, onClick }) => {
         <div className="w-full h-40 bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-gray-500 text-sm font-medium">
           {offer.title}
         </div>
+      )}
+      {subscribed && (
+        <span
+          title="Вы подписаны на компанию"
+          className="absolute top-2 right-2 bg-yellow-400 text-white rounded-full w-7 h-7 flex items-center justify-center shadow z-10 text-sm"
+        >
+          ★
+        </span>
       )}
       <div className="p-4 flex flex-col flex-1">
         <div className="flex justify-between items-start">
