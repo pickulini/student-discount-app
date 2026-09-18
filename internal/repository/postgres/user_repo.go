@@ -2,6 +2,7 @@ package postgres
 
 import (
     "context"
+	"database/sql"
     "errors"
     "github.com/jackc/pgx/v5"
     "your-project/internal/domain"
@@ -170,4 +171,38 @@ func (r *UserRepo) UpdateProfile(ctx context.Context, userID int64, nickname, us
     query := `UPDATE users SET nickname = $1, username = $2, avatar_url = $3, updated_at = NOW() WHERE id = $4`
     _, err := r.db.Pool.Exec(ctx, query, nickname, username, avatarURL, userID)
     return err
+}
+
+func (r *UserRepo) SearchUsers(ctx context.Context, excludeID int64, query string, limit int) ([]domain.UserPublicCard, error) {
+    query = "%" + query + "%"
+    sqlQuery := `
+        SELECT u.id, NULL::bigint, u.nickname, u.username, u.full_name, u.avatar_url, un.name
+        FROM users u
+        LEFT JOIN universities un ON un.id = u.university_id
+        WHERE u.id <> $1
+          AND (u.username ILIKE $2 OR u.nickname ILIKE $2 OR u.full_name ILIKE $2)
+        ORDER BY u.username NULLS LAST, u.nickname NULLS LAST
+        LIMIT $3`
+    rows, err := r.db.Pool.Query(ctx, sqlQuery, excludeID, query, limit)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    result := make([]domain.UserPublicCard, 0)
+    for rows.Next() {
+        var c domain.UserPublicCard
+        var friendshipID sql.NullInt64
+        var nickname, username, avatarURL, university sql.NullString
+        if err := rows.Scan(&c.ID, &friendshipID, &nickname, &username, &c.FullName, &avatarURL, &university); err != nil {
+            return nil, err
+        }
+        if friendshipID.Valid { c.FriendshipID = &friendshipID.Int64 }
+        if nickname.Valid { c.Nickname = &nickname.String }
+        if username.Valid { c.Username = &username.String }
+        if avatarURL.Valid { c.AvatarURL = &avatarURL.String }
+        if university.Valid { c.University = &university.String }
+        result = append(result, c)
+    }
+    return result, nil
 }

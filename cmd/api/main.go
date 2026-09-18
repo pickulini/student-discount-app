@@ -53,6 +53,7 @@ func main() {
     worker.StartVerificationExpiryWorker(context.Background(), studentVerifRepo)
     antifraudRepo := postgres.NewAntifraudRepo(db)
     tagRepo := postgres.NewTagRepo(db)
+    friendshipRepo := postgres.NewFriendshipRepo(db)
 
     _ = settlementRepo // пока не используется напрямую
 
@@ -75,6 +76,7 @@ func main() {
     merchantUsecase := usecase.NewMerchantUsecase(companyRepo, locationRepo, offerRepo, companyUserRepo, userRepo, merchantAccountRepo, merchantTxRepo, tagRepo, db.Pool)
     auditUsecase := usecase.NewAuditUsecase(auditRepo)
     tagUsecase := usecase.NewTagUsecase(tagRepo)
+    friendUsecase := usecase.NewFriendUsecase(friendshipRepo, userRepo)
 
     // Handlers
     walletHandler := handlers.NewWalletHandler(accountRepo, bonusRepo)
@@ -84,6 +86,7 @@ func main() {
     paymentHandler := handlers.NewPaymentHandler(paymentUsecase)
     auditHandler := handlers.NewAuditHandler(auditUsecase)
     tagHandler := handlers.NewTagHandler(tagUsecase)
+    friendHandler := handlers.NewFriendHandler(friendUsecase)
     uploadHandler := handlers.NewUploadHandler("/app/uploads")
 
     router := transport.NewRouterProto(
@@ -103,6 +106,7 @@ func main() {
         auditUsecase,
         auditHandler,
         tagHandler,
+        friendHandler,
         uploadHandler,
         userRepo,
         jwtManager,

@@ -29,6 +29,7 @@ func NewRouterProto(
 	auditUsecase *usecase.AuditUsecase,
 	auditHandler *handlers.AuditHandler,
     tagHandler *handlers.TagHandler,
+    friendHandler *handlers.FriendHandler,
     uploadHandler *handlers.UploadHandler,
 	userRepo repository.UserRepository,
 	jwtManager *crypto.JWTManager,
@@ -66,6 +67,18 @@ func NewRouterProto(
 
 		// Пользователь
 		r.Get("/api/v1/users/me", userHandler.GetProfile)
+
+        // Друзья
+        r.Get("/api/v1/friends", friendHandler.ListFriends)
+        r.Get("/api/v1/friends/search", friendHandler.Search)
+        r.Post("/api/v1/friends/requests", friendHandler.SendRequest)
+        r.Post("/api/v1/friends/requests/{id}/accept", friendHandler.Accept)
+        r.Post("/api/v1/friends/requests/{id}/reject", friendHandler.Reject)
+        r.Post("/api/v1/friends/requests/{id}/cancel", friendHandler.Cancel)
+        r.Get("/api/v1/friends/requests/incoming", friendHandler.ListIncoming)
+        r.Get("/api/v1/friends/requests/outgoing", friendHandler.ListOutgoing)
+        r.Get("/api/v1/friends/status/{userId}", friendHandler.GetStatus)
+        r.Delete("/api/v1/friends/{userId}", friendHandler.RemoveFriend)
         r.Patch("/api/v1/users/me", userHandler.UpdateProfile)
         r.Post("/api/v1/users/upload-avatar", uploadHandler.Upload)
 		r.Get("/api/v1/users/transactions", userHandler.GetTransactionHistory)

@@ -21,6 +21,7 @@ type UserRepository interface {
     UpdateBalance(ctx context.Context, userID int64, amount float64) error
     UpdateRole(ctx context.Context, userID int64, role string) error
     List(ctx context.Context, limit, offset int) ([]domain.User, error)
+    SearchUsers(ctx context.Context, excludeID int64, query string, limit int) ([]domain.UserPublicCard, error)
 }
 
 // ---- StudentVerification ----
@@ -217,4 +218,26 @@ type TagRepository interface {
     SetOfferTags(ctx context.Context, offerID int64, tagIDs []int64) error
     SetOfferTagsTx(ctx context.Context, tx pgx.Tx, offerID int64, tagIDs []int64) error
     GetTagsByOfferIDs(ctx context.Context, offerIDs []int64) (map[int64][]domain.Tag, error)
+}
+
+// ---- Friends ----
+
+type FriendshipRepository interface {
+    // Создаёт заявку в друзья
+    Create(ctx context.Context, requesterID, addresseeID int64) (*domain.Friendship, error)
+	GetByID(ctx context.Context, id int64) (*domain.Friendship, error)
+    // Находит существующую связь между двумя пользователями (в любом направлении)
+    GetBetween(ctx context.Context, userA, userB int64) (*domain.Friendship, error)
+    // Обновляет статус заявки
+    UpdateStatus(ctx context.Context, id int64, status string) error
+    // Удаляет связь (для unfriend)
+    Delete(ctx context.Context, id int64) error
+    // Список друзей (status = accepted) для пользователя
+    ListFriends(ctx context.Context, userID int64) ([]domain.UserPublicCard, error)
+    // Входящие заявки (pending, addressee_id = userID)
+    ListIncomingRequests(ctx context.Context, userID int64) ([]domain.UserPublicCard, error)
+    // Исходящие заявки (pending, requester_id = userID)
+    ListOutgoingRequests(ctx context.Context, userID int64) ([]domain.UserPublicCard, error)
+    // Счётчик входящих заявок
+    CountIncomingRequests(ctx context.Context, userID int64) (int, error)
 }
