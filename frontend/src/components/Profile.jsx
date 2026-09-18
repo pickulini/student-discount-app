@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import ImageUpload from './ImageUpload';
+import UserLink from './UserLink';
 
 const Profile = () => {
   const { user, fetchUser } = useAuth();
@@ -112,7 +113,10 @@ const Profile = () => {
             <div>
               <p className="text-xl font-semibold">{displayName}</p>
               {data.username && (
-                <p className="text-blue-600 text-sm">@{data.username}</p>
+                <p className="text-sm">
+                  <UserLink username={data.username} />
+                  <span className="text-gray-400 text-xs ml-2">(публичный профиль)</span>
+                </p>
               )}
               <p className="text-gray-500 text-sm">{data.email}</p>
             </div>

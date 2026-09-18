@@ -36,12 +36,20 @@ const MerchantStatistics = () => {
     .sort((a, b) => (b.current_uses || 0) - (a.current_uses || 0))
     .slice(0, 5);
 
-  // Считаем заработано за последние 30 дней (из транзакций)
+  // Считаем gross / refunds / net за последние 30 дней
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  const recentEarnings = transactions
-    .filter(t => t.type === 'order_earning' && new Date(t.created_at) >= thirtyDaysAgo)
+  const recentTx = transactions.filter(t => new Date(t.created_at) >= thirtyDaysAgo);
+
+  const recentGross = recentTx
+    .filter(t => t.type === 'order_earning')
     .reduce((sum, t) => sum + t.amount, 0);
+
+  const recentRefunds = recentTx
+    .filter(t => t.type === 'refund')
+    .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+  const recentNet = recentGross - recentRefunds;
 
   const maxUses = Math.max(...topOffers.map(o => o.current_uses || 0), 1);
 
@@ -56,16 +64,29 @@ const MerchantStatistics = () => {
           <p className="text-3xl font-bold">{balance.total_balance || 0} ₽</p>
         </div>
         <div className="bg-green-100 p-4 rounded shadow">
-          <p className="text-sm text-gray-600">Заработано за 30 дней</p>
-          <p className="text-3xl font-bold">{recentEarnings.toFixed(0)} ₽</p>
+          <p className="text-sm text-gray-600">Начислено за 30 дней</p>
+          <p className="text-3xl font-bold">{recentGross.toFixed(0)} ₽</p>
+        </div>
+        <div className="bg-red-100 p-4 rounded shadow">
+          <p className="text-sm text-gray-600">Возвраты за 30 дней</p>
+          <p className="text-3xl font-bold">-{recentRefunds.toFixed(0)} ₽</p>
         </div>
         <div className="bg-purple-100 p-4 rounded shadow">
-          <p className="text-sm text-gray-600">Всего использований</p>
-          <p className="text-3xl font-bold">{totalUses}</p>
+          <p className="text-sm text-gray-600">Чистыми за 30 дней</p>
+          <p className={`text-3xl font-bold ${recentNet >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+            {recentNet.toFixed(0)} ₽
+          </p>
         </div>
-        <div className="bg-yellow-100 p-4 rounded shadow">
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="bg-gray-100 p-4 rounded shadow">
+          <p className="text-sm text-gray-600">Всего использований</p>
+          <p className="text-2xl font-bold">{totalUses}</p>
+        </div>
+        <div className="bg-gray-100 p-4 rounded shadow">
           <p className="text-sm text-gray-600">Предложений</p>
-          <p className="text-3xl font-bold">{offers.length}</p>
+          <p className="text-2xl font-bold">{offers.length}</p>
         </div>
       </div>
 

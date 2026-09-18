@@ -6,6 +6,7 @@ import (
     "strconv"
     "your-project/internal/transport/http/middleware"
     "your-project/internal/usecase"
+    "github.com/go-chi/chi/v5"
 )
 
 type UserHandler struct {
@@ -119,4 +120,20 @@ func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
         "updated_at":     user.UpdatedAt,
     }
     writeJSON(w, http.StatusOK, response)
+}
+
+
+// GetPublicProfile — публичный профиль по username, без авторизации
+func (h *UserHandler) GetPublicProfile(w http.ResponseWriter, r *http.Request) {
+    username := chi.URLParam(r, "username")
+    if username == "" {
+        writeError(w, http.StatusBadRequest, "username required")
+        return
+    }
+    profile, err := h.userUsecase.GetPublicProfile(r.Context(), username)
+    if err != nil {
+        writeError(w, http.StatusNotFound, "user not found")
+        return
+    }
+    writeJSON(w, http.StatusOK, profile)
 }

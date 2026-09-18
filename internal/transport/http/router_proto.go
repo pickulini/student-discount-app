@@ -54,6 +54,7 @@ func NewRouterProto(
     r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir("/app/uploads"))))
 	r.Get("/api/v1/offers/nearby", companyHandler.GetNearbyOffers)
     r.Get("/api/v1/tags", tagHandler.List)
+    r.Get("/api/v1/users/by-username/{username}", userHandler.GetPublicProfile)
 
 	// Публичные страницы оплаты (эмуляция СБП)
 	r.Get("/payments/sbp/checkout/{id}", paymentHandler.ConfirmPayment)

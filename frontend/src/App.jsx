@@ -9,6 +9,7 @@ import Profile from './components/Profile';
 import Wallet from './components/Wallet';
 import Referral from './components/Referral';
 import Friends from './components/Friends';
+import PublicProfile from './components/PublicProfile';
 import Order from './components/Order';
 import TransactionHistory from './components/TransactionHistory';
 import Support from './components/Support';
@@ -39,6 +40,7 @@ function App() {
             <Route path="wallet" element={<Wallet />} />
             <Route path="referral" element={<Referral />} />
             <Route path="friends" element={<Friends />} />
+            <Route path=":handle" element={<PublicProfile />} />
             <Route path="order" element={<Order />} />
             <Route path="history" element={<TransactionHistory />} />
             <Route path="support" element={<Support />} />

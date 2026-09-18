@@ -119,3 +119,8 @@ func (u *UserUsecase) UpdateProfile(ctx context.Context, userID int64, nickname,
 
     return u.userRepo.UpdateProfile(ctx, userID, newNickname, newUsername, newAvatarURL)
 }
+
+// GetPublicProfile возвращает публичные данные пользователя по username
+func (u *UserUsecase) GetPublicProfile(ctx context.Context, username string) (*domain.UserPublicProfile, error) {
+    return u.userRepo.GetPublicProfileByUsername(ctx, username)
+}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
+import UserLink from './UserLink';
 
 const UserStatsModal = ({ userId, onClose }) => {
   const [stats, setStats] = useState(null);
@@ -55,18 +56,48 @@ const UserStatsModal = ({ userId, onClose }) => {
           ) : stats ? (
             <>
               <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><strong>Имя:</strong> {stats.user.full_name}</div>
+                <div>
+                  <strong>Имя:</strong> {stats.user.full_name}
+                  {stats.user.username && (
+                    <span className="ml-2"><UserLink username={stats.user.username} /></span>
+                  )}
+                </div>
                 <div><strong>Email:</strong> {stats.user.email}</div>
                 <div><strong>Статус студента:</strong> {stats.user.student_status}</div>
                 <div><strong>Баланс:</strong> {stats.balance} ₽</div>
                 <div><strong>Бонусный баланс:</strong> {stats.bonus_balance}</div>
               </div>
 
-              <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-blue-100 p-3 rounded"><strong>Пополнено</strong><br/>{stats.total_deposits} ₽</div>
-                <div className="bg-red-100 p-3 rounded"><strong>Потрачено</strong><br/>{stats.total_purchases} ₽</div>
-                <div className="bg-green-100 p-3 rounded"><strong>Заказов</strong><br/>{stats.total_orders}</div>
-                <div className="bg-yellow-100 p-3 rounded"><strong>Бонусов заработано</strong><br/>{stats.bonus_earned}</div>
+              <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div className="bg-blue-100 p-3 rounded">
+                  <strong className="text-sm">Пополнено</strong>
+                  <div className="text-lg font-semibold">{stats.total_deposits} ₽</div>
+                </div>
+                <div className="bg-red-100 p-3 rounded">
+                  <strong className="text-sm">Потрачено (gross)</strong>
+                  <div className="text-lg font-semibold">{stats.total_purchases} ₽</div>
+                </div>
+                <div className="bg-orange-100 p-3 rounded">
+                  <strong className="text-sm">Возвраты</strong>
+                  <div className="text-lg font-semibold">-{stats.total_refunds ?? 0} ₽</div>
+                </div>
+                <div className="bg-green-100 p-3 rounded">
+                  <strong className="text-sm">Чистыми</strong>
+                  <div className="text-lg font-semibold">{stats.net_purchases ?? stats.total_purchases} ₽</div>
+                </div>
+                <div className="bg-purple-100 p-3 rounded">
+                  <strong className="text-sm">Заказов</strong>
+                  <div className="text-lg font-semibold">
+                    {stats.total_orders}
+                    {stats.refunded_orders > 0 && (
+                      <span className="text-xs text-red-600 ml-1">(-{stats.refunded_orders})</span>
+                    )}
+                  </div>
+                </div>
+                <div className="bg-yellow-100 p-3 rounded">
+                  <strong className="text-sm">Бонусов заработано</strong>
+                  <div className="text-lg font-semibold">{stats.bonus_earned}</div>
+                </div>
               </div>
 
               {/* Заказы с кнопкой возврата */}

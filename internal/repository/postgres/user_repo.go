@@ -18,12 +18,13 @@ func NewUserRepo(db *DB) repository.UserRepository {
 }
 
 func (r *UserRepo) Create(ctx context.Context, user *domain.User) error {
-    query := `INSERT INTO users (email, password_hash, full_name, university_id, course, birth_date,
+    query := `INSERT INTO users (email, password_hash, full_name, nickname, username, avatar_url,
+                     university_id, course, birth_date,
                      student_status, referral_code, referred_by, is_active, role) 
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
               RETURNING id, created_at, updated_at`
     err := r.db.Pool.QueryRow(ctx, query,
-        user.Email, user.PasswordHash, user.FullName,
+        user.Email, user.PasswordHash, user.FullName, user.Nickname, user.Username, user.AvatarURL,
         user.UniversityID, user.Course, user.BirthDate,
         user.StudentStatus, user.ReferralCode, user.ReferredBy,
         user.IsActive, user.Role,
@@ -205,4 +206,78 @@ func (r *UserRepo) SearchUsers(ctx context.Context, excludeID int64, query strin
         result = append(result, c)
     }
     return result, nil
+}
+
+// ---- Username ----
+
+func (r *UserRepo) UsernameExists(ctx context.Context, username string) (bool, error) {
+    var exists bool
+    err := r.db.Pool.QueryRow(ctx,
+        `SELECT EXISTS(SELECT 1 FROM users WHERE lower(username) = lower($1))`,
+        username,
+    ).Scan(&exists)
+    return exists, err
+}
+
+func (r *UserRepo) SetUsername(ctx context.Context, userID int64, username string) error {
+    _, err := r.db.Pool.Exec(ctx,
+        `UPDATE users SET username = $1, updated_at = NOW() WHERE id = $2`,
+        username, userID,
+    )
+    return err
+}
+
+func (r *UserRepo) ListUsersWithoutUsername(ctx context.Context) ([]domain.User, error) {
+    rows, err := r.db.Pool.Query(ctx,
+        `SELECT id, full_name, email FROM users WHERE username IS NULL ORDER BY id`)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var users []domain.User
+    for rows.Next() {
+        var u domain.User
+        if err := rows.Scan(&u.ID, &u.FullName, &u.Email); err != nil {
+            return nil, err
+        }
+        users = append(users, u)
+    }
+    return users, rows.Err()
+}
+
+func (r *UserRepo) GetPublicProfileByUsername(ctx context.Context, username string) (*domain.UserPublicProfile, error) {
+    query := `
+        SELECT u.id, u.username, u.nickname, u.full_name, u.avatar_url,
+               un.name AS university_name, u.student_status, u.role, u.created_at,
+               COALESCE((
+                   SELECT COUNT(*) FROM friendships f
+                   WHERE (f.requester_id = u.id OR f.addressee_id = u.id)
+                     AND f.status = 'accepted'
+               ), 0) AS friends_count
+        FROM users u
+        LEFT JOIN universities un ON un.id = u.university_id
+        WHERE lower(u.username) = lower($1)`
+
+    var p domain.UserPublicProfile
+    var usernameVal sql.NullString
+    var nickname, avatarURL, university sql.NullString
+    err := r.db.Pool.QueryRow(ctx, query, username).Scan(
+        &p.ID, &usernameVal, &nickname, &p.FullName, &avatarURL,
+        &university, &p.StudentStatus, &p.Role, &p.CreatedAt, &p.FriendsCount,
+    )
+    if err != nil {
+        return nil, err
+    }
+    p.Username = usernameVal.String
+    if nickname.Valid {
+        p.Nickname = &nickname.String
+    }
+    if avatarURL.Valid {
+        p.AvatarURL = &avatarURL.String
+    }
+    if university.Valid {
+        p.University = &university.String
+    }
+    return &p, nil
 }

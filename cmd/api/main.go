@@ -51,6 +51,7 @@ func main() {
 
     // Запускаем фоновые воркеры
     worker.StartVerificationExpiryWorker(context.Background(), studentVerifRepo)
+    worker.StartBonusCreditWorker(context.Background(), referralRepo, bonusRepo)
     antifraudRepo := postgres.NewAntifraudRepo(db)
     tagRepo := postgres.NewTagRepo(db)
     friendshipRepo := postgres.NewFriendshipRepo(db)

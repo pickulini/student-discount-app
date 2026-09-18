@@ -22,6 +22,10 @@ type UserRepository interface {
     UpdateRole(ctx context.Context, userID int64, role string) error
     List(ctx context.Context, limit, offset int) ([]domain.User, error)
     SearchUsers(ctx context.Context, excludeID int64, query string, limit int) ([]domain.UserPublicCard, error)
+    UsernameExists(ctx context.Context, username string) (bool, error)
+    SetUsername(ctx context.Context, userID int64, username string) error
+    ListUsersWithoutUsername(ctx context.Context) ([]domain.User, error)
+    GetPublicProfileByUsername(ctx context.Context, username string) (*domain.UserPublicProfile, error)
 }
 
 // ---- StudentVerification ----
@@ -133,6 +137,10 @@ type ReferralRepository interface {
     CreateReward(ctx context.Context, reward *domain.ReferralReward) error
     GetRewardsByReferrer(ctx context.Context, referrerID int64) ([]domain.ReferralReward, error)
     UpdateInviteStatus(ctx context.Context, referredUserID int64, status string) error
+    // Для воркера отложенного зачисления
+    ListPendingAvailable(ctx context.Context) ([]domain.ReferralReward, error)
+    MarkCredited(ctx context.Context, id int64) error
+    CancelPendingByReferredUser(ctx context.Context, referredUserID int64) error
 }
 
 // ---- Support ----

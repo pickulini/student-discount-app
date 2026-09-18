@@ -11,6 +11,7 @@ import (
     "your-project/internal/domain"
     "your-project/internal/infrastructure/crypto"
     "your-project/internal/repository"
+    "your-project/internal/util"
 )
 
 type AuthUsecase struct {
@@ -100,7 +101,9 @@ func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName st
         referredBy = &referrer.ID
     }
 
+    username := generateUniqueUsername(ctx, u.userRepo, fullName)
     user := &domain.User{
+        Username:       &username,
         Email:         email,
         PasswordHash:  hash,
         FullName:      fullName,
@@ -228,4 +231,45 @@ func generateRandomToken(length int) string {
 func hashString(s string) string {
     h := sha256.Sum256([]byte(s))
     return hex.EncodeToString(h[:])
+}
+
+
+// generateUniqueUsername делает username из full_name и разрешает коллизии
+// суффиксом _2, _3, ...
+func generateUniqueUsername(ctx context.Context, userRepo repository.UserRepository, fullName string) string {
+    base := util.SlugifyUsername(fullName)
+    if base == "" {
+        base = "user"
+    }
+    candidate := base
+
+    for i := 2; i < 100; i++ {
+        exists, err := userRepo.UsernameExists(ctx, candidate)
+        if err != nil {
+            break
+        }
+        if !exists {
+            return candidate
+        }
+        suffix := "_" + itoa(i)
+        trimmed := base
+        if len(trimmed)+len(suffix) > 30 {
+            trimmed = trimmed[:30-len(suffix)]
+        }
+        candidate = trimmed + suffix
+    }
+    // fallback — timestamp-based
+    return base + "_" + itoa(int(time.Now().Unix()%100000))
+}
+
+func itoa(n int) string {
+    if n == 0 {
+        return "0"
+    }
+    var digits []byte
+    for n > 0 {
+        digits = append([]byte{byte('0' + n%10)}, digits...)
+        n /= 10
+    }
+    return string(digits)
 }

@@ -198,62 +198,39 @@ func (u *AdminUsecase) UpdateVerification(ctx context.Context, id int64, status 
                 log.Printf("Failed to check referral rewards: %v", err)
                 return nil
             }
-            alreadyCredited := false
+            alreadyExists := false
             for _, rw := range rewards {
-                if rw.ReferredUserID == user.ID && rw.Status == "credited" {
-                    alreadyCredited = true
+                if rw.ReferredUserID == user.ID && (rw.Status == "credited" || rw.Status == "pending") {
+                    alreadyExists = true
                     break
                 }
             }
-            if alreadyCredited {
-                log.Printf("Referral bonus already credited for user %d", user.ID)
+            if alreadyExists {
+                log.Printf("Referral reward already exists for user %d", user.ID)
                 return nil
             }
 
-            // Начисляем бонус (100 баллов)
-            bonusAmount := 100.0
+            // Создаём ОТЛОЖЕННУЮ награду (pending).
+            // Начисление на бонусный счёт произойдёт через 14 дней воркером.
+            const bonusAmount = 100.0
+            const refundWindowDays = 14
 
-            // Получаем бонусный счёт реферера
-            referrerBonusAcc, err := u.bonusRepo.GetByUserID(ctx, referrerID)
-            if err != nil {
-                log.Printf("Failed to get referrer bonus account: %v", err)
-                return nil
-            }
-
-            // Создаём бонусную транзакцию
-            bonusTx := &domain.BonusTransaction{
-                UserID:        referrerID,
-                Amount:        bonusAmount,
-                Type:          "referral_reward",
-                ReferenceType: "user",
-                ReferenceID:   user.ID,
-            }
-            if err := u.bonusRepo.CreateTransaction(ctx, bonusTx); err != nil {
-                log.Printf("Failed to create bonus transaction: %v", err)
-                return nil
-            }
-
-            // Обновляем баланс
-            newBalance := referrerBonusAcc.Balance + bonusAmount
-            if err := u.bonusRepo.UpdateBalance(ctx, referrerBonusAcc.ID, newBalance); err != nil {
-                log.Printf("Failed to update bonus balance: %v", err)
-                return nil
-            }
-
-            // Создаём запись в referral_rewards
+            availableAt := time.Now().Add(refundWindowDays * 24 * time.Hour)
             reward := &domain.ReferralReward{
                 ReferrerID:     referrerID,
                 ReferredUserID: user.ID,
                 Amount:         bonusAmount,
-                Status:         "credited",
+                Status:         "pending",
                 TriggerType:    "verification",
+                AvailableAt:    &availableAt,
             }
             if err := u.referralRepo.CreateReward(ctx, reward); err != nil {
                 log.Printf("Failed to create referral reward: %v", err)
                 return nil
             }
 
-            log.Printf("Referrer %d received %f bonus for user %d verification", referrerID, bonusAmount, user.ID)
+            log.Printf("Referrer %d will receive %.2f bonus for user %d after %s (refund window)",
+                referrerID, bonusAmount, user.ID, availableAt.Format(time.RFC3339))
         }
     }
 
@@ -292,9 +269,10 @@ func (u *AdminUsecase) GetUserDetailedStats(ctx context.Context, userID int64) (
         return nil, err
     }
 
-    var totalDeposits, totalPurchases, totalBonusEarned, totalBonusSpent float64
-    var totalOrders int
+    var totalDeposits, totalPurchases, totalRefunds, totalBonusEarned, totalBonusRefunded, totalBonusSpent float64
+    var totalOrders, refundedOrders int
 
+    // Пополнения
     u.db.QueryRow(ctx, `
         SELECT COALESCE(SUM(le.amount), 0) 
         FROM ledger_transactions lt 
@@ -303,6 +281,7 @@ func (u *AdminUsecase) GetUserDetailedStats(ctx context.Context, userID int64) (
         WHERE a.user_id = $1 AND lt.type = 'deposit' AND le.amount > 0
     `, userID).Scan(&totalDeposits)
 
+    // Покупки (gross) — траты
     u.db.QueryRow(ctx, `
         SELECT COALESCE(SUM(ABS(le.amount)), 0) 
         FROM ledger_transactions lt 
@@ -311,14 +290,35 @@ func (u *AdminUsecase) GetUserDetailedStats(ctx context.Context, userID int64) (
         WHERE a.user_id = $1 AND lt.type = 'purchase' AND le.amount < 0
     `, userID).Scan(&totalPurchases)
 
-    u.db.QueryRow(ctx, `SELECT COUNT(*) FROM orders WHERE user_id = $1`, userID).Scan(&totalOrders)
-
+    // Возвраты (refund) — положительные суммы, компенсирующие траты
     u.db.QueryRow(ctx, `
-        SELECT COALESCE(SUM(amount), 0) FROM bonus_transactions WHERE user_id = $1 AND amount > 0
+        SELECT COALESCE(SUM(le.amount), 0) 
+        FROM ledger_transactions lt 
+        JOIN ledger_entries le ON lt.id = le.transaction_id 
+        JOIN accounts a ON le.account_id = a.id 
+        WHERE a.user_id = $1 AND lt.type = 'refund' AND le.amount > 0
+    `, userID).Scan(&totalRefunds)
+
+    // Всего заказов и отдельно возвращённых
+    u.db.QueryRow(ctx, `SELECT COUNT(*) FROM orders WHERE user_id = $1`, userID).Scan(&totalOrders)
+    u.db.QueryRow(ctx, `SELECT COUNT(*) FROM orders WHERE user_id = $1 AND status = 'refunded'`, userID).Scan(&refundedOrders)
+
+    // Бонусы: заработано — все положительные КРОМЕ refund (это возврат потраченных, а не заработок)
+    u.db.QueryRow(ctx, `
+        SELECT COALESCE(SUM(amount), 0) FROM bonus_transactions 
+        WHERE user_id = $1 AND amount > 0 AND type <> 'refund'
     `, userID).Scan(&totalBonusEarned)
 
+    // Бонусы: возвращено
     u.db.QueryRow(ctx, `
-        SELECT COALESCE(SUM(ABS(amount)), 0) FROM bonus_transactions WHERE user_id = $1 AND amount < 0
+        SELECT COALESCE(SUM(amount), 0) FROM bonus_transactions 
+        WHERE user_id = $1 AND type = 'refund'
+    `, userID).Scan(&totalBonusRefunded)
+
+    // Бонусы: потрачено (без учёта refund, т.к. это возврат)
+    u.db.QueryRow(ctx, `
+        SELECT COALESCE(SUM(ABS(amount)), 0) FROM bonus_transactions 
+        WHERE user_id = $1 AND amount < 0 AND type = 'spend'
     `, userID).Scan(&totalBonusSpent)
 
     rows, err := u.db.Query(ctx, `
@@ -403,17 +403,23 @@ func (u *AdminUsecase) GetUserDetailedStats(ctx context.Context, userID int64) (
         })
     }
 
+    netPurchases := totalPurchases - totalRefunds
+
     return map[string]interface{}{
-        "user":            user,
-        "balance":         account.Balance,
-        "bonus_balance":   bonusAcc.Balance,
-        "total_deposits":  totalDeposits,
-        "total_purchases": totalPurchases,
-        "total_orders":    totalOrders,
-        "bonus_earned":    totalBonusEarned,
-        "bonus_spent":     totalBonusSpent,
-        "transactions":    transactions,
-        "orders":          orders,
+        "user":                 user,
+        "balance":              account.Balance,
+        "bonus_balance":        bonusAcc.Balance,
+        "total_deposits":       totalDeposits,
+        "total_purchases":      totalPurchases,
+        "total_refunds":        totalRefunds,
+        "net_purchases":        netPurchases,
+        "total_orders":         totalOrders,
+        "refunded_orders":      refundedOrders,
+        "bonus_earned":         totalBonusEarned,
+        "bonus_refunded":       totalBonusRefunded,
+        "bonus_spent":          totalBonusSpent,
+        "transactions":         transactions,
+        "orders":               orders,
     }, nil
 }
 

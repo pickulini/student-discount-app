@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api/client';
+import UserLink from './UserLink';
 
 const Avatar = ({ user }) => {
   const letter = (user.nickname || user.full_name || '?')[0].toUpperCase();
@@ -17,8 +18,18 @@ const Card = ({ user, actionLabel, onAction, actionClass = 'bg-blue-600 hover:bg
   <div className="flex items-center gap-3 border-b py-2">
     <Avatar user={user} />
     <div className="flex-1 min-w-0">
-      <div className="font-semibold truncate">{user.nickname || user.full_name}</div>
-      {user.username && <div className="text-xs text-gray-500 truncate">@{user.username}</div>}
+      <div className="font-semibold truncate">
+        <UserLink
+          username={user.username}
+          label={user.nickname || user.full_name}
+          className="text-gray-800 hover:text-blue-600"
+        />
+      </div>
+      {user.username && (
+        <div className="text-xs text-gray-500 truncate">
+          <UserLink username={user.username} />
+        </div>
+      )}
       {user.university && <div className="text-xs text-gray-400 truncate">{user.university}</div>}
     </div>
     {actionLabel && (
