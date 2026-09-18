@@ -29,7 +29,8 @@ type CreateOfferRequest struct {
     EndAt           string  `json:"end_at"`
     BonusAllowed    *bool   `json:"bonus_allowed,omitempty"`
     MaxBonusPercent int     `json:"max_bonus_percent"`
-    TagIDs          []int64 `json:"tag_ids,omitempty"`
+    TagIDs          []int64 `json:"tag_ids,omitempty"`     // legacy
+    Hashtags        []string `json:"hashtags,omitempty"`   // новые хештеги
     ImageURL        *string `json:"image_url,omitempty"`
     Address         *string `json:"address,omitempty"`
     Phone           *string `json:"phone,omitempty"`
@@ -147,7 +148,7 @@ func (h *MerchantHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
         writeError(w, http.StatusUnauthorized, "unauthorized")
         return
     }
-    if err := h.merchantUsecase.CreateOffer(r.Context(), userID, offer, req.TagIDs); err != nil {
+    if err := h.merchantUsecase.CreateOffer(r.Context(), userID, offer, req.Hashtags); err != nil {
         writeError(w, http.StatusInternalServerError, "failed to create offer")
         return
     }
@@ -293,7 +294,7 @@ func (h *MerchantHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    if err := h.merchantUsecase.UpdateOffer(r.Context(), userID, id, updated, req.TagIDs); err != nil {
+    if err := h.merchantUsecase.UpdateOffer(r.Context(), userID, id, updated, req.Hashtags); err != nil {
         writeError(w, http.StatusInternalServerError, "failed to update offer: "+err.Error())
         return
     }

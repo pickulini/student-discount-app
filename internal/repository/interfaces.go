@@ -219,13 +219,26 @@ type AntifraudRepository interface {
 // ---- Tags ----
 
 type TagRepository interface {
+    // Публичные (active)
     List(ctx context.Context) ([]domain.Tag, error)
+    ListPopular(ctx context.Context, limit int) ([]domain.TagPopular, error)
+    Search(ctx context.Context, query string, limit int) ([]domain.Tag, error)
     GetBySlug(ctx context.Context, slug string) (*domain.Tag, error)
     GetByIDs(ctx context.Context, ids []int64) ([]domain.Tag, error)
+
+    // Создание / поиск по слагу
+    Upsert(ctx context.Context, name, slug string, createdBy *int64) (*domain.Tag, error)
+
+    // Админ
+    ListAllAdmin(ctx context.Context, status string, limit, offset int) ([]domain.Tag, error)
+
     // Связь с офферами
     SetOfferTags(ctx context.Context, offerID int64, tagIDs []int64) error
     SetOfferTagsTx(ctx context.Context, tx pgx.Tx, offerID int64, tagIDs []int64) error
     GetTagsByOfferIDs(ctx context.Context, offerIDs []int64) (map[int64][]domain.Tag, error)
+
+    // Автомодерация: активировать pending-теги, привязанные к офферу
+    ActivateByOfferID(ctx context.Context, offerID int64) error
 }
 
 // ---- Friends ----

@@ -127,7 +127,15 @@ func (u *AdminUsecase) DeleteOffer(ctx context.Context, id int64) error {
 }
 func (u *AdminUsecase) ModerateOffer(ctx context.Context, id int64, action string, reason string) error {
     if action == "publish" {
-        return u.offerRepo.UpdateStatusWithReason(ctx, id, "published", "")
+        if err := u.offerRepo.UpdateStatusWithReason(ctx, id, "published", ""); err != nil {
+            return err
+        }
+        // Автомодерация тегов: pending → active
+        if err := u.tagRepo.ActivateByOfferID(ctx, id); err != nil {
+            log.Printf("failed to activate tags for offer %d: %v", id, err)
+            // не падаем — оффер уже опубликован
+        }
+        return nil
     } else if action == "reject" {
         if reason == "" {
             reason = "Предложение отклонено администратором"

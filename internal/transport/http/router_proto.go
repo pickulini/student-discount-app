@@ -54,6 +54,8 @@ func NewRouterProto(
     r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir("/app/uploads"))))
 	r.Get("/api/v1/offers/nearby", companyHandler.GetNearbyOffers)
     r.Get("/api/v1/tags", tagHandler.List)
+	r.Get("/api/v1/tags/popular", tagHandler.Popular)
+	r.Get("/api/v1/tags/search", tagHandler.Search)
     r.Get("/api/v1/users/by-username/{username}", userHandler.GetPublicProfile)
 
 	// Публичные страницы оплаты (эмуляция СБП)
@@ -150,6 +152,7 @@ func NewRouterProto(
 			// Статистика общая
 			r.Get("/api/v1/admin/statistics", adminHandler.GetStatistics)
 			r.Get("/api/v1/admin/audit-logs", auditHandler.List)
+			r.Get("/api/v1/admin/tags", tagHandler.AdminList)
             r.Post("/api/v1/admin/upload", uploadHandler.Upload)
 
 			// Поддержка (админ)

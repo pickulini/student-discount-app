@@ -6,6 +6,7 @@ const AdminOffers = () => {
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
+  const [pendingTagIDs, setPendingTagIDs] = useState(new Set());
   const [form, setForm] = useState({
     company_id: '',
     title: '',
@@ -25,9 +26,10 @@ const AdminOffers = () => {
 
   const fetchData = async () => {
     try {
-      const [offersRes, companiesRes] = await Promise.all([
+      const [offersRes, companiesRes, pendingRes] = await Promise.all([
         api.get('/admin/offers'),
         api.get('/admin/companies'),
+        api.get('/admin/tags?status=pending').catch(() => ({ data: [] })),
       ]);
       let offersData = offersRes.data || [];
       if (filterStatus !== 'all') {
@@ -35,6 +37,7 @@ const AdminOffers = () => {
       }
       setOffers(offersData);
       setCompanies(companiesRes.data || []);
+      setPendingTagIDs(new Set((pendingRes.data || []).map(t => t.id)));
     } catch (err) {
       console.error(err);
     } finally {
@@ -216,6 +219,7 @@ const AdminOffers = () => {
             <th className="p-2 text-left">Название</th>
             <th className="p-2 text-left">Скидка</th>
             <th className="p-2 text-left">Компания</th>
+            <th className="p-2 text-left">Теги</th>
             <th className="p-2 text-left">Статус</th>
             <th className="p-2 text-left">Причина</th>
             <th className="p-2 text-left">Действия</th>
@@ -227,6 +231,30 @@ const AdminOffers = () => {
               <td className="p-2">{offer.title}</td>
               <td className="p-2">{offer.discount_value}{offer.discount_type === 'percentage' ? '%' : ' ₽'}</td>
               <td className="p-2">{offer.company_id}</td>
+              <td className="p-2">
+                <div className="flex flex-wrap gap-1">
+                  {(offer.tags || []).map(tag => {
+                    const isPending = pendingTagIDs.has(tag.id);
+                    return (
+                      <span
+                        key={tag.id}
+                        title={isPending ? 'Новый тег — станет доступен после одобрения' : ''}
+                        className={`inline-block px-2 py-0.5 rounded text-xs border ${
+                          isPending
+                            ? 'bg-yellow-100 text-yellow-800 border-yellow-400 font-semibold'
+                            : 'bg-gray-100 text-gray-700 border-gray-300'
+                        }`}
+                      >
+                        #{tag.name}
+                        {isPending && ' ⚡'}
+                      </span>
+                    );
+                  })}
+                  {(!offer.tags || offer.tags.length === 0) && (
+                    <span className="text-xs text-gray-400">—</span>
+                  )}
+                </div>
+              </td>
               <td className="p-2">
                 <span className={`px-2 py-1 rounded text-white text-sm ${
                   offer.status === 'published' ? 'bg-green-500' :

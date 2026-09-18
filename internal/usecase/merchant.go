@@ -2,8 +2,10 @@ package usecase
 
 import (
     "context"
+    "strings"
     "your-project/internal/domain"
     "your-project/internal/repository"
+    "your-project/internal/util"
     "github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -15,7 +17,7 @@ type MerchantUsecase struct {
     userRepo         repository.UserRepository
     merchantAccRepo  repository.MerchantAccountRepository
     merchantTxRepo   repository.MerchantTransactionRepository
-    tagRepo         repository.TagRepository
+    tagRepo          repository.TagRepository
     db               *pgxpool.Pool
 }
 
@@ -81,7 +83,7 @@ func (u *MerchantUsecase) GetUserOffers(ctx context.Context, userID int64) ([]do
     return offers, nil
 }
 
-func (u *MerchantUsecase) CreateOffer(ctx context.Context, userID int64, offer *domain.Offer, tagIDs []int64) error {
+func (u *MerchantUsecase) CreateOffer(ctx context.Context, userID int64, offer *domain.Offer, hashtags []string) error {
     companyUsers, err := u.companyUserRepo.GetByUserID(ctx, userID)
     if err != nil {
         return err
@@ -100,12 +102,43 @@ func (u *MerchantUsecase) CreateOffer(ctx context.Context, userID int64, offer *
     if err := u.offerRepo.Create(ctx, offer); err != nil {
         return err
     }
-    if len(tagIDs) > 0 {
-        if err := u.tagRepo.SetOfferTags(ctx, offer.ID, tagIDs); err != nil {
+    if len(hashtags) > 0 {
+        if err := u.resolveAndSetTags(ctx, offer.ID, hashtags, userID); err != nil {
             return err
         }
     }
     return nil
+}
+
+// resolveAndSetTags парсит хештеги, upsert-ит теги (pending) и привязывает к офферу.
+func (u *MerchantUsecase) resolveAndSetTags(ctx context.Context, offerID int64, hashtags []string, userID int64) error {
+    seen := make(map[string]bool)
+    var tagIDs []int64
+
+    for _, raw := range hashtags {
+        clean := strings.TrimSpace(strings.TrimLeft(raw, "#@"))
+        if clean == "" {
+            continue
+        }
+        slug := util.SlugifyUsername(clean)
+        if slug == "" {
+            continue
+        }
+        if seen[slug] {
+            continue
+        }
+        seen[slug] = true
+
+        tag, err := u.tagRepo.Upsert(ctx, clean, slug, &userID)
+        if err != nil {
+            return err
+        }
+        tagIDs = append(tagIDs, tag.ID)
+        if len(tagIDs) >= 10 {
+            break
+        }
+    }
+    return u.tagRepo.SetOfferTags(ctx, offerID, tagIDs)
 }
 
 func (u *MerchantUsecase) SubmitForReview(ctx context.Context, userID, offerID int64) error {
@@ -207,7 +240,7 @@ func (u *MerchantUsecase) GetTransactions(ctx context.Context, userID int64, lim
 }
 
 // UpdateOffer обновляет предложение партнёра. Если было опубликовано — уходит на повторную модерацию.
-func (u *MerchantUsecase) UpdateOffer(ctx context.Context, userID, offerID int64, updated *domain.Offer, tagIDs []int64) error {
+func (u *MerchantUsecase) UpdateOffer(ctx context.Context, userID, offerID int64, updated *domain.Offer, hashtags []string) error {
     offer, err := u.offerRepo.GetByID(ctx, offerID)
     if err != nil {
         return domain.ErrUserNotFound
@@ -254,8 +287,8 @@ func (u *MerchantUsecase) UpdateOffer(ctx context.Context, userID, offerID int64
         return err
     }
 
-    if tagIDs != nil {
-        if err := u.tagRepo.SetOfferTags(ctx, offerID, tagIDs); err != nil {
+    if hashtags != nil {
+        if err := u.resolveAndSetTags(ctx, offerID, hashtags, userID); err != nil {
             return err
         }
     }

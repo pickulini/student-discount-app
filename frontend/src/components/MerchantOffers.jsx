@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import ImageUpload from './ImageUpload';
+import HashtagInput from './HashtagInput';
 
 const EMPTY_FORM = {
   company_id: '',
@@ -22,8 +23,7 @@ const EMPTY_FORM = {
 const MerchantOffers = () => {
   const [offers, setOffers] = useState([]);
   const [companies, setCompanies] = useState([]);
-  const [tags, setTags] = useState([]);
-  const [selectedTagIDs, setSelectedTagIDs] = useState([]);
+  const [hashtags, setHashtags] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -32,14 +32,12 @@ const MerchantOffers = () => {
 
   const fetchData = async () => {
     try {
-      const [offersRes, companiesRes, tagsRes] = await Promise.all([
+      const [offersRes, companiesRes] = await Promise.all([
         api.get('/merchant/offers'),
         api.get('/merchant/companies'),
-        api.get('/tags'),
       ]);
       setOffers(offersRes.data || []);
       setCompanies(companiesRes.data || []);
-      setTags(tagsRes.data || []);
     } catch (err) {
       console.error('Failed to load data:', err);
     } finally {
@@ -53,7 +51,7 @@ const MerchantOffers = () => {
 
   const resetForm = () => {
     setForm(EMPTY_FORM);
-    setSelectedTagIDs([]);
+    setHashtags([]);
     setEditingId(null);
     setError('');
   };
@@ -82,7 +80,7 @@ const MerchantOffers = () => {
       website: offer.website || '',
       working_hours: offer.working_hours || '',
     });
-    setSelectedTagIDs((offer.tags || []).map(t => t.id));
+    setHashtags((offer.tags || []).map(t => t.name));
     setEditingId(offer.id);
     setShowForm(true);
     setError('');
@@ -102,7 +100,7 @@ const MerchantOffers = () => {
       end_at: form.end_at ? new Date(form.end_at).toISOString() : '',
       bonus_allowed: form.bonus_allowed,
       max_bonus_percent: parseInt(form.max_bonus_percent || 0),
-      tag_ids: selectedTagIDs,
+      hashtags: hashtags,
       image_url: form.image_url || undefined,
       address: form.address || undefined,
       phone: form.phone || undefined,
@@ -311,25 +309,11 @@ const MerchantOffers = () => {
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm mb-1">Теги</label>
-              <div className="flex flex-wrap gap-2">
-                {tags.map(tag => (
-                  <button
-                    type="button"
-                    key={tag.id}
-                    onClick={() => setSelectedTagIDs(prev =>
-                      prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id]
-                    )}
-                    className={`px-3 py-1 rounded-full text-sm border ${
-                      selectedTagIDs.includes(tag.id)
-                        ? 'bg-blue-500 text-white border-blue-500'
-                        : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
-                    }`}
-                  >
-                    #{tag.name}
-                  </button>
-                ))}
-              </div>
+              <label className="block text-sm mb-1">Хештеги</label>
+              <HashtagInput value={hashtags} onChange={setHashtags} />
+              <p className="text-xs text-gray-500 mt-1">
+                Новые теги появятся в общем пуле после одобрения предложения модератором.
+              </p>
             </div>
 
             <div className="md:col-span-2 flex gap-2">
