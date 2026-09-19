@@ -110,6 +110,7 @@ type AdminCreateOfferRequest struct {
     BonusAllowed    *bool       `json:"bonus_allowed,omitempty"`
     MaxBonusPercent int         `json:"max_bonus_percent"`
     TagIDs          []int64     `json:"tag_ids,omitempty"`
+    Comment         string      `json:"comment,omitempty"`
     ImageURL        *string     `json:"image_url,omitempty"`
     Address         *string     `json:"address,omitempty"`
     Phone           *string     `json:"phone,omitempty"`
@@ -259,7 +260,6 @@ func (h *AdminHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
 
     updated := &domain.Offer{
         ID:              id,
-        CompanyID:       &companyID,
         Title:           req.Title,
         Description:     req.Description,
         DiscountType:    req.DiscountType,
@@ -275,12 +275,15 @@ func (h *AdminHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
         Website:         req.Website,
         WorkingHours:    req.WorkingHours,
     }
+    if companyID > 0 {
+        updated.CompanyID = &companyID
+    }
 
-    if err := h.adminUsecase.UpdateOffer(r.Context(), updated, req.TagIDs); err != nil {
-        writeError(w, http.StatusInternalServerError, "failed to update offer")
+    if err := h.adminUsecase.AdminEditOffer(r.Context(), id, updated, req.Comment); err != nil {
+        writeError(w, http.StatusInternalServerError, "failed to update offer: "+err.Error())
         return
     }
-    writeJSON(w, http.StatusOK, map[string]string{"message": "offer updated"})
+    writeJSON(w, http.StatusOK, map[string]string{"message": "offer updated, waiting partner approval"})
 }
 
 func (h *AdminHandler) DeleteOffer(w http.ResponseWriter, r *http.Request) {
@@ -407,4 +410,21 @@ func (h *AdminHandler) GetUserDetailedStats(w http.ResponseWriter, r *http.Reque
         return
     }
     writeJSON(w, http.StatusOK, stats)
+}
+
+
+// GET /api/v1/admin/offers/{id}
+func (h *AdminHandler) GetOfferDetail(w http.ResponseWriter, r *http.Request) {
+    idStr := chi.URLParam(r, "id")
+    id, err := strconv.ParseInt(idStr, 10, 64)
+    if err != nil {
+        writeError(w, http.StatusBadRequest, "invalid id")
+        return
+    }
+    offer, err := h.adminUsecase.AdminGetOffer(r.Context(), id)
+    if err != nil || offer == nil {
+        writeError(w, http.StatusNotFound, "offer not found")
+        return
+    }
+    writeJSON(w, http.StatusOK, offer)
 }

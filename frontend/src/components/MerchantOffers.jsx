@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import ImageUpload from './ImageUpload';
 import HashtagInput from './HashtagInput';
+import AdminEditDiffModal from './AdminEditDiffModal';
 
 const EMPTY_FORM = {
   company_id: '',
@@ -29,6 +30,7 @@ const MerchantOffers = () => {
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState('');
   const [form, setForm] = useState(EMPTY_FORM);
+  const [selectedDiffOffer, setSelectedDiffOffer] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -119,6 +121,33 @@ const MerchantOffers = () => {
       fetchData();
     } catch (err) {
       setError('Ошибка: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const handleAcceptEdits = async (offerId) => {
+    if (!confirm('Согласовать правки администратора и опубликовать?')) return;
+    try {
+      await api.post(`/merchant/offers/${offerId}/accept-edits`);
+      setSelectedDiffOffer(null);
+      fetchData();
+    } catch (err) {
+      alert('Ошибка: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const handleRejectEdits = async (offerId) => {
+    const comment = window.prompt('Что именно вас не устроило? (комментарий увидит администратор):');
+    if (comment === null) return;
+    if (!comment.trim()) {
+      alert('Укажите причину');
+      return;
+    }
+    try {
+      await api.post(`/merchant/offers/${offerId}/reject-edits`, { comment });
+      setSelectedDiffOffer(null);
+      fetchData();
+    } catch (err) {
+      alert('Ошибка: ' + (err.response?.data?.error || err.message));
     }
   };
 
@@ -358,9 +387,30 @@ const MerchantOffers = () => {
                 </span>
               </td>
               <td className="p-2 text-xs text-red-600">
-                {o.rejection_reason || '—'}
+                {o.status === 'pending_partner_approval' ? (
+                  <span className="text-purple-700">
+                    ⚠️ Админ изменил оффер
+                    {o.admin_edit_comment && (
+                      <span className="block text-gray-600 mt-0.5">
+                        «{o.admin_edit_comment}»
+                      </span>
+                    )}
+                  </span>
+                ) : (
+                  o.rejection_reason || '—'
+                )}
               </td>
               <td className="p-2 space-x-2">
+                {o.status === 'pending_partner_approval' && (
+                  <>
+                    <button
+                      onClick={() => setSelectedDiffOffer(o)}
+                      className="bg-purple-600 text-white px-2 py-1 rounded text-sm hover:bg-purple-700"
+                    >
+                      Посмотреть правки
+                    </button>
+                  </>
+                )}
                 {(o.status === 'draft' || o.status === 'published' || o.status === 'rejected') && (
                   <button
                     onClick={() => handleEdit(o)}
@@ -382,6 +432,14 @@ const MerchantOffers = () => {
           ))}
         </tbody>
       </table>
+      {selectedDiffOffer && (
+        <AdminEditDiffModal
+          offer={selectedDiffOffer}
+          onClose={() => setSelectedDiffOffer(null)}
+          onAccept={handleAcceptEdits}
+          onReject={handleRejectEdits}
+        />
+      )}
     </div>
   );
 };

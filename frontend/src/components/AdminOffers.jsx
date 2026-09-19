@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
+import AdminOfferDetailModal from './AdminOfferDetailModal';
 
 const AdminOffers = () => {
   const [offers, setOffers] = useState([]);
@@ -7,6 +8,7 @@ const AdminOffers = () => {
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
   const [pendingTagIDs, setPendingTagIDs] = useState(new Set());
+  const [selectedOfferId, setSelectedOfferId] = useState(null);
   const [form, setForm] = useState({
     company_id: '',
     title: '',
@@ -114,6 +116,7 @@ const AdminOffers = () => {
           <option value="all">Все</option>
           <option value="draft">Черновики</option>
           <option value="pending_review">На модерации</option>
+          <option value="pending_partner_approval">У партнёра на согласовании</option>
           <option value="published">Опубликованные</option>
           <option value="expired">Истекшие</option>
           <option value="archived">Архив</option>
@@ -204,6 +207,7 @@ const AdminOffers = () => {
           >
             <option value="draft">Черновик</option>
             <option value="pending_review">На модерации</option>
+          <option value="pending_partner_approval">У партнёра на согласовании</option>
             <option value="published">Опубликовано</option>
             <option value="archived">Архив</option>
           </select>
@@ -228,7 +232,14 @@ const AdminOffers = () => {
         <tbody>
           {offers.map(offer => (
             <tr key={offer.id} className="border-b">
-              <td className="p-2">{offer.title}</td>
+              <td className="p-2">
+                <button
+                  onClick={() => setSelectedOfferId(offer.id)}
+                  className="text-left text-blue-600 hover:underline font-medium"
+                >
+                  {offer.title}
+                </button>
+              </td>
               <td className="p-2">{offer.discount_value}{offer.discount_type === 'percentage' ? '%' : ' ₽'}</td>
               <td className="p-2">{offer.company_id}</td>
               <td className="p-2">
@@ -259,6 +270,7 @@ const AdminOffers = () => {
                 <span className={`px-2 py-1 rounded text-white text-sm ${
                   offer.status === 'published' ? 'bg-green-500' :
                   offer.status === 'pending_review' ? 'bg-yellow-500' :
+                  offer.status === 'pending_partner_approval' ? 'bg-purple-500' :
                   offer.status === 'archived' ? 'bg-gray-500' :
                   offer.status === 'expired' ? 'bg-red-300' : 'bg-gray-400'
                 }`}>
@@ -269,22 +281,12 @@ const AdminOffers = () => {
                 {offer.rejection_reason || '—'}
               </td>
               <td className="p-2 space-x-2">
-                {(offer.status && offer.status.toLowerCase() === 'pending_review') && (
-                  <>
-                    <button
-                      onClick={() => handleModerate(offer.id, 'publish')}
-                      className="bg-green-500 text-white px-2 py-1 rounded text-sm hover:bg-green-600"
-                    >
-                      Опубликовать
-                    </button>
-                    <button
-                      onClick={() => handleModerate(offer.id, 'reject')}
-                      className="bg-red-500 text-white px-2 py-1 rounded text-sm hover:bg-red-600"
-                    >
-                      Отклонить
-                    </button>
-                  </>
-                )}
+                <button
+                  onClick={() => setSelectedOfferId(offer.id)}
+                  className="bg-blue-500 text-white px-2 py-1 rounded text-sm hover:bg-blue-600"
+                >
+                  Открыть
+                </button>
                 {(offer.status === 'published' || offer.status === 'expired') && (
                   <button
                     onClick={() => handleArchive(offer.id)}
@@ -304,6 +306,14 @@ const AdminOffers = () => {
           ))}
         </tbody>
       </table>
+
+      {selectedOfferId && (
+        <AdminOfferDetailModal
+          offerId={selectedOfferId}
+          onClose={() => setSelectedOfferId(null)}
+          onUpdate={fetchData}
+        />
+      )}
     </div>
   );
 };

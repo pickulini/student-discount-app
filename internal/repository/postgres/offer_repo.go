@@ -3,6 +3,7 @@ package postgres
 import (
     "context"
     "database/sql"
+    "encoding/json"
     "log"
     "strconv"
     "strings"
@@ -24,6 +25,9 @@ func scanOffer(scan func(dest ...interface{}) error) (domain.Offer, error) {
     var o domain.Offer
     var imageURL, address, phone, website, workingHours, rejectionReason sql.NullString
     var companyID, organizerID, eventUniversityID sql.NullInt64
+    var adminEditedData []byte
+    var adminEditComment, partnerRejectComment sql.NullString
+
     err := scan(
         &o.ID, &companyID, &o.Title, &o.Description,
         &o.DiscountType, &o.DiscountValue, &o.SpecialPrice,
@@ -31,6 +35,7 @@ func scanOffer(scan func(dest ...interface{}) error) (domain.Offer, error) {
         &o.BonusAllowed, &o.MaxBonusPercent, &o.CreatedAt, &o.UpdatedAt,
         &imageURL, &address, &phone, &website, &workingHours, &rejectionReason,
         &o.IsEvent, &organizerID, &o.EventPrivacy, &eventUniversityID,
+        &adminEditedData, &adminEditComment, &partnerRejectComment,
     )
     if err != nil {
         return o, err
@@ -62,13 +67,22 @@ func scanOffer(scan func(dest ...interface{}) error) (domain.Offer, error) {
     if rejectionReason.Valid {
         o.RejectionReason = &rejectionReason.String
     }
+    if len(adminEditedData) > 0 {
+        o.AdminEditedData = json.RawMessage(adminEditedData)
+    }
+    if adminEditComment.Valid {
+        o.AdminEditComment = &adminEditComment.String
+    }
+    if partnerRejectComment.Valid {
+        o.PartnerRejectComment = &partnerRejectComment.String
+    }
     return o, nil
 }
 
-const offerColumns = `id, company_id, title, description, discount_type, discount_value, special_price, start_at, end_at, status, max_uses, current_uses, bonus_allowed, max_bonus_percent, created_at, updated_at, image_url, address, phone, website, working_hours, rejection_reason, is_event, organizer_id, event_privacy, event_university_id`
+const offerColumns = `id, company_id, title, description, discount_type, discount_value, special_price, start_at, end_at, status, max_uses, current_uses, bonus_allowed, max_bonus_percent, created_at, updated_at, image_url, address, phone, website, working_hours, rejection_reason, is_event, organizer_id, event_privacy, event_university_id, admin_edited_data, admin_edit_comment, partner_reject_comment`
 
 // Та же последовательность, но с префиксом "o." (для запросов с алиасами)
-const offerColumnsPrefixed = `o.id, o.company_id, o.title, o.description, o.discount_type, o.discount_value, o.special_price, o.start_at, o.end_at, o.status, o.max_uses, o.current_uses, o.bonus_allowed, o.max_bonus_percent, o.created_at, o.updated_at, o.image_url, o.address, o.phone, o.website, o.working_hours, o.rejection_reason, o.is_event, o.organizer_id, o.event_privacy, o.event_university_id`
+const offerColumnsPrefixed = `o.id, o.company_id, o.title, o.description, o.discount_type, o.discount_value, o.special_price, o.start_at, o.end_at, o.status, o.max_uses, o.current_uses, o.bonus_allowed, o.max_bonus_percent, o.created_at, o.updated_at, o.image_url, o.address, o.phone, o.website, o.working_hours, o.rejection_reason, o.is_event, o.organizer_id, o.event_privacy, o.event_university_id, o.admin_edited_data, o.admin_edit_comment, o.partner_reject_comment`
 
 func (r *OfferRepo) Create(ctx context.Context, o *domain.Offer) error {
     query := `INSERT INTO offers (company_id, title, description, discount_type, discount_value, start_at, end_at, status, max_uses, current_uses, bonus_allowed, max_bonus_percent, image_url, address, phone, website, working_hours, is_event, organizer_id, event_privacy, event_university_id) 
@@ -347,4 +361,58 @@ func (r *OfferRepo) ListEvents(ctx context.Context, organizerID *int64, status s
         return nil, err
     }
     return result, rows.Err()
+}
+
+// SetAdminEdits сохраняет JSONB-снимок админских правок и переводит оффер
+// в статус pending_partner_approval.
+func (r *OfferRepo) SetAdminEdits(ctx context.Context, id int64, data []byte, comment string) error {
+    query := `UPDATE offers
+              SET admin_edited_data = $1,
+                  admin_edit_comment = $2,
+                  status = 'pending_partner_approval',
+                  updated_at = NOW()
+              WHERE id = $3`
+    _, err := r.db.Pool.Exec(ctx, query, data, comment, id)
+    return err
+}
+
+// ApplyAdminEdits применяет admin_edited_data к основной записи и публикует оффер.
+func (r *OfferRepo) ApplyAdminEdits(ctx context.Context, id int64) error {
+    query := `UPDATE offers SET
+                  title = COALESCE(admin_edited_data->>'title', title),
+                  description = COALESCE(admin_edited_data->>'description', description),
+                  discount_type = COALESCE(admin_edited_data->>'discount_type', discount_type),
+                  discount_value = COALESCE((admin_edited_data->>'discount_value')::numeric, discount_value),
+                  special_price = COALESCE((admin_edited_data->>'special_price')::numeric, special_price),
+                  start_at = COALESCE((admin_edited_data->>'start_at')::timestamptz, start_at),
+                  end_at = COALESCE((admin_edited_data->>'end_at')::timestamptz, end_at),
+                  bonus_allowed = COALESCE((admin_edited_data->>'bonus_allowed')::boolean, bonus_allowed),
+                  max_bonus_percent = COALESCE((admin_edited_data->>'max_bonus_percent')::int, max_bonus_percent),
+                  max_uses = COALESCE((admin_edited_data->>'max_uses')::int, max_uses),
+                  address = COALESCE(admin_edited_data->>'address', address),
+                  phone = COALESCE(admin_edited_data->>'phone', phone),
+                  website = COALESCE(admin_edited_data->>'website', website),
+                  working_hours = COALESCE(admin_edited_data->>'working_hours', working_hours),
+                  image_url = COALESCE(admin_edited_data->>'image_url', image_url),
+                  admin_edited_data = NULL,
+                  admin_edit_comment = NULL,
+                  partner_reject_comment = NULL,
+                  status = 'published',
+                  updated_at = NOW()
+              WHERE id = $1`
+    _, err := r.db.Pool.Exec(ctx, query, id)
+    return err
+}
+
+// ClearAdminEdits отклоняет правки админа, возвращает оффер на повторную модерацию.
+func (r *OfferRepo) ClearAdminEdits(ctx context.Context, id int64, partnerComment string) error {
+    query := `UPDATE offers
+              SET admin_edited_data = NULL,
+                  admin_edit_comment = NULL,
+                  partner_reject_comment = $1,
+                  status = 'pending_review',
+                  updated_at = NOW()
+              WHERE id = $2`
+    _, err := r.db.Pool.Exec(ctx, query, partnerComment, id)
+    return err
 }

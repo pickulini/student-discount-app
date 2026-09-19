@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+    "encoding/json"
+    "time"
+)
 
 type Offer struct {
     ID              int64      `json:"id"`
@@ -34,6 +37,13 @@ type Offer struct {
     AttendeesCount    int        `json:"attendees_count,omitempty"`
     MyAttendeeStatus  *string    `json:"my_attendee_status,omitempty"`
 
+    // Админские правки до подтверждения партнёром
+    AdminEditedData      json.RawMessage `json:"admin_edited_data,omitempty"` // JSONB с полями, которые админ изменил
+    AdminEditComment     *string `json:"admin_edit_comment,omitempty"`
+    PartnerRejectComment *string `json:"partner_reject_comment,omitempty"`
+
     CreatedAt time.Time `json:"created_at"`
     UpdatedAt time.Time `json:"updated_at"`
 }
+
+const OfferStatusPendingPartnerApproval = "pending_partner_approval"

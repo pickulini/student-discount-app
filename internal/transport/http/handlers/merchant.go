@@ -300,3 +300,46 @@ func (h *MerchantHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
     }
     writeJSON(w, http.StatusOK, map[string]string{"message": "offer updated"})
 }
+
+// POST /api/v1/merchant/offers/{id}/accept-edits
+func (h *MerchantHandler) AcceptAdminEdits(w http.ResponseWriter, r *http.Request) {
+    id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+    if err != nil {
+        writeError(w, http.StatusBadRequest, "invalid id")
+        return
+    }
+    userID, ok := r.Context().Value(middleware.UserIDKey).(int64)
+    if !ok {
+        writeError(w, http.StatusUnauthorized, "unauthorized")
+        return
+    }
+    if err := h.merchantUsecase.AcceptAdminEdits(r.Context(), userID, id); err != nil {
+        writeError(w, http.StatusBadRequest, err.Error())
+        return
+    }
+    writeJSON(w, http.StatusOK, map[string]string{"message": "accepted, offer published"})
+}
+
+// POST /api/v1/merchant/offers/{id}/reject-edits
+func (h *MerchantHandler) RejectAdminEdits(w http.ResponseWriter, r *http.Request) {
+    id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+    if err != nil {
+        writeError(w, http.StatusBadRequest, "invalid id")
+        return
+    }
+    var req struct {
+        Comment string `json:"comment"`
+    }
+    json.NewDecoder(r.Body).Decode(&req)
+
+    userID, ok := r.Context().Value(middleware.UserIDKey).(int64)
+    if !ok {
+        writeError(w, http.StatusUnauthorized, "unauthorized")
+        return
+    }
+    if err := h.merchantUsecase.RejectAdminEdits(r.Context(), userID, id, req.Comment); err != nil {
+        writeError(w, http.StatusBadRequest, err.Error())
+        return
+    }
+    writeJSON(w, http.StatusOK, map[string]string{"message": "rejected"})
+}

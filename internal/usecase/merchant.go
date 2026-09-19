@@ -2,6 +2,7 @@ package usecase
 
 import (
     "context"
+    "errors"
     "log"
     "strings"
     "your-project/internal/domain"
@@ -315,5 +316,100 @@ func (u *MerchantUsecase) UpdateOffer(ctx context.Context, userID, offerID int64
         }
     }
 
+    return nil
+}
+
+// AcceptAdminEdits — партнёр принимает правки админа, оффер публикуется.
+func (u *MerchantUsecase) AcceptAdminEdits(ctx context.Context, userID, offerID int64) error {
+    offer, err := u.offerRepo.GetByID(ctx, offerID)
+    if err != nil || offer == nil {
+        return domain.ErrUserNotFound
+    }
+    // Проверка прав
+    if offer.CompanyID != nil {
+        companyUsers, err := u.companyUserRepo.GetByUserID(ctx, userID)
+        if err != nil {
+            return err
+        }
+        found := false
+        for _, cu := range companyUsers {
+            if cu.CompanyID == *offer.CompanyID {
+                found = true
+                break
+            }
+        }
+        if !found {
+            return domain.ErrUnauthorized
+        }
+    } else if offer.OrganizerID == nil || *offer.OrganizerID != userID {
+        return domain.ErrUnauthorized
+    }
+
+    if offer.Status != domain.OfferStatusPendingPartnerApproval {
+        return errors.New("оффер не на подтверждении")
+    }
+
+    if err := u.offerRepo.ApplyAdminEdits(ctx, offerID); err != nil {
+        return err
+    }
+
+    // Уведомление админам
+    if u.notifUC != nil {
+        _ = u.notifUC.NotifyAdmins(ctx, CreateNotificationInput{
+            Type:          "offer_partner_accepted",
+            Title:         "Партнёр согласовал правки: " + offer.Title,
+            Link:          "/admin/offers",
+            ActorID:       &userID,
+            ReferenceType: "offer",
+            ReferenceID:   &offerID,
+        })
+    }
+    return nil
+}
+
+// RejectAdminEdits — партнёр отклоняет правки, оффер возвращается на модерацию.
+func (u *MerchantUsecase) RejectAdminEdits(ctx context.Context, userID, offerID int64, comment string) error {
+    offer, err := u.offerRepo.GetByID(ctx, offerID)
+    if err != nil || offer == nil {
+        return domain.ErrUserNotFound
+    }
+    if offer.CompanyID != nil {
+        companyUsers, err := u.companyUserRepo.GetByUserID(ctx, userID)
+        if err != nil {
+            return err
+        }
+        found := false
+        for _, cu := range companyUsers {
+            if cu.CompanyID == *offer.CompanyID {
+                found = true
+                break
+            }
+        }
+        if !found {
+            return domain.ErrUnauthorized
+        }
+    } else if offer.OrganizerID == nil || *offer.OrganizerID != userID {
+        return domain.ErrUnauthorized
+    }
+
+    if offer.Status != domain.OfferStatusPendingPartnerApproval {
+        return errors.New("оффер не на подтверждении")
+    }
+
+    if err := u.offerRepo.ClearAdminEdits(ctx, offerID, comment); err != nil {
+        return err
+    }
+
+    if u.notifUC != nil {
+        _ = u.notifUC.NotifyAdmins(ctx, CreateNotificationInput{
+            Type:          "offer_partner_rejected",
+            Title:         "Партнёр отклонил правки: " + offer.Title,
+            Body:          comment,
+            Link:          "/admin/offers",
+            ActorID:       &userID,
+            ReferenceType: "offer",
+            ReferenceID:   &offerID,
+        })
+    }
     return nil
 }

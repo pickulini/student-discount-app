@@ -169,6 +169,7 @@ func NewRouterProto(
 
 			// Предложения
 			r.Get("/api/v1/admin/offers", adminHandler.ListOffers)
+			r.Get("/api/v1/admin/offers/{id}", adminHandler.GetOfferDetail)
 			r.Post("/api/v1/admin/offers", adminHandler.CreateOffer)
 			r.Put("/api/v1/admin/offers/{id}", adminHandler.UpdateOffer)
 			r.Delete("/api/v1/admin/offers", adminHandler.DeleteOffer)
@@ -200,6 +201,8 @@ func NewRouterProto(
 			r.Post("/api/v1/merchant/offers", merchantHandler.CreateOffer)
             r.Put("/api/v1/merchant/offers/{id}", merchantHandler.UpdateOffer)
 			r.Post("/api/v1/merchant/offers/{id}/submit", merchantHandler.SubmitForReview)
+			r.Post("/api/v1/merchant/offers/{id}/accept-edits", merchantHandler.AcceptAdminEdits)
+			r.Post("/api/v1/merchant/offers/{id}/reject-edits", merchantHandler.RejectAdminEdits)
 			r.Get("/api/v1/merchant/statistics/daily", merchantHandler.GetDailyStats)
 			r.Get("/api/v1/merchant/balance", merchantHandler.GetBalance)
 			r.Get("/api/v1/merchant/transactions", merchantHandler.GetTransactions)

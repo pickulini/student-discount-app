@@ -79,7 +79,7 @@ func main() {
     referralUsecase := usecase.NewReferralUsecase(referralRepo, userRepo)
 	notificationUsecase := usecase.NewNotificationUsecase(notificationRepo, userRepo, sseHub)
     supportUsecase := usecase.NewSupportUsecase(ticketRepo, msgRepo, userRepo, notificationUsecase)
-    adminUsecase := usecase.NewAdminUsecase(userRepo, companyRepo, locationRepo, offerRepo, studentVerifRepo, accountRepo, bonusRepo, referralRepo, tagRepo, notificationUsecase, companySubRepo, db.Pool)
+    adminUsecase := usecase.NewAdminUsecase(userRepo, companyRepo, locationRepo, offerRepo, studentVerifRepo, accountRepo, bonusRepo, referralRepo, tagRepo, companyUserRepo, notificationUsecase, companySubRepo, db.Pool)
     merchantUsecase := usecase.NewMerchantUsecase(companyRepo, locationRepo, offerRepo, companyUserRepo, userRepo, merchantAccountRepo, merchantTxRepo, tagRepo, notificationUsecase, db.Pool)
     auditUsecase := usecase.NewAuditUsecase(auditRepo)
     tagUsecase := usecase.NewTagUsecase(tagRepo)

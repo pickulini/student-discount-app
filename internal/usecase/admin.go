@@ -2,6 +2,8 @@ package usecase
 
 import (
     "context"
+    "errors"
+    "encoding/json"
     "log"
     "time"
     "your-project/internal/domain"
@@ -19,6 +21,7 @@ type AdminUsecase struct {
     bonusRepo        repository.BonusRepository
     referralRepo     repository.ReferralRepository
     tagRepo          repository.TagRepository
+    companyUserRepo  repository.CompanyUserRepository
     notifUC          *NotificationUsecase
     subRepo          repository.CompanySubscriptionRepository
     db               *pgxpool.Pool
@@ -34,6 +37,7 @@ func NewAdminUsecase(
     bonusRepo repository.BonusRepository,
     referralRepo repository.ReferralRepository,
     tagRepo repository.TagRepository,
+    companyUserRepo repository.CompanyUserRepository,
     notifUC *NotificationUsecase,
     subRepo repository.CompanySubscriptionRepository,
     db *pgxpool.Pool,
@@ -48,6 +52,7 @@ func NewAdminUsecase(
         bonusRepo:        bonusRepo,
         referralRepo:     referralRepo,
         tagRepo:          tagRepo,
+        companyUserRepo:  companyUserRepo,
         notifUC:          notifUC,
         subRepo:          subRepo,
         db:               db,
@@ -512,4 +517,69 @@ func (u *AdminUsecase) notifySubscribersAboutPublished(ctx context.Context, offe
             ReferenceID:   &offerID,
         })
     }
+}
+
+// AdminEditOffer — админ редактирует оффер. Переводит в pending_partner_approval
+// и уведомляет партнёра.
+func (u *AdminUsecase) AdminEditOffer(ctx context.Context, offerID int64, updated *domain.Offer, comment string) error {
+    // 1. Получаем исходный оффер (нужен для проверки + уведомления партнёру)
+    existing, err := u.offerRepo.GetByID(ctx, offerID)
+    if err != nil || existing == nil {
+        return errors.New("offer not found")
+    }
+
+    // 2. Формируем JSON с изменениями (полный снимок редактируемых полей)
+    snapshot := map[string]interface{}{
+        "title":             updated.Title,
+        "description":       updated.Description,
+        "discount_type":     updated.DiscountType,
+        "discount_value":    updated.DiscountValue,
+        "start_at":          updated.StartAt.Format(time.RFC3339),
+        "end_at":            updated.EndAt.Format(time.RFC3339),
+        "bonus_allowed":     updated.BonusAllowed,
+        "max_bonus_percent": updated.MaxBonusPercent,
+        "address":           updated.Address,
+        "phone":             updated.Phone,
+        "website":           updated.Website,
+        "working_hours":     updated.WorkingHours,
+        "image_url":         updated.ImageURL,
+    }
+    if updated.MaxUses != nil {
+        snapshot["max_uses"] = *updated.MaxUses
+    }
+    if updated.SpecialPrice != nil {
+        snapshot["special_price"] = *updated.SpecialPrice
+    }
+
+    dataJSON, err := json.Marshal(snapshot)
+    if err != nil {
+        return err
+    }
+
+    if err := u.offerRepo.SetAdminEdits(ctx, offerID, dataJSON, comment); err != nil {
+        return err
+    }
+
+    // 3. Уведомляем партнёра компании
+    if u.notifUC != nil && existing.CompanyID != nil {
+        partnerIDs, _ := u.companyUserRepo.GetByCompanyID(ctx, *existing.CompanyID)
+        for _, pu := range partnerIDs {
+            uid := pu.UserID
+            _ = u.notifUC.Create(ctx, CreateNotificationInput{
+                UserID:        uid,
+                Type:          "offer_admin_edited",
+                Title:         "Админ изменил ваш оффер: " + existing.Title,
+                Body:          comment,
+                Link:          "/merchant/offers",
+                ReferenceType: "offer",
+                ReferenceID:   &offerID,
+            })
+        }
+    }
+    return nil
+}
+
+// AdminGetOffer — детали оффера для админской модалки
+func (u *AdminUsecase) AdminGetOffer(ctx context.Context, id int64) (*domain.Offer, error) {
+    return u.offerRepo.GetByID(ctx, id)
 }

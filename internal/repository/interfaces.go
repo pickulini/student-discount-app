@@ -90,6 +90,9 @@ type OfferRepository interface {
     UpdateStatusWithReason(ctx context.Context, id int64, status string, reason string) error
     ExpireOffers(ctx context.Context) error
     ListEvents(ctx context.Context, organizerID *int64, status string, limit, offset int) ([]domain.Offer, error)
+    SetAdminEdits(ctx context.Context, id int64, data []byte, comment string) error
+    ApplyAdminEdits(ctx context.Context, id int64) error
+    ClearAdminEdits(ctx context.Context, id int64, partnerComment string) error
 }
 
 // ---- Order ----
