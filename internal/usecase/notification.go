@@ -160,3 +160,31 @@ func (u *NotificationUsecase) GetUserForSettings(ctx context.Context, userID int
 func (u *NotificationUsecase) UpdateSettings(ctx context.Context, userID int64, enabled, friends, events, offers *bool) error {
     return u.userRepo.UpdateNotificationSettings(ctx, userID, enabled, friends, events, offers)
 }
+
+func (u *NotificationUsecase) Delete(ctx context.Context, id, userID int64) error {
+    return u.notifRepo.Delete(ctx, id, userID)
+}
+
+// NotifyAdmins — создаёт уведомление каждому админу.
+func (u *NotificationUsecase) NotifyAdmins(ctx context.Context, in CreateNotificationInput) error {
+    adminIDs, err := u.userRepo.ListAdminIDs(ctx)
+    if err != nil {
+        return err
+    }
+    for _, adminID := range adminIDs {
+        copyIn := in
+        copyIn.UserID = adminID
+        _ = u.Create(ctx, copyIn)
+    }
+    return nil
+}
+
+// BroadcastSupportMessage — рассылает SSE-событие support_message всем.
+func (u *NotificationUsecase) BroadcastSupportMessage(payload interface{}) {
+    u.hub.Broadcast("support_message", payload)
+}
+
+// BroadcastAdminEvent — SSE-событие для админов (новая модерация и т.п.)
+func (u *NotificationUsecase) BroadcastAdminEvent(eventType string, payload interface{}) {
+    u.hub.Broadcast(eventType, payload)
+}

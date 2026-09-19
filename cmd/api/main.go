@@ -77,15 +77,15 @@ func main() {
     orderUsecase := usecase.NewOrderUsecase(orderRepo, offerRepo, userRepo, accountRepo, ledgerRepo, bonusRepo, merchantAccountRepo, merchantTxRepo, eventAttendeeRepo, db.Pool)
     paymentUsecase := usecase.NewPaymentUsecase(accountRepo, ledgerRepo, bonusRepo, paymentRepo)
     referralUsecase := usecase.NewReferralUsecase(referralRepo, userRepo)
-    supportUsecase := usecase.NewSupportUsecase(ticketRepo, msgRepo, userRepo)
 	notificationUsecase := usecase.NewNotificationUsecase(notificationRepo, userRepo, sseHub)
+    supportUsecase := usecase.NewSupportUsecase(ticketRepo, msgRepo, userRepo, notificationUsecase)
     adminUsecase := usecase.NewAdminUsecase(userRepo, companyRepo, locationRepo, offerRepo, studentVerifRepo, accountRepo, bonusRepo, referralRepo, tagRepo, notificationUsecase, companySubRepo, db.Pool)
-    merchantUsecase := usecase.NewMerchantUsecase(companyRepo, locationRepo, offerRepo, companyUserRepo, userRepo, merchantAccountRepo, merchantTxRepo, tagRepo, db.Pool)
+    merchantUsecase := usecase.NewMerchantUsecase(companyRepo, locationRepo, offerRepo, companyUserRepo, userRepo, merchantAccountRepo, merchantTxRepo, tagRepo, notificationUsecase, db.Pool)
     auditUsecase := usecase.NewAuditUsecase(auditRepo)
     tagUsecase := usecase.NewTagUsecase(tagRepo)
     friendUsecase := usecase.NewFriendUsecase(friendshipRepo, userRepo, notificationUsecase)
 	subscriptionUsecase := usecase.NewSubscriptionUsecase(companySubRepo, companyRepo, userRepo)
-	eventUsecase := usecase.NewEventUsecase(offerRepo, orderUsecase, userRepo, eventAttendeeRepo, friendshipRepo, companySubRepo)
+	eventUsecase := usecase.NewEventUsecase(offerRepo, orderUsecase, userRepo, eventAttendeeRepo, friendshipRepo, companySubRepo, notificationUsecase)
 
     // Handlers
     walletHandler := handlers.NewWalletHandler(accountRepo, bonusRepo)

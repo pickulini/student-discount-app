@@ -310,3 +310,20 @@ func (r *UserRepo) UpdateNotificationSettings(ctx context.Context, userID int64,
     _, err := r.db.Pool.Exec(ctx, query, enabled, friends, events, offers, userID)
     return err
 }
+
+func (r *UserRepo) ListAdminIDs(ctx context.Context) ([]int64, error) {
+    rows, err := r.db.Pool.Query(ctx, `SELECT id FROM users WHERE role = 'admin' AND is_active = true`)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+    var ids []int64
+    for rows.Next() {
+        var id int64
+        if err := rows.Scan(&id); err != nil {
+            return nil, err
+        }
+        ids = append(ids, id)
+    }
+    return ids, rows.Err()
+}

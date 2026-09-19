@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import NotificationBell from './NotificationBell';
 
 // SVG иконки (уменьшенные)
 const HomeIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1h-2z" /></svg>;
@@ -74,6 +75,7 @@ const Layout = () => {
                   </Link>
                 )}
                 <span className="text-gray-500 text-xs px-1">| {user.full_name}</span>
+                <NotificationBell />
                 <button onClick={handleLogout} className="text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 transition">Выйти</button>
               </>
             ) : (
@@ -113,6 +115,7 @@ const Layout = () => {
                   )}
                   <div className="border-t pt-2 mt-1 flex items-center justify-between">
                     <span className="text-gray-600 text-sm">{user.full_name}</span>
+                    <NotificationBell />
                     <button onClick={handleLogout} className="text-red-500 hover:text-red-700 px-3 py-1 rounded hover:bg-red-50 transition">Выйти</button>
                   </div>
                 </>

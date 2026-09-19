@@ -7,20 +7,23 @@ import (
 )
 
 type SupportUsecase struct {
-    ticketRepo  repository.SupportTicketRepository
-    msgRepo     repository.SupportMessageRepository
-    userRepo    repository.UserRepository
+    ticketRepo repository.SupportTicketRepository
+    msgRepo    repository.SupportMessageRepository
+    userRepo   repository.UserRepository
+    notifUC    *NotificationUsecase
 }
 
 func NewSupportUsecase(
     ticketRepo repository.SupportTicketRepository,
     msgRepo repository.SupportMessageRepository,
     userRepo repository.UserRepository,
+    notifUC *NotificationUsecase,
 ) *SupportUsecase {
     return &SupportUsecase{
         ticketRepo: ticketRepo,
         msgRepo:    msgRepo,
         userRepo:   userRepo,
+        notifUC:    notifUC,
     }
 }
 
@@ -45,6 +48,21 @@ func (u *SupportUsecase) CreateTicket(ctx context.Context, userID int64, subject
     if err := u.msgRepo.Create(ctx, msg); err != nil {
         return nil, err
     }
+
+    // Уведомление админам
+    if u.notifUC != nil {
+        _ = u.notifUC.NotifyAdmins(ctx, CreateNotificationInput{
+            Type:          "new_support_ticket",
+            Title:         "Новое обращение: " + subject,
+            Link:          "/admin/support",
+            ReferenceType: "support_ticket",
+            ReferenceID:   &ticket.ID,
+        })
+        u.notifUC.BroadcastAdminEvent("new_support_ticket", map[string]interface{}{
+            "ticket_id": ticket.ID,
+            "subject":   subject,
+        })
+    }
     return ticket, nil
 }
 
@@ -61,6 +79,44 @@ func (u *SupportUsecase) AddMessage(ctx context.Context, ticketID, userID int64,
     if err := u.msgRepo.Create(ctx, msg); err != nil {
         return nil, err
     }
+
+    if u.notifUC != nil {
+        // Загружаем тикет, чтобы понять кому слать
+        ticket, err := u.ticketRepo.GetByID(ctx, ticketID)
+        if err == nil && ticket != nil {
+            // Если сообщение от админа (isInternal=true) — уведомляем владельца
+            // Если от юзера — уведомляем всех админов
+            if isInternal {
+                _ = u.notifUC.Create(ctx, CreateNotificationInput{
+                    UserID:        ticket.UserID,
+                    Type:          "support_reply",
+                    Title:         "Ответ поддержки по обращению: " + ticket.Subject,
+                    Link:          "/support",
+                    ActorID:       &userID,
+                    ReferenceType: "support_ticket",
+                    ReferenceID:   &ticketID,
+                })
+            } else {
+                _ = u.notifUC.NotifyAdmins(ctx, CreateNotificationInput{
+                    Type:          "support_message",
+                    Title:         "Новое сообщение в обращении: " + ticket.Subject,
+                    Link:          "/admin/support",
+                    ActorID:       &userID,
+                    ReferenceType: "support_ticket",
+                    ReferenceID:   &ticketID,
+                })
+            }
+            // Broadcast в SSE для real-time обновления чата
+            u.notifUC.BroadcastSupportMessage(map[string]interface{}{
+                "ticket_id":   ticketID,
+                "user_id":     userID,
+                "message":     message,
+                "is_internal": isInternal,
+                "created_at":  msg.CreatedAt,
+            })
+        }
+    }
+
     return msg, nil
 }
 

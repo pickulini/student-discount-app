@@ -14,17 +14,23 @@ const UserIDKey contextKey = "user_id"
 func Auth(jwtManager *crypto.JWTManager) func(http.Handler) http.Handler {
     return func(next http.Handler) http.Handler {
         return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+            tokenString := ""
             authHeader := r.Header.Get("Authorization")
-            if authHeader == "" {
+            if authHeader != "" {
+                parts := strings.Split(authHeader, " ")
+                if len(parts) == 2 && parts[0] == "Bearer" {
+                    tokenString = parts[1]
+                }
+            }
+            // fallback для SSE (EventSource не умеет кастомные заголовки)
+            if tokenString == "" {
+                tokenString = r.URL.Query().Get("token")
+            }
+            if tokenString == "" {
                 writeError(w, http.StatusUnauthorized, "missing token")
                 return
             }
-            parts := strings.Split(authHeader, " ")
-            if len(parts) != 2 || parts[0] != "Bearer" {
-                writeError(w, http.StatusUnauthorized, "invalid token format")
-                return
-            }
-            claims, err := jwtManager.Verify(parts[1])
+            claims, err := jwtManager.Verify(tokenString)
             if err != nil {
                 writeError(w, http.StatusUnauthorized, "invalid or expired token")
                 return

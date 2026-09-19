@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
 import Layout from './components/Layout';
 import Login from './components/Login';
 import Register from './components/Register';
@@ -12,6 +13,7 @@ import Friends from './components/Friends';
 import PublicProfile from './components/PublicProfile';
 import Subscriptions from './components/Subscriptions';
 import Events from './components/Events';
+import Notifications from './components/Notifications';
 import EventForm from './components/EventForm';
 import Order from './components/Order';
 import TransactionHistory from './components/TransactionHistory';
@@ -34,6 +36,7 @@ import AdminAudit from './components/AdminAudit';
 function App() {
   return (
     <AuthProvider>
+      <NotificationProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Layout />}>
@@ -46,6 +49,7 @@ function App() {
             <Route path="friends" element={<Friends />} />
             <Route path="subscriptions" element={<Subscriptions />} />
             <Route path="events" element={<Events />} />
+            <Route path="notifications" element={<Notifications />} />
             <Route path="events/new" element={<EventForm />} />
             <Route path=":handle" element={<PublicProfile />} />
             <Route path="order" element={<Order />} />
@@ -70,6 +74,7 @@ function App() {
           </Route>
         </Routes>
       </BrowserRouter>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

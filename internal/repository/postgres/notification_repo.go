@@ -193,3 +193,10 @@ func (r *NotificationRepo) DeleteOld(ctx context.Context, days int) (int, error)
     }
     return int(tag.RowsAffected()), nil
 }
+
+func (r *NotificationRepo) Delete(ctx context.Context, id, userID int64) error {
+    _, err := r.db.Pool.Exec(ctx,
+        `DELETE FROM notifications WHERE id = $1 AND user_id = $2`,
+        id, userID)
+    return err
+}

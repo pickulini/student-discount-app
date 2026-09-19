@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import UserStatsModal from './UserStatsModal';
+import { useNotifications } from '../context/NotificationContext';
 
 const AdminSupport = () => {
   const [tickets, setTickets] = useState([]);
@@ -10,6 +11,7 @@ const AdminSupport = () => {
   const [newMessage, setNewMessage] = useState('');
   const [status, setStatus] = useState('');
   const [statsUserId, setStatsUserId] = useState(null);
+  const { events, reconnectCount } = useNotifications(true);
 
   const fetchTickets = async () => {
     try {
@@ -34,6 +36,31 @@ const AdminSupport = () => {
   useEffect(() => {
     fetchTickets();
   }, []);
+
+  // realtime: support_message -> обновить открытый тикет и список
+  useEffect(() => {
+    if (!events.support_message) return;
+    const payload = events.support_message.payload;
+    if (selectedTicket && payload.ticket_id === selectedTicket.id) {
+      fetchMessages(selectedTicket.id);
+    }
+    fetchTickets();
+  }, [events.support_message]);
+
+  // realtime: new_support_ticket -> обновить список
+  useEffect(() => {
+    if (!events.new_support_ticket) return;
+    fetchTickets();
+  }, [events.new_support_ticket]);
+
+  // При переподключении SSE — перечитываем всё
+  useEffect(() => {
+    if (reconnectCount === 0) return;
+    fetchTickets();
+    if (selectedTicket) {
+      fetchMessages(selectedTicket.id);
+    }
+  }, [reconnectCount]);
 
   const openTicket = (ticket) => {
     setSelectedTicket(ticket);

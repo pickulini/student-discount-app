@@ -17,6 +17,7 @@ type UserRepository interface {
     GetByUsername(ctx context.Context, username string) (*domain.User, error)
     UpdateProfile(ctx context.Context, userID int64, nickname, username, avatarURL *string, privacyAllowSubscriptions *bool) error
     UpdateNotificationSettings(ctx context.Context, userID int64, enabled, friends, events, offers *bool) error
+    ListAdminIDs(ctx context.Context) ([]int64, error)
     Update(ctx context.Context, user *domain.User) error
     UpdateStudentStatus(ctx context.Context, userID int64, status string) error
     UpdateBalance(ctx context.Context, userID int64, amount float64) error
@@ -302,5 +303,6 @@ type NotificationRepository interface {
     CountUnread(ctx context.Context, userID int64) (int, error)
     MarkRead(ctx context.Context, id, userID int64) error
     MarkAllRead(ctx context.Context, userID int64) error
+    Delete(ctx context.Context, id, userID int64) error
     DeleteOld(ctx context.Context, days int) (int, error)
 }

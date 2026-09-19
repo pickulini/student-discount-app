@@ -3,6 +3,7 @@ package postgres
 import (
     "context"
     "database/sql"
+    "log"
     "strconv"
     "strings"
     "github.com/jackc/pgx/v5"
@@ -72,13 +73,22 @@ const offerColumnsPrefixed = `o.id, o.company_id, o.title, o.description, o.disc
 func (r *OfferRepo) Create(ctx context.Context, o *domain.Offer) error {
     query := `INSERT INTO offers (company_id, title, description, discount_type, discount_value, start_at, end_at, status, max_uses, current_uses, bonus_allowed, max_bonus_percent, image_url, address, phone, website, working_hours, is_event, organizer_id, event_privacy, event_university_id) 
               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) RETURNING id, created_at, updated_at`
+
+    eventPrivacy := o.EventPrivacy
+    if eventPrivacy == "" {
+        eventPrivacy = "public"
+    }
+
     err := r.db.Pool.QueryRow(ctx, query,
         o.CompanyID, o.Title, o.Description, o.DiscountType, o.DiscountValue,
         o.StartAt, o.EndAt, o.Status, o.MaxUses, o.CurrentUses,
         o.BonusAllowed, o.MaxBonusPercent,
         o.ImageURL, o.Address, o.Phone, o.Website, o.WorkingHours,
-        o.IsEvent, o.OrganizerID, o.EventPrivacy, o.EventUniversityID,
+        o.IsEvent, o.OrganizerID, eventPrivacy, o.EventUniversityID,
     ).Scan(&o.ID, &o.CreatedAt, &o.UpdatedAt)
+    if err != nil {
+        log.Printf("OfferRepo.Create SQL error: %v", err)
+    }
     return err
 }
 

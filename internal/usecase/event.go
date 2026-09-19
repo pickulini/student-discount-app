@@ -17,6 +17,7 @@ type EventUsecase struct {
     attendeeRepo   repository.EventAttendeeRepository
     friendshipRepo repository.FriendshipRepository
     subRepo        repository.CompanySubscriptionRepository
+    notifUC        *NotificationUsecase
 }
 
 func NewEventUsecase(
@@ -26,6 +27,7 @@ func NewEventUsecase(
     attendeeRepo repository.EventAttendeeRepository,
     friendshipRepo repository.FriendshipRepository,
     subRepo repository.CompanySubscriptionRepository,
+    notifUC *NotificationUsecase,
 ) *EventUsecase {
     return &EventUsecase{
         offerRepo:      offerRepo,
@@ -34,6 +36,7 @@ func NewEventUsecase(
         attendeeRepo:   attendeeRepo,
         friendshipRepo: friendshipRepo,
         subRepo:        subRepo,
+        notifUC:        notifUC,
     }
 }
 
@@ -143,7 +146,23 @@ func (u *EventUsecase) SubmitForReview(ctx context.Context, userID, eventID int6
     if event.Status != "draft" {
         return errors.New("ивент нельзя отправить на модерацию в текущем статусе")
     }
-    return u.offerRepo.UpdateStatus(ctx, eventID, "pending_review")
+    if err := u.offerRepo.UpdateStatus(ctx, eventID, "pending_review"); err != nil {
+        return err
+    }
+    if u.notifUC != nil {
+        _ = u.notifUC.NotifyAdmins(ctx, CreateNotificationInput{
+            Type:          "event_pending_review",
+            Title:         "На модерацию ивент: " + event.Title,
+            Link:          "/admin/offers",
+            ReferenceType: "event",
+            ReferenceID:   &eventID,
+        })
+        u.notifUC.BroadcastAdminEvent("event_pending_review", map[string]interface{}{
+            "event_id": eventID,
+            "title":    event.Title,
+        })
+    }
+    return nil
 }
 
 // ListEvents — публичный список, фильтрует по приватности относительно текущего юзера.

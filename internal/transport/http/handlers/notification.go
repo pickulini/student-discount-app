@@ -65,7 +65,17 @@ func (h *NotificationHandler) Stream(w http.ResponseWriter, r *http.Request) {
             if !ok {
                 return
             }
-            fmt.Fprintf(w, "event: notification\ndata: %s\n\n", data)
+            // Разбираем Message{event, data} и рассылаем как SSE-event
+            var msg struct {
+                Event string          `json:"event"`
+                Data  json.RawMessage `json:"data"`
+            }
+            if err := json.Unmarshal(data, &msg); err == nil && msg.Event != "" {
+                fmt.Fprintf(w, "event: %s\ndata: %s\n\n", msg.Event, string(msg.Data))
+            } else {
+                // fallback
+                fmt.Fprintf(w, "event: notification\ndata: %s\n\n", data)
+            }
             flusher.Flush()
         }
     }
@@ -183,4 +193,24 @@ func (h *NotificationHandler) UpdateSettings(w http.ResponseWriter, r *http.Requ
         return
     }
     writeJSON(w, http.StatusOK, map[string]string{"message": "ok"})
+}
+
+
+// DELETE /api/v1/notifications/{id}
+func (h *NotificationHandler) Delete(w http.ResponseWriter, r *http.Request) {
+    userID, ok := h.userID(r)
+    if !ok {
+        writeError(w, http.StatusUnauthorized, "unauthorized")
+        return
+    }
+    id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+    if err != nil {
+        writeError(w, http.StatusBadRequest, "invalid id")
+        return
+    }
+    if err := h.uc.Delete(r.Context(), id, userID); err != nil {
+        writeError(w, http.StatusInternalServerError, "failed")
+        return
+    }
+    writeJSON(w, http.StatusOK, map[string]string{"message": "deleted"})
 }

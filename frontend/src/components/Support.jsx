@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 
 const Support = () => {
   const { user } = useAuth();
+  const { events, reconnectCount } = useNotifications(!!user);
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -36,6 +38,25 @@ const Support = () => {
   useEffect(() => {
     fetchTickets();
   }, []);
+
+  // realtime: при новом сообщении по нашему тикету перечитываем
+  useEffect(() => {
+    if (!events.support_message) return;
+    const payload = events.support_message.payload;
+    if (selectedTicket && payload.ticket_id === selectedTicket.id) {
+      fetchMessages(selectedTicket.id);
+    }
+    fetchTickets();
+  }, [events.support_message]);
+
+  // При переподключении SSE — перечитываем всё
+  useEffect(() => {
+    if (reconnectCount === 0) return;
+    fetchTickets();
+    if (selectedTicket) {
+      fetchMessages(selectedTicket.id);
+    }
+  }, [reconnectCount]);
 
   const handleCreateTicket = async (e) => {
     e.preventDefault();

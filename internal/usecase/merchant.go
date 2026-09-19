@@ -2,6 +2,7 @@ package usecase
 
 import (
     "context"
+    "log"
     "strings"
     "your-project/internal/domain"
     "your-project/internal/repository"
@@ -18,6 +19,7 @@ type MerchantUsecase struct {
     merchantAccRepo  repository.MerchantAccountRepository
     merchantTxRepo   repository.MerchantTransactionRepository
     tagRepo          repository.TagRepository
+    notifUC          *NotificationUsecase
     db               *pgxpool.Pool
 }
 
@@ -30,6 +32,7 @@ func NewMerchantUsecase(
     merchantAccRepo repository.MerchantAccountRepository,
     merchantTxRepo repository.MerchantTransactionRepository,
     tagRepo repository.TagRepository,
+    notifUC *NotificationUsecase,
     db *pgxpool.Pool,
 ) *MerchantUsecase {
     return &MerchantUsecase{
@@ -41,6 +44,7 @@ func NewMerchantUsecase(
         merchantAccRepo: merchantAccRepo,
         merchantTxRepo:  merchantTxRepo,
         tagRepo:         tagRepo,
+        notifUC:         notifUC,
         db:              db,
     }
 }
@@ -100,10 +104,12 @@ func (u *MerchantUsecase) CreateOffer(ctx context.Context, userID int64, offer *
     }
     offer.Status = "draft"
     if err := u.offerRepo.Create(ctx, offer); err != nil {
+        log.Printf("CreateOffer: offerRepo.Create error: %v", err)
         return err
     }
     if len(hashtags) > 0 {
         if err := u.resolveAndSetTags(ctx, offer.ID, hashtags, userID); err != nil {
+            log.Printf("CreateOffer: resolveAndSetTags error: %v", err)
             return err
         }
     }
@@ -163,7 +169,23 @@ func (u *MerchantUsecase) SubmitForReview(ctx context.Context, userID, offerID i
     if offer.Status != "draft" {
         return domain.ErrInvalidStatus
     }
-    return u.offerRepo.UpdateStatus(ctx, offerID, "pending_review")
+    if err := u.offerRepo.UpdateStatus(ctx, offerID, "pending_review"); err != nil {
+        return err
+    }
+    if u.notifUC != nil {
+        _ = u.notifUC.NotifyAdmins(ctx, CreateNotificationInput{
+            Type:          "offer_pending_review",
+            Title:         "На модерацию: " + offer.Title,
+            Link:          "/admin/offers",
+            ReferenceType: "offer",
+            ReferenceID:   &offerID,
+        })
+        u.notifUC.BroadcastAdminEvent("offer_pending_review", map[string]interface{}{
+            "offer_id": offerID,
+            "title":    offer.Title,
+        })
+    }
+    return nil
 }
 
 func (u *MerchantUsecase) GetDailyStats(ctx context.Context, userID int64, days int) (interface{}, error) {
