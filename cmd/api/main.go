@@ -14,7 +14,8 @@ import (
     transport "your-project/internal/transport/http"
     "your-project/internal/transport/http/handlers"
     "your-project/internal/usecase"
-    "your-project/internal/worker"
+    "your-project/internal/sse"
+	"your-project/internal/worker"
 )
 
 func main() {
@@ -57,6 +58,8 @@ func main() {
     friendshipRepo := postgres.NewFriendshipRepo(db)
 	companySubRepo := postgres.NewCompanySubscriptionRepo(db)
 	eventAttendeeRepo := postgres.NewEventAttendeeRepo(db)
+	notificationRepo := postgres.NewNotificationRepo(db)
+	sseHub := sse.NewHub()
 
     _ = settlementRepo // пока не используется напрямую
 
@@ -75,11 +78,12 @@ func main() {
     paymentUsecase := usecase.NewPaymentUsecase(accountRepo, ledgerRepo, bonusRepo, paymentRepo)
     referralUsecase := usecase.NewReferralUsecase(referralRepo, userRepo)
     supportUsecase := usecase.NewSupportUsecase(ticketRepo, msgRepo, userRepo)
-    adminUsecase := usecase.NewAdminUsecase(userRepo, companyRepo, locationRepo, offerRepo, studentVerifRepo, accountRepo, bonusRepo, referralRepo, tagRepo, db.Pool)
+	notificationUsecase := usecase.NewNotificationUsecase(notificationRepo, userRepo, sseHub)
+    adminUsecase := usecase.NewAdminUsecase(userRepo, companyRepo, locationRepo, offerRepo, studentVerifRepo, accountRepo, bonusRepo, referralRepo, tagRepo, notificationUsecase, companySubRepo, db.Pool)
     merchantUsecase := usecase.NewMerchantUsecase(companyRepo, locationRepo, offerRepo, companyUserRepo, userRepo, merchantAccountRepo, merchantTxRepo, tagRepo, db.Pool)
     auditUsecase := usecase.NewAuditUsecase(auditRepo)
     tagUsecase := usecase.NewTagUsecase(tagRepo)
-    friendUsecase := usecase.NewFriendUsecase(friendshipRepo, userRepo)
+    friendUsecase := usecase.NewFriendUsecase(friendshipRepo, userRepo, notificationUsecase)
 	subscriptionUsecase := usecase.NewSubscriptionUsecase(companySubRepo, companyRepo, userRepo)
 	eventUsecase := usecase.NewEventUsecase(offerRepo, orderUsecase, userRepo, eventAttendeeRepo, friendshipRepo, companySubRepo)
 
@@ -94,6 +98,7 @@ func main() {
     friendHandler := handlers.NewFriendHandler(friendUsecase)
 	subscriptionHandler := handlers.NewSubscriptionHandler(subscriptionUsecase)
 	eventHandler := handlers.NewEventHandler(eventUsecase)
+	notificationHandler := handlers.NewNotificationHandler(notificationUsecase)
     uploadHandler := handlers.NewUploadHandler("/app/uploads")
 
     router := transport.NewRouterProto(
@@ -115,6 +120,7 @@ func main() {
         tagHandler,
         subscriptionHandler,
         eventHandler,
+        notificationHandler,
         friendHandler,
         uploadHandler,
         userRepo,

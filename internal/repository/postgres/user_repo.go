@@ -57,6 +57,10 @@ func (r *UserRepo) GetByID(ctx context.Context, id int64) (*domain.User, error) 
     query := `SELECT id, email, password_hash, full_name, nickname, username, avatar_url, university_id, course, birth_date,
                      student_status, referral_code, referred_by, is_active, role,
                      COALESCE(privacy_allow_subscriptions, true),
+                     COALESCE(notify_enabled, true),
+                     COALESCE(notify_friends, true),
+                     COALESCE(notify_events, true),
+                     COALESCE(notify_offers, true),
                      created_at, updated_at
               FROM users WHERE id = $1`
     var u domain.User
@@ -67,6 +71,7 @@ func (r *UserRepo) GetByID(ctx context.Context, id int64) (*domain.User, error) 
         &u.StudentStatus, &u.ReferralCode, &u.ReferredBy,
         &u.IsActive, &u.Role,
         &u.PrivacyAllowSubscriptions,
+        &u.NotifyEnabled, &u.NotifyFriends, &u.NotifyEvents, &u.NotifyOffers,
         &u.CreatedAt, &u.UpdatedAt,
     )
     if err != nil {
@@ -292,4 +297,16 @@ func (r *UserRepo) GetPublicProfileByUsername(ctx context.Context, username stri
         p.University = &university.String
     }
     return &p, nil
+}
+
+func (r *UserRepo) UpdateNotificationSettings(ctx context.Context, userID int64, enabled, friends, events, offers *bool) error {
+    query := `UPDATE users SET
+                notify_enabled = COALESCE($1, notify_enabled),
+                notify_friends = COALESCE($2, notify_friends),
+                notify_events  = COALESCE($3, notify_events),
+                notify_offers  = COALESCE($4, notify_offers),
+                updated_at = NOW()
+              WHERE id = $5`
+    _, err := r.db.Pool.Exec(ctx, query, enabled, friends, events, offers, userID)
+    return err
 }

@@ -11,15 +11,18 @@ import (
 type FriendUsecase struct {
     friendRepo repository.FriendshipRepository
     userRepo   repository.UserRepository
+    notifUC    *NotificationUsecase
 }
 
 func NewFriendUsecase(
     friendRepo repository.FriendshipRepository,
     userRepo repository.UserRepository,
+    notifUC *NotificationUsecase,
 ) *FriendUsecase {
     return &FriendUsecase{
         friendRepo: friendRepo,
         userRepo:   userRepo,
+        notifUC:    notifUC,
     }
 }
 
@@ -70,7 +73,34 @@ func (u *FriendUsecase) SendFriendRequest(ctx context.Context, requesterID, addr
         }
     }
 
-    return u.friendRepo.Create(ctx, requesterID, addresseeID)
+    f, err := u.friendRepo.Create(ctx, requesterID, addresseeID)
+    if err != nil {
+        return nil, err
+    }
+
+    // Уведомление адресату
+    if u.notifUC != nil {
+        requester, _ := u.userRepo.GetByID(ctx, requesterID)
+        requesterName := "Пользователь"
+        if requester != nil {
+            if requester.Nickname != nil && *requester.Nickname != "" {
+                requesterName = *requester.Nickname
+            } else if requester.FullName != "" {
+                requesterName = requester.FullName
+            }
+        }
+        _ = u.notifUC.Create(ctx, CreateNotificationInput{
+            UserID:        addresseeID,
+            Type:          domain.NotifFriendRequest,
+            Title:         requesterName + " хочет добавить вас в друзья",
+            Link:          "/friends",
+            ActorID:       &requesterID,
+            ReferenceType: "friendship",
+            ReferenceID:   &f.ID,
+        })
+    }
+
+    return f, nil
 }
 
 // AcceptFriendRequest

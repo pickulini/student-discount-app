@@ -31,6 +31,7 @@ func NewRouterProto(
     tagHandler *handlers.TagHandler,
 	subscriptionHandler *handlers.SubscriptionHandler,
 	eventHandler *handlers.EventHandler,
+	notificationHandler *handlers.NotificationHandler,
     friendHandler *handlers.FriendHandler,
     uploadHandler *handlers.UploadHandler,
 	userRepo repository.UserRepository,
@@ -91,6 +92,13 @@ func NewRouterProto(
         r.Patch("/api/v1/users/me", userHandler.UpdateProfile)
         r.Post("/api/v1/users/upload-avatar", uploadHandler.Upload)
 		r.Get("/api/v1/users/transactions", userHandler.GetTransactionHistory)
+		r.Get("/api/v1/notifications/stream", notificationHandler.Stream)
+		r.Get("/api/v1/notifications", notificationHandler.List)
+		r.Get("/api/v1/notifications/unread/count", notificationHandler.CountUnread)
+		r.Post("/api/v1/notifications/{id}/read", notificationHandler.MarkRead)
+		r.Post("/api/v1/notifications/read-all", notificationHandler.MarkAllRead)
+		r.Get("/api/v1/users/me/notification-settings", notificationHandler.GetSettings)
+		r.Patch("/api/v1/users/me/notification-settings", notificationHandler.UpdateSettings)
 
 		// Верификация
 		r.Post("/api/v1/students/verify", authHandler.RequestVerification)

@@ -16,6 +16,7 @@ type UserRepository interface {
     GetByReferralCode(ctx context.Context, code string) (*domain.User, error)
     GetByUsername(ctx context.Context, username string) (*domain.User, error)
     UpdateProfile(ctx context.Context, userID int64, nickname, username, avatarURL *string, privacyAllowSubscriptions *bool) error
+    UpdateNotificationSettings(ctx context.Context, userID int64, enabled, friends, events, offers *bool) error
     Update(ctx context.Context, user *domain.User) error
     UpdateStudentStatus(ctx context.Context, userID int64, status string) error
     UpdateBalance(ctx context.Context, userID int64, amount float64) error
@@ -288,4 +289,18 @@ type EventAttendeeRepository interface {
     ListByUser(ctx context.Context, userID int64, status string) ([]domain.EventAttendee, error)
     ListEventIDsByUser(ctx context.Context, userID int64, status string) ([]int64, error)
     CountByEvent(ctx context.Context, eventID int64, status string) (int, error)
+}
+
+
+// ---- Notifications ----
+
+type NotificationRepository interface {
+    Create(ctx context.Context, n *domain.Notification) error
+    GetByID(ctx context.Context, id int64) (*domain.Notification, error)
+    ListByUser(ctx context.Context, userID int64, limit, offset int) ([]domain.Notification, error)
+    ListUnread(ctx context.Context, userID int64) ([]domain.Notification, error)
+    CountUnread(ctx context.Context, userID int64) (int, error)
+    MarkRead(ctx context.Context, id, userID int64) error
+    MarkAllRead(ctx context.Context, userID int64) error
+    DeleteOld(ctx context.Context, days int) (int, error)
 }

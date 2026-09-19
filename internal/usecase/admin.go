@@ -10,16 +10,18 @@ import (
 )
 
 type AdminUsecase struct {
-    userRepo       repository.UserRepository
-    companyRepo    repository.CompanyRepository
-    locationRepo   repository.LocationRepository
-    offerRepo      repository.OfferRepository
+    userRepo         repository.UserRepository
+    companyRepo      repository.CompanyRepository
+    locationRepo     repository.LocationRepository
+    offerRepo        repository.OfferRepository
     verificationRepo repository.StudentVerificationRepository
-    accountRepo    repository.AccountRepository
-    bonusRepo      repository.BonusRepository
-    referralRepo   repository.ReferralRepository
-    tagRepo        repository.TagRepository
-    db             *pgxpool.Pool
+    accountRepo      repository.AccountRepository
+    bonusRepo        repository.BonusRepository
+    referralRepo     repository.ReferralRepository
+    tagRepo          repository.TagRepository
+    notifUC          *NotificationUsecase
+    subRepo          repository.CompanySubscriptionRepository
+    db               *pgxpool.Pool
 }
 
 func NewAdminUsecase(
@@ -32,19 +34,23 @@ func NewAdminUsecase(
     bonusRepo repository.BonusRepository,
     referralRepo repository.ReferralRepository,
     tagRepo repository.TagRepository,
+    notifUC *NotificationUsecase,
+    subRepo repository.CompanySubscriptionRepository,
     db *pgxpool.Pool,
 ) *AdminUsecase {
     return &AdminUsecase{
-        userRepo:       userRepo,
-        companyRepo:    companyRepo,
-        locationRepo:   locationRepo,
-        offerRepo:      offerRepo,
+        userRepo:         userRepo,
+        companyRepo:      companyRepo,
+        locationRepo:     locationRepo,
+        offerRepo:        offerRepo,
         verificationRepo: verificationRepo,
-        accountRepo:    accountRepo,
-        bonusRepo:      bonusRepo,
-        referralRepo:   referralRepo,
-        tagRepo:        tagRepo,
-        db:             db,
+        accountRepo:      accountRepo,
+        bonusRepo:        bonusRepo,
+        referralRepo:     referralRepo,
+        tagRepo:          tagRepo,
+        notifUC:          notifUC,
+        subRepo:          subRepo,
+        db:               db,
     }
 }
 
@@ -133,8 +139,9 @@ func (u *AdminUsecase) ModerateOffer(ctx context.Context, id int64, action strin
         // Автомодерация тегов: pending → active
         if err := u.tagRepo.ActivateByOfferID(ctx, id); err != nil {
             log.Printf("failed to activate tags for offer %d: %v", id, err)
-            // не падаем — оффер уже опубликован
         }
+        // Рассылаем уведомления подписчикам
+        u.notifySubscribersAboutPublished(ctx, id)
         return nil
     } else if action == "reject" {
         if reason == "" {
@@ -436,4 +443,73 @@ func (u *AdminUsecase) GetUserDetailedStats(ctx context.Context, userID int64) (
 func calculateVerificationExpiry(now time.Time) time.Time {
     // Верификация действует до 30 сентября следующего года
     return time.Date(now.Year()+1, time.September, 30, 23, 59, 59, 0, time.UTC)
+}
+
+// notifySubscribersAboutPublished рассылает уведомления подписчикам компании-владельца оффера/ивента.
+func (u *AdminUsecase) notifySubscribersAboutPublished(ctx context.Context, offerID int64) {
+    if u.notifUC == nil || u.subRepo == nil {
+        return
+    }
+    offer, err := u.offerRepo.GetByID(ctx, offerID)
+    if err != nil || offer == nil {
+        return
+    }
+    // Если у оффера нет компании — уведомлять некому (личный ивент)
+    if offer.CompanyID == nil {
+        return
+    }
+
+    var notifType, title string
+    var link string
+    if offer.IsEvent {
+        notifType = domain.NotifNewEvent
+        title = "Новый ивент: " + offer.Title
+        link = "/events"
+    } else {
+        notifType = domain.NotifNewOffer
+        title = "Новое предложение: " + offer.Title
+        link = "/"
+    }
+
+    var companyName string
+    if c, err := u.companyRepo.GetByID(ctx, *offer.CompanyID); err == nil && c != nil {
+        companyName = c.Name
+    }
+    if companyName != "" {
+        title = companyName + ": " + offer.Title
+    }
+
+    // Все подписчики компании
+    subs, err := u.subRepo.ListByUser(ctx, 0) // заглушка
+    _ = subs
+    _ = err
+
+    // Прямой запрос — все user_id, кто подписан на компанию
+    rows, err := u.db.Query(ctx,
+        `SELECT user_id FROM company_subscriptions WHERE company_id = $1`,
+        *offer.CompanyID)
+    if err != nil {
+        log.Printf("notifySubscribers: query error: %v", err)
+        return
+    }
+    defer rows.Close()
+
+    for rows.Next() {
+        var uid int64
+        if err := rows.Scan(&uid); err != nil {
+            continue
+        }
+        refType := "offer"
+        if offer.IsEvent {
+            refType = "event"
+        }
+        _ = u.notifUC.Create(ctx, CreateNotificationInput{
+            UserID:        uid,
+            Type:          notifType,
+            Title:         title,
+            Link:          link,
+            ReferenceType: refType,
+            ReferenceID:   &offerID,
+        })
+    }
 }

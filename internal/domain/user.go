@@ -21,6 +21,12 @@ type User struct {
     Role           string     `json:"role"`
     VerificationExpiresAt *time.Time `json:"student_verification_expires_at,omitempty"`
     PrivacyAllowSubscriptions bool `json:"privacy_allow_subscriptions"`
+
+    // Настройки уведомлений
+    NotifyEnabled bool `json:"notify_enabled"`
+    NotifyFriends bool `json:"notify_friends"`
+    NotifyEvents  bool `json:"notify_events"`
+    NotifyOffers  bool `json:"notify_offers"`
     CreatedAt      time.Time  `json:"created_at"`
     UpdatedAt      time.Time  `json:"updated_at"`
 }
