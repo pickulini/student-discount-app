@@ -22,15 +22,26 @@ func NewOfferRepo(db *DB) repository.OfferRepository {
 func scanOffer(scan func(dest ...interface{}) error) (domain.Offer, error) {
     var o domain.Offer
     var imageURL, address, phone, website, workingHours, rejectionReason sql.NullString
+    var companyID, organizerID, eventUniversityID sql.NullInt64
     err := scan(
-        &o.ID, &o.CompanyID, &o.Title, &o.Description,
+        &o.ID, &companyID, &o.Title, &o.Description,
         &o.DiscountType, &o.DiscountValue, &o.SpecialPrice,
         &o.StartAt, &o.EndAt, &o.Status, &o.MaxUses, &o.CurrentUses,
         &o.BonusAllowed, &o.MaxBonusPercent, &o.CreatedAt, &o.UpdatedAt,
         &imageURL, &address, &phone, &website, &workingHours, &rejectionReason,
+        &o.IsEvent, &organizerID, &o.EventPrivacy, &eventUniversityID,
     )
     if err != nil {
         return o, err
+    }
+    if companyID.Valid {
+        o.CompanyID = &companyID.Int64
+    }
+    if organizerID.Valid {
+        o.OrganizerID = &organizerID.Int64
+    }
+    if eventUniversityID.Valid {
+        o.EventUniversityID = &eventUniversityID.Int64
     }
     if imageURL.Valid {
         o.ImageURL = &imageURL.String
@@ -53,16 +64,20 @@ func scanOffer(scan func(dest ...interface{}) error) (domain.Offer, error) {
     return o, nil
 }
 
-const offerColumns = `id, company_id, title, description, discount_type, discount_value, special_price, start_at, end_at, status, max_uses, current_uses, bonus_allowed, max_bonus_percent, created_at, updated_at, image_url, address, phone, website, working_hours, rejection_reason`
+const offerColumns = `id, company_id, title, description, discount_type, discount_value, special_price, start_at, end_at, status, max_uses, current_uses, bonus_allowed, max_bonus_percent, created_at, updated_at, image_url, address, phone, website, working_hours, rejection_reason, is_event, organizer_id, event_privacy, event_university_id`
+
+// Та же последовательность, но с префиксом "o." (для запросов с алиасами)
+const offerColumnsPrefixed = `o.id, o.company_id, o.title, o.description, o.discount_type, o.discount_value, o.special_price, o.start_at, o.end_at, o.status, o.max_uses, o.current_uses, o.bonus_allowed, o.max_bonus_percent, o.created_at, o.updated_at, o.image_url, o.address, o.phone, o.website, o.working_hours, o.rejection_reason, o.is_event, o.organizer_id, o.event_privacy, o.event_university_id`
 
 func (r *OfferRepo) Create(ctx context.Context, o *domain.Offer) error {
-    query := `INSERT INTO offers (company_id, title, description, discount_type, discount_value, start_at, end_at, status, max_uses, current_uses, bonus_allowed, max_bonus_percent, image_url, address, phone, website, working_hours) 
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING id, created_at, updated_at`
+    query := `INSERT INTO offers (company_id, title, description, discount_type, discount_value, start_at, end_at, status, max_uses, current_uses, bonus_allowed, max_bonus_percent, image_url, address, phone, website, working_hours, is_event, organizer_id, event_privacy, event_university_id) 
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) RETURNING id, created_at, updated_at`
     err := r.db.Pool.QueryRow(ctx, query,
         o.CompanyID, o.Title, o.Description, o.DiscountType, o.DiscountValue,
         o.StartAt, o.EndAt, o.Status, o.MaxUses, o.CurrentUses,
         o.BonusAllowed, o.MaxBonusPercent,
         o.ImageURL, o.Address, o.Phone, o.Website, o.WorkingHours,
+        o.IsEvent, o.OrganizerID, o.EventPrivacy, o.EventUniversityID,
     ).Scan(&o.ID, &o.CreatedAt, &o.UpdatedAt)
     return err
 }
@@ -82,10 +97,10 @@ func (r *OfferRepo) GetByID(ctx context.Context, id int64) (*domain.Offer, error
 }
 
 func (r *OfferRepo) List(ctx context.Context, filters map[string]interface{}, limit, offset int) ([]domain.Offer, error) {
-    baseQuery := `SELECT DISTINCT o.id, o.company_id, o.title, o.description, o.discount_type, o.discount_value, o.special_price, o.start_at, o.end_at, o.status, o.max_uses, o.current_uses, o.bonus_allowed, o.max_bonus_percent, o.created_at, o.updated_at, o.image_url, o.address, o.phone, o.website, o.working_hours, o.rejection_reason
+    baseQuery := `SELECT DISTINCT ` + offerColumnsPrefixed + `
               FROM offers o`
 
-    where := []string{"o.status = 'published'"}
+    where := []string{"o.status = 'published'", "o.is_event = false"}
     args := []interface{}{}
     argIdx := 1
 
@@ -204,13 +219,14 @@ func (r *OfferRepo) IncrementUsesTx(ctx context.Context, tx pgx.Tx, id int64) er
 }
 
 func (r *OfferRepo) Update(ctx context.Context, o *domain.Offer) error {
-    query := `UPDATE offers SET title=$1, description=$2, discount_type=$3, discount_value=$4, special_price=$5, start_at=$6, end_at=$7, status=$8, max_uses=$9, bonus_allowed=$10, max_bonus_percent=$11, image_url=$12, address=$13, phone=$14, website=$15, working_hours=$16, rejection_reason=$17, updated_at=NOW() WHERE id=$18`
+    query := `UPDATE offers SET title=$1, description=$2, discount_type=$3, discount_value=$4, special_price=$5, start_at=$6, end_at=$7, status=$8, max_uses=$9, bonus_allowed=$10, max_bonus_percent=$11, image_url=$12, address=$13, phone=$14, website=$15, working_hours=$16, rejection_reason=$17, is_event=$18, organizer_id=$19, event_privacy=$20, event_university_id=$21, updated_at=NOW() WHERE id=$22`
     _, err := r.db.Pool.Exec(ctx, query,
         o.Title, o.Description, o.DiscountType, o.DiscountValue,
         o.SpecialPrice, o.StartAt, o.EndAt, o.Status, o.MaxUses,
         o.BonusAllowed, o.MaxBonusPercent,
         o.ImageURL, o.Address, o.Phone, o.Website, o.WorkingHours,
         o.RejectionReason,
+        o.IsEvent, o.OrganizerID, o.EventPrivacy, o.EventUniversityID,
         o.ID,
     )
     return err
@@ -276,4 +292,49 @@ func (r *OfferRepo) UpdateStatusWithReason(ctx context.Context, id int64, status
     query := `UPDATE offers SET status=$1, rejection_reason=$2, updated_at=NOW() WHERE id=$3`
     _, err := r.db.Pool.Exec(ctx, query, status, reason, id)
     return err
+}
+
+// ListEvents — список ивентов (is_event = true).
+// organizerID != nil → только ивенты этого организатора.
+// status="" → все статусы; status="published" → только опубликованные.
+func (r *OfferRepo) ListEvents(ctx context.Context, organizerID *int64, status string, limit, offset int) ([]domain.Offer, error) {
+    if limit <= 0 || limit > 200 {
+        limit = 50
+    }
+    query := `SELECT ` + offerColumns + ` FROM offers WHERE is_event = true`
+    args := []interface{}{}
+    argIdx := 1
+
+    if organizerID != nil {
+        query += " AND organizer_id = $" + strconv.Itoa(argIdx)
+        args = append(args, *organizerID)
+        argIdx++
+    }
+    if status != "" {
+        query += " AND status = $" + strconv.Itoa(argIdx)
+        args = append(args, status)
+        argIdx++
+    }
+    query += " ORDER BY start_at ASC"
+    query += " LIMIT $" + strconv.Itoa(argIdx) + " OFFSET $" + strconv.Itoa(argIdx+1)
+    args = append(args, limit, offset)
+
+    rows, err := r.db.Pool.Query(ctx, query, args...)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    result := make([]domain.Offer, 0)
+    for rows.Next() {
+        o, err := scanOffer(rows.Scan)
+        if err != nil {
+            return nil, err
+        }
+        result = append(result, o)
+    }
+    if err := r.loadTags(ctx, result); err != nil {
+        return nil, err
+    }
+    return result, rows.Err()
 }

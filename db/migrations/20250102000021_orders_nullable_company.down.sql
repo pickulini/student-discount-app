@@ -1,0 +1,2 @@
+-- Не откатываем автоматически, чтобы не сломать данные
+-- ALTER TABLE orders ALTER COLUMN company_id SET NOT NULL;

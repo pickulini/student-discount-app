@@ -17,6 +17,8 @@ const MerchantLayout = () => {
         <nav className="space-y-2">
           <Link to="/merchant" className="block p-2 rounded hover:bg-blue-50">📊 Дашборд</Link>
           <Link to="/merchant/offers" className="block p-2 rounded hover:bg-blue-50">🎁 Мои предложения</Link>
+          <Link to="/events/new" className="block p-2 rounded hover:bg-blue-50">📅 Создать ивент</Link>
+          <Link to="/events" className="block p-2 rounded hover:bg-blue-50">🎟 Мои ивенты</Link>
           <Link to="/merchant/companies" className="block p-2 rounded hover:bg-blue-50">🏢 Мои компании</Link>
           <Link to="/merchant/statistics" className="block p-2 rounded hover:bg-blue-50">📈 Статистика</Link>
           <Link to="/" className="block p-2 rounded hover:bg-blue-50 text-blue-600">← На сайт</Link>

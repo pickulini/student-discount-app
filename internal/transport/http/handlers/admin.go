@@ -192,7 +192,7 @@ func (h *AdminHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
     }
 
     offer := &domain.Offer{
-        CompanyID:       companyID,
+        CompanyID:       &companyID,
         Title:           req.Title,
         Description:     req.Description,
         DiscountType:    req.DiscountType,
@@ -259,7 +259,7 @@ func (h *AdminHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
 
     updated := &domain.Offer{
         ID:              id,
-        CompanyID:       companyID,
+        CompanyID:       &companyID,
         Title:           req.Title,
         Description:     req.Description,
         DiscountType:    req.DiscountType,

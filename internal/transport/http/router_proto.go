@@ -30,6 +30,7 @@ func NewRouterProto(
 	auditHandler *handlers.AuditHandler,
     tagHandler *handlers.TagHandler,
 	subscriptionHandler *handlers.SubscriptionHandler,
+	eventHandler *handlers.EventHandler,
     friendHandler *handlers.FriendHandler,
     uploadHandler *handlers.UploadHandler,
 	userRepo repository.UserRepository,
@@ -60,6 +61,7 @@ func NewRouterProto(
 	r.Get("/api/v1/tags/search", tagHandler.Search)
     r.Get("/api/v1/users/by-username/{username}", userHandler.GetPublicProfile)
 	r.Get("/api/v1/users/by-username/{username}/companies", userHandler.GetPublicCompanies)
+	r.Get("/api/v1/users/by-username/{username}/events", eventHandler.ByUsername)
 
 	// Публичные страницы оплаты (эмуляция СБП)
 	r.Get("/payments/sbp/checkout/{id}", paymentHandler.ConfirmPayment)
@@ -105,6 +107,15 @@ func NewRouterProto(
 		r.Delete("/api/v1/companies/{id}/subscribe", subscriptionHandler.Unsubscribe)
 		r.Get("/api/v1/subscriptions/companies", subscriptionHandler.MyCompanies)
 		r.Get("/api/v1/subscriptions/companies/ids", subscriptionHandler.SubscribedIDs)
+
+		// Ивенты
+		r.Get("/api/v1/events", eventHandler.List)
+		r.Get("/api/v1/events/my", eventHandler.My)
+		r.Get("/api/v1/events/{id}", eventHandler.Get)
+		r.Post("/api/v1/events", eventHandler.Create)
+		r.Post("/api/v1/events/{id}/submit", eventHandler.Submit)
+		r.Post("/api/v1/events/{id}/schedule", eventHandler.Schedule)
+		r.Delete("/api/v1/events/{id}/schedule", eventHandler.CancelSchedule)
 
 		// Заказы
 		r.Post("/api/v1/orders", orderHandler.CreateOrder)

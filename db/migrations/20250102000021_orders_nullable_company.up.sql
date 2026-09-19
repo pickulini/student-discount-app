@@ -1,0 +1,1 @@
+ALTER TABLE orders ALTER COLUMN company_id DROP NOT NULL;

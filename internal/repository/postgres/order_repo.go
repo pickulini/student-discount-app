@@ -3,6 +3,7 @@ package postgres
 import (
     "github.com/jackc/pgx/v5"
     "context"
+    "database/sql"
     "log"
     "your-project/internal/domain"
     "your-project/internal/repository"
@@ -19,8 +20,12 @@ func NewOrderRepo(db *DB) repository.OrderRepository {
 func (r *OrderRepo) Create(ctx context.Context, o *domain.Order) error {
     query := `INSERT INTO orders (user_id, company_id, location_id, offer_id, subtotal, discount_amount, bonus_amount, total_amount, commission, status, created_at) 
               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`
+    var companyID interface{}
+    if o.CompanyID > 0 {
+        companyID = o.CompanyID
+    }
     err := r.db.Pool.QueryRow(ctx, query,
-        o.UserID, o.CompanyID, o.LocationID, o.OfferID,
+        o.UserID, companyID, o.LocationID, o.OfferID,
         o.Subtotal, o.DiscountAmount, o.BonusAmount, o.TotalAmount,
         o.Commission, o.Status, o.CreatedAt,
     ).Scan(&o.ID)
@@ -36,11 +41,15 @@ func (r *OrderRepo) GetByID(ctx context.Context, id int64) (*domain.Order, error
     query := `SELECT id, user_id, company_id, location_id, offer_id, subtotal, discount_amount, bonus_amount, total_amount, commission, status, created_at, completed_at, cancelled_at 
               FROM orders WHERE id = $1`
     var o domain.Order
+    var companyID sql.NullInt64
     err := r.db.Pool.QueryRow(ctx, query, id).Scan(
-        &o.ID, &o.UserID, &o.CompanyID, &o.LocationID, &o.OfferID,
+        &o.ID, &o.UserID, &companyID, &o.LocationID, &o.OfferID,
         &o.Subtotal, &o.DiscountAmount, &o.BonusAmount, &o.TotalAmount,
         &o.Commission, &o.Status, &o.CreatedAt, &o.CompletedAt, &o.CancelledAt,
     )
+    if companyID.Valid {
+        o.CompanyID = companyID.Int64
+    }
     return &o, err
 }
 
@@ -55,7 +64,8 @@ func (r *OrderRepo) GetByUserID(ctx context.Context, userID int64) ([]domain.Ord
     var orders []domain.Order
     for rows.Next() {
         var o domain.Order
-        if err := rows.Scan(&o.ID, &o.UserID, &o.CompanyID, &o.LocationID, &o.OfferID,
+    var companyID sql.NullInt64
+        if err := rows.Scan(&o.ID, &o.UserID, &companyID, &o.LocationID, &o.OfferID,
             &o.Subtotal, &o.DiscountAmount, &o.BonusAmount, &o.TotalAmount,
             &o.Commission, &o.Status, &o.CreatedAt, &o.CompletedAt, &o.CancelledAt); err != nil {
             return nil, err
@@ -74,8 +84,12 @@ func (r *OrderRepo) UpdateStatus(ctx context.Context, id int64, status string) e
 func (r *OrderRepo) CreateTx(ctx context.Context, tx pgx.Tx, o *domain.Order) error {
     query := `INSERT INTO orders (user_id, company_id, location_id, offer_id, subtotal, discount_amount, bonus_amount, total_amount, commission, status, created_at) 
               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`
+    var companyID interface{}
+    if o.CompanyID > 0 {
+        companyID = o.CompanyID
+    }
     err := tx.QueryRow(ctx, query,
-        o.UserID, o.CompanyID, o.LocationID, o.OfferID,
+        o.UserID, companyID, o.LocationID, o.OfferID,
         o.Subtotal, o.DiscountAmount, o.BonusAmount, o.TotalAmount,
         o.Commission, o.Status, o.CreatedAt,
     ).Scan(&o.ID)

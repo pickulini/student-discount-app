@@ -87,6 +87,7 @@ type OfferRepository interface {
     UpdateStatus(ctx context.Context, id int64, status string) error
     UpdateStatusWithReason(ctx context.Context, id int64, status string, reason string) error
     ExpireOffers(ctx context.Context) error
+    ListEvents(ctx context.Context, organizerID *int64, status string, limit, offset int) ([]domain.Offer, error)
 }
 
 // ---- Order ----
@@ -274,4 +275,16 @@ type CompanySubscriptionRepository interface {
     CountByCompany(ctx context.Context, companyID int64) (int, error)
     ListByUser(ctx context.Context, userID int64) ([]domain.Company, error)
     ListSubscribedCompanyIDs(ctx context.Context, userID int64) ([]int64, error)
+}
+
+
+// ---- Events ----
+
+type EventAttendeeRepository interface {
+    Upsert(ctx context.Context, a *domain.EventAttendee) error
+    GetByEventAndUser(ctx context.Context, eventID, userID int64) (*domain.EventAttendee, error)
+    Delete(ctx context.Context, eventID, userID int64) error
+    ListByEvent(ctx context.Context, eventID int64, status string) ([]domain.EventAttendee, error)
+    ListByUser(ctx context.Context, userID int64, status string) ([]domain.EventAttendee, error)
+    CountByEvent(ctx context.Context, eventID int64, status string) (int, error)
 }

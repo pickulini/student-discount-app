@@ -56,6 +56,7 @@ func main() {
     tagRepo := postgres.NewTagRepo(db)
     friendshipRepo := postgres.NewFriendshipRepo(db)
 	companySubRepo := postgres.NewCompanySubscriptionRepo(db)
+	eventAttendeeRepo := postgres.NewEventAttendeeRepo(db)
 
     _ = settlementRepo // пока не используется напрямую
 
@@ -70,7 +71,7 @@ func main() {
     )
     userUsecase := usecase.NewUserUsecase(userRepo, accountRepo, bonusRepo, ledgerRepo, studentVerifRepo, companyRepo)
     companyUsecase := usecase.NewCompanyUsecase(companyRepo, locationRepo, offerRepo)
-    orderUsecase := usecase.NewOrderUsecase(orderRepo, offerRepo, userRepo, accountRepo, ledgerRepo, bonusRepo, merchantAccountRepo, merchantTxRepo, db.Pool)
+    orderUsecase := usecase.NewOrderUsecase(orderRepo, offerRepo, userRepo, accountRepo, ledgerRepo, bonusRepo, merchantAccountRepo, merchantTxRepo, eventAttendeeRepo, db.Pool)
     paymentUsecase := usecase.NewPaymentUsecase(accountRepo, ledgerRepo, bonusRepo, paymentRepo)
     referralUsecase := usecase.NewReferralUsecase(referralRepo, userRepo)
     supportUsecase := usecase.NewSupportUsecase(ticketRepo, msgRepo, userRepo)
@@ -80,6 +81,7 @@ func main() {
     tagUsecase := usecase.NewTagUsecase(tagRepo)
     friendUsecase := usecase.NewFriendUsecase(friendshipRepo, userRepo)
 	subscriptionUsecase := usecase.NewSubscriptionUsecase(companySubRepo, companyRepo, userRepo)
+	eventUsecase := usecase.NewEventUsecase(offerRepo, orderUsecase, userRepo, eventAttendeeRepo, friendshipRepo)
 
     // Handlers
     walletHandler := handlers.NewWalletHandler(accountRepo, bonusRepo)
@@ -91,6 +93,7 @@ func main() {
     tagHandler := handlers.NewTagHandler(tagUsecase)
     friendHandler := handlers.NewFriendHandler(friendUsecase)
 	subscriptionHandler := handlers.NewSubscriptionHandler(subscriptionUsecase)
+	eventHandler := handlers.NewEventHandler(eventUsecase)
     uploadHandler := handlers.NewUploadHandler("/app/uploads")
 
     router := transport.NewRouterProto(
@@ -111,6 +114,7 @@ func main() {
         auditHandler,
         tagHandler,
         subscriptionHandler,
+        eventHandler,
         friendHandler,
         uploadHandler,
         userRepo,

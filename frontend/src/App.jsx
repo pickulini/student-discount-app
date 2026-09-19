@@ -11,6 +11,8 @@ import Referral from './components/Referral';
 import Friends from './components/Friends';
 import PublicProfile from './components/PublicProfile';
 import Subscriptions from './components/Subscriptions';
+import Events from './components/Events';
+import EventForm from './components/EventForm';
 import Order from './components/Order';
 import TransactionHistory from './components/TransactionHistory';
 import Support from './components/Support';
@@ -42,6 +44,8 @@ function App() {
             <Route path="referral" element={<Referral />} />
             <Route path="friends" element={<Friends />} />
             <Route path="subscriptions" element={<Subscriptions />} />
+            <Route path="events" element={<Events />} />
+            <Route path="events/new" element={<EventForm />} />
             <Route path=":handle" element={<PublicProfile />} />
             <Route path="order" element={<Order />} />
             <Route path="history" element={<TransactionHistory />} />

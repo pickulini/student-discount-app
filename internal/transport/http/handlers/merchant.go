@@ -127,7 +127,7 @@ func (h *MerchantHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
         bonusAllowed = *req.BonusAllowed
     }
     offer := &domain.Offer{
-        CompanyID:       companyID,
+        CompanyID:       &companyID,
         Title:           req.Title,
         Description:     req.Description,
         DiscountType:    req.DiscountType,
@@ -272,7 +272,7 @@ func (h *MerchantHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
     }
 
     updated := &domain.Offer{
-        CompanyID:       companyID,
+        CompanyID:       &companyID,
         Title:           req.Title,
         Description:     req.Description,
         DiscountType:    req.DiscountType,

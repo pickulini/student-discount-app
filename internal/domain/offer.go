@@ -4,7 +4,7 @@ import "time"
 
 type Offer struct {
     ID              int64      `json:"id"`
-    CompanyID       int64      `json:"company_id"`
+    CompanyID       *int64     `json:"company_id,omitempty"`
     Title           string     `json:"title"`
     Description     string     `json:"description"`
     Terms           *string    `json:"terms,omitempty"`
@@ -25,6 +25,15 @@ type Offer struct {
     Website         *string    `json:"website,omitempty"`
     WorkingHours    *string    `json:"working_hours,omitempty"`
     RejectionReason *string    `json:"rejection_reason,omitempty"`
-    CreatedAt       time.Time  `json:"created_at"`
-    UpdatedAt       time.Time  `json:"updated_at"`
+
+    // Event-поля (актуальны только когда IsEvent = true)
+    IsEvent           bool       `json:"is_event"`
+    OrganizerID       *int64     `json:"organizer_id,omitempty"`
+    EventPrivacy      string     `json:"event_privacy,omitempty"`
+    EventUniversityID *int64     `json:"event_university_id,omitempty"`
+    AttendeesCount    int        `json:"attendees_count,omitempty"`
+    MyAttendeeStatus  *string    `json:"my_attendee_status,omitempty"`
+
+    CreatedAt time.Time `json:"created_at"`
+    UpdatedAt time.Time `json:"updated_at"`
 }

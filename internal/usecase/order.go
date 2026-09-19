@@ -21,6 +21,7 @@ type OrderUsecase struct {
     bonusRepo           repository.BonusRepository
     merchantAccountRepo repository.MerchantAccountRepository
     merchantTxRepo      repository.MerchantTransactionRepository
+    attendeeRepo        repository.EventAttendeeRepository
     db                  *pgxpool.Pool
 }
 
@@ -33,6 +34,7 @@ func NewOrderUsecase(
     bonusRepo repository.BonusRepository,
     merchantAccountRepo repository.MerchantAccountRepository,
     merchantTxRepo repository.MerchantTransactionRepository,
+    attendeeRepo repository.EventAttendeeRepository,
     db *pgxpool.Pool,
 ) *OrderUsecase {
     return &OrderUsecase{
@@ -44,6 +46,7 @@ func NewOrderUsecase(
         bonusRepo:           bonusRepo,
         merchantAccountRepo: merchantAccountRepo,
         merchantTxRepo:      merchantTxRepo,
+        attendeeRepo:        attendeeRepo,
         db:                  db,
     }
 }
@@ -84,6 +87,17 @@ func (u *OrderUsecase) CreateOrder(ctx context.Context, input CreateOrderInput) 
     }
 
     subtotal := 1000.0
+    if offer.IsEvent {
+        // Для ивентов subtotal = цена билета (может быть 0)
+        if offer.SpecialPrice != nil {
+            subtotal = *offer.SpecialPrice
+        } else {
+            subtotal = offer.DiscountValue
+        }
+        if subtotal < 0 {
+            subtotal = 0
+        }
+    }
     discount := 0.0
     if offer.DiscountType == "percentage" {
         discount = subtotal * (offer.DiscountValue / 100)
@@ -111,7 +125,7 @@ func (u *OrderUsecase) CreateOrder(ctx context.Context, input CreateOrderInput) 
 
     order := &domain.Order{
         UserID:         input.UserID,
-        CompanyID:      offer.CompanyID,
+        CompanyID:      companyIDValue(offer.CompanyID),
         OfferID:        input.OfferID,
         LocationID:     input.LocationID,
         Subtotal:       subtotal,
@@ -178,35 +192,36 @@ func (u *OrderUsecase) CreateOrder(ctx context.Context, input CreateOrderInput) 
         return nil, err
     }
 
-    merchantAmount := total - commission
-    merchantAcc, err := u.merchantAccountRepo.GetByCompanyIDTx(ctx, tx, offer.CompanyID)
-    if err != nil {
-        merchantAcc = &domain.MerchantAccount{
-            CompanyID: offer.CompanyID,
-            Balance:   0,
-            Currency:  "RUB",
+    if offer.CompanyID != nil {
+        merchantAmount := total - commission
+        merchantAcc, err := u.merchantAccountRepo.GetByCompanyIDTx(ctx, tx, *offer.CompanyID)
+        if err != nil {
+            merchantAcc = &domain.MerchantAccount{
+                CompanyID: *offer.CompanyID,
+                Balance:   0,
+                Currency:  "RUB",
+            }
+            if err := u.merchantAccountRepo.Create(ctx, merchantAcc); err != nil {
+                return nil, err
+            }
         }
-        if err := u.merchantAccountRepo.Create(ctx, merchantAcc); err != nil {
+        newMerchantBalance := merchantAcc.Balance + merchantAmount
+        if err := u.merchantAccountRepo.UpdateBalanceTx(ctx, tx, merchantAcc.ID, newMerchantBalance); err != nil {
+            return nil, err
+        }
+
+        merchantTx := &domain.MerchantTransaction{
+            CompanyID:   *offer.CompanyID,
+            OrderID:     &order.ID,
+            Amount:      merchantAmount,
+            Type:        "order_earning",
+            Status:      "completed",
+            Description: "Заработок по заказу",
+        }
+        if err := u.merchantTxRepo.CreateTx(ctx, tx, merchantTx); err != nil {
             return nil, err
         }
     }
-    newMerchantBalance := merchantAcc.Balance + merchantAmount
-    if err := u.merchantAccountRepo.UpdateBalanceTx(ctx, tx, merchantAcc.ID, newMerchantBalance); err != nil {
-        return nil, err
-    }
-
-    merchantTx := &domain.MerchantTransaction{
-        CompanyID:   offer.CompanyID,
-        OrderID:     &order.ID,
-        Amount:      merchantAmount,
-        Type:        "order_earning",
-        Status:      "completed",
-        Description: "Заработок по заказу",
-    }
-    if err := u.merchantTxRepo.CreateTx(ctx, tx, merchantTx); err != nil {
-        return nil, err
-    }
-
     if err := tx.Commit(ctx); err != nil {
         return nil, err
     }
@@ -392,5 +407,28 @@ func (u *OrderUsecase) ConfirmOrderPayment(ctx context.Context, userID, orderID 
     if order.Status != domain.OrderStatusCreated {
         return errors.New("order already processed")
     }
-    return u.orderRepo.UpdateStatus(ctx, orderID, domain.OrderStatusPaid)
+    if err := u.orderRepo.UpdateStatus(ctx, orderID, domain.OrderStatusPaid); err != nil {
+        return err
+    }
+
+    // Если это ивент — регистрируем участника как going
+    offer, err := u.offerRepo.GetByID(ctx, order.OfferID)
+    if err == nil && offer != nil && offer.IsEvent {
+        _ = u.attendeeRepo.Upsert(ctx, &domain.EventAttendee{
+            EventID: offer.ID,
+            UserID:  userID,
+            Status:  domain.AttendeeGoing,
+            OrderID: &orderID,
+        })
+    }
+    return nil
+}
+
+
+// companyIDValue безопасно разыменовывает *int64, возвращая 0 при nil
+func companyIDValue(p *int64) int64 {
+    if p == nil {
+        return 0
+    }
+    return *p
 }

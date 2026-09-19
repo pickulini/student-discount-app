@@ -90,7 +90,7 @@ func (u *MerchantUsecase) CreateOffer(ctx context.Context, userID int64, offer *
     }
     found := false
     for _, cu := range companyUsers {
-        if cu.CompanyID == offer.CompanyID {
+        if offer.CompanyID != nil && cu.CompanyID == *offer.CompanyID {
             found = true
             break
         }
@@ -152,7 +152,7 @@ func (u *MerchantUsecase) SubmitForReview(ctx context.Context, userID, offerID i
     }
     found := false
     for _, cu := range companyUsers {
-        if cu.CompanyID == offer.CompanyID {
+        if offer.CompanyID != nil && cu.CompanyID == *offer.CompanyID {
             found = true
             break
         }
@@ -253,7 +253,7 @@ func (u *MerchantUsecase) UpdateOffer(ctx context.Context, userID, offerID int64
     }
     found := false
     for _, cu := range companyUsers {
-        if cu.CompanyID == offer.CompanyID {
+        if offer.CompanyID != nil && cu.CompanyID == *offer.CompanyID {
             found = true
             break
         }
