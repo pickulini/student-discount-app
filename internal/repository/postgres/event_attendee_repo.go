@@ -118,3 +118,31 @@ func (r *EventAttendeeRepo) CountByEvent(ctx context.Context, eventID int64, sta
     }
     return count, err
 }
+
+// ListEventIDsByUser — только ID ивентов, куда юзер идёт (для публичного профиля)
+func (r *EventAttendeeRepo) ListEventIDsByUser(ctx context.Context, userID int64, status string) ([]int64, error) {
+    var query string
+    var args []interface{}
+    if status != "" {
+        query = `SELECT event_id FROM event_attendees WHERE user_id = $1 AND status = $2 ORDER BY created_at DESC LIMIT 100`
+        args = []interface{}{userID, status}
+    } else {
+        query = `SELECT event_id FROM event_attendees WHERE user_id = $1 ORDER BY created_at DESC LIMIT 100`
+        args = []interface{}{userID}
+    }
+    rows, err := r.db.Pool.Query(ctx, query, args...)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var ids []int64
+    for rows.Next() {
+        var id int64
+        if err := rows.Scan(&id); err != nil {
+            return nil, err
+        }
+        ids = append(ids, id)
+    }
+    return ids, rows.Err()
+}

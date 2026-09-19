@@ -220,3 +220,48 @@ func (h *EventHandler) ByUsername(w http.ResponseWriter, r *http.Request) {
     }
     writeJSON(w, http.StatusOK, list)
 }
+
+
+// GET /api/v1/merchant/events?status=...
+func (h *EventHandler) MyMerchant(w http.ResponseWriter, r *http.Request) {
+    userID, ok := h.userID(r)
+    if !ok {
+        writeError(w, http.StatusUnauthorized, "unauthorized")
+        return
+    }
+    status := r.URL.Query().Get("status")
+    limit := 100
+    offset := 0
+    if l := r.URL.Query().Get("limit"); l != "" {
+        if v, err := strconv.Atoi(l); err == nil && v > 0 && v <= 200 {
+            limit = v
+        }
+    }
+    if o := r.URL.Query().Get("offset"); o != "" {
+        if v, err := strconv.Atoi(o); err == nil && v >= 0 {
+            offset = v
+        }
+    }
+    list, err := h.uc.MyEventsByStatus(r.Context(), userID, status, limit, offset)
+    if err != nil {
+        writeError(w, http.StatusInternalServerError, "failed to load events")
+        return
+    }
+    writeJSON(w, http.StatusOK, list)
+}
+
+// GET /api/v1/users/by-username/{username}/attending (публичный)
+func (h *EventHandler) AttendingByUsername(w http.ResponseWriter, r *http.Request) {
+    username := chi.URLParam(r, "username")
+    if username == "" {
+        writeError(w, http.StatusBadRequest, "username required")
+        return
+    }
+    userID, _ := h.userID(r)
+    list, err := h.uc.AttendingByUsername(r.Context(), username, userID)
+    if err != nil {
+        writeError(w, http.StatusInternalServerError, "failed")
+        return
+    }
+    writeJSON(w, http.StatusOK, list)
+}

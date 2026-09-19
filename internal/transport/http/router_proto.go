@@ -62,6 +62,7 @@ func NewRouterProto(
     r.Get("/api/v1/users/by-username/{username}", userHandler.GetPublicProfile)
 	r.Get("/api/v1/users/by-username/{username}/companies", userHandler.GetPublicCompanies)
 	r.Get("/api/v1/users/by-username/{username}/events", eventHandler.ByUsername)
+	r.Get("/api/v1/users/by-username/{username}/attending", eventHandler.AttendingByUsername)
 
 	// Публичные страницы оплаты (эмуляция СБП)
 	r.Get("/payments/sbp/checkout/{id}", paymentHandler.ConfirmPayment)
@@ -193,6 +194,7 @@ func NewRouterProto(
 			r.Get("/api/v1/merchant/statistics/daily", merchantHandler.GetDailyStats)
 			r.Get("/api/v1/merchant/balance", merchantHandler.GetBalance)
 			r.Get("/api/v1/merchant/transactions", merchantHandler.GetTransactions)
+			r.Get("/api/v1/merchant/events", eventHandler.MyMerchant)
 		})
 	})
 

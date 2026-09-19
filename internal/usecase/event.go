@@ -291,3 +291,33 @@ func (u *EventUsecase) RegisterAttendee(ctx context.Context, userID, eventID, or
         OrderID: &orderID,
     })
 }
+
+
+// MyEventsByStatus — ивенты организатора с фильтром по статусу (для /merchant/events)
+func (u *EventUsecase) MyEventsByStatus(ctx context.Context, userID int64, status string, limit, offset int) ([]domain.Offer, error) {
+    return u.offerRepo.ListEvents(ctx, &userID, status, limit, offset)
+}
+
+// AttendingByUsername — ивенты, куда идёт юзер (для блока на /@username)
+func (u *EventUsecase) AttendingByUsername(ctx context.Context, username string, currentUserID int64) ([]domain.Offer, error) {
+    user, err := u.userRepo.GetByUsername(ctx, username)
+    if err != nil || user == nil {
+        return []domain.Offer{}, nil
+    }
+    ids, err := u.attendeeRepo.ListEventIDsByUser(ctx, user.ID, domain.AttendeeGoing)
+    if err != nil || len(ids) == 0 {
+        return []domain.Offer{}, nil
+    }
+    result := make([]domain.Offer, 0, len(ids))
+    for _, id := range ids {
+        e, err := u.offerRepo.GetByID(ctx, id)
+        if err != nil || e == nil || !e.IsEvent || e.Status != "published" {
+            continue
+        }
+        ok, _ := u.canViewEvent(ctx, currentUserID, e)
+        if ok {
+            result = append(result, *e)
+        }
+    }
+    return result, nil
+}

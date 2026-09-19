@@ -286,5 +286,6 @@ type EventAttendeeRepository interface {
     Delete(ctx context.Context, eventID, userID int64) error
     ListByEvent(ctx context.Context, eventID int64, status string) ([]domain.EventAttendee, error)
     ListByUser(ctx context.Context, userID int64, status string) ([]domain.EventAttendee, error)
+    ListEventIDsByUser(ctx context.Context, userID int64, status string) ([]int64, error)
     CountByEvent(ctx context.Context, eventID int64, status string) (int, error)
 }

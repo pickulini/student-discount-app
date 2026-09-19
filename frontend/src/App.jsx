@@ -21,6 +21,7 @@ import MerchantDashboard from './components/MerchantDashboard';
 import MerchantCompanies from './components/MerchantCompanies';
 import MerchantOffers from './components/MerchantOffers';
 import MerchantStatistics from './components/MerchantStatistics';
+import MerchantEvents from './components/MerchantEvents';
 import AdminLayout from './components/AdminLayout';
 import AdminDashboard from './components/AdminDashboard';
 import AdminUsers from './components/AdminUsers';
@@ -56,6 +57,7 @@ function App() {
             <Route path="companies" element={<MerchantCompanies />} />
             <Route path="offers" element={<MerchantOffers />} />
             <Route path="statistics" element={<MerchantStatistics />} />
+            <Route path="events" element={<MerchantEvents />} />
           </Route>
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
