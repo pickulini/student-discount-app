@@ -52,14 +52,15 @@ func main() {
 
     // Запускаем фоновые воркеры
     worker.StartVerificationExpiryWorker(context.Background(), studentVerifRepo)
-    worker.StartBonusCreditWorker(context.Background(), referralRepo, bonusRepo)
+    notificationRepo := postgres.NewNotificationRepo(db)
+	worker.StartBonusCreditWorker(context.Background(), referralRepo, bonusRepo)
+	worker.StartNotificationCleanupWorker(context.Background(), notificationRepo)
     antifraudRepo := postgres.NewAntifraudRepo(db)
     tagRepo := postgres.NewTagRepo(db)
     friendshipRepo := postgres.NewFriendshipRepo(db)
 	companySubRepo := postgres.NewCompanySubscriptionRepo(db)
 	eventAttendeeRepo := postgres.NewEventAttendeeRepo(db)
-	notificationRepo := postgres.NewNotificationRepo(db)
-	sseHub := sse.NewHub()
+		sseHub := sse.NewHub()
 
     _ = settlementRepo // пока не используется напрямую
 

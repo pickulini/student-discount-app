@@ -1,20 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
-
-const timeAgo = (iso) => {
-  const d = new Date(iso);
-  const diff = Math.floor((Date.now() - d.getTime()) / 1000);
-  if (diff < 60) return 'только что';
-  if (diff < 3600) return `${Math.floor(diff / 60)} мин назад`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)} ч назад`;
-  if (diff < 604800) return `${Math.floor(diff / 86400)} дн назад`;
-  return d.toLocaleDateString('ru-RU');
-};
+import {
+  NOTIFICATION_GROUPS,
+  GROUP_ORDER,
+  groupNotifications,
+  timeAgo,
+} from '../utils/notificationGroups';
 
 const Notifications = () => {
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState('all');
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const LIMIT = 30;
@@ -42,10 +40,31 @@ const Notifications = () => {
     fetchItems(next);
   };
 
-  const markAllRead = async () => {
+  const handleClickItem = async (n) => {
+    // Оптимистично убираем из UI
+    setItems((prev) => prev.filter((x) => x.id !== n.id));
+
+    const token = localStorage.getItem('access_token');
     try {
-      await api.post('/notifications/read-all');
-      setItems((prev) => prev.map((n) => ({ ...n, read_at: n.read_at || new Date().toISOString() })));
+      const res = await fetch(`/api/v1/notifications/${n.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        console.error('DELETE failed:', res.status);
+      }
+    } catch (err) {
+      console.error('DELETE error:', err);
+    }
+
+    navigate(n.link || '/notifications');
+  };
+
+  const deleteAll = async () => {
+    if (!confirm('Удалить все уведомления?')) return;
+    try {
+      await api.delete('/notifications/all');
+      setItems([]);
     } catch {}
   };
 
@@ -56,37 +75,70 @@ const Notifications = () => {
     } catch {}
   };
 
+  const grouped = useMemo(() => groupNotifications(items), [items]);
   const hasUnread = items.some((n) => !n.read_at);
+
+  const visibleItems = tab === 'all' ? items : (grouped[tab] || []);
+
+  const tabCounts = useMemo(() => {
+    const counts = { all: items.length };
+    GROUP_ORDER.forEach((k) => { counts[k] = (grouped[k] || []).length; });
+    return counts;
+  }, [grouped, items]);
 
   return (
     <div className="max-w-3xl mx-auto">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Уведомления</h1>
-        {hasUnread && (
-          <button
-            onClick={markAllRead}
-            className="text-sm text-blue-600 hover:underline"
-          >
+        {items.length > 0 && (
+          <button onClick={deleteAll} className="text-sm text-blue-600 hover:underline">
             Прочитать все
           </button>
         )}
       </div>
 
+      <div className="flex gap-1 mb-4 border-b overflow-x-auto">
+        <button
+          onClick={() => setTab('all')}
+          className={`px-3 py-2 text-sm whitespace-nowrap ${
+            tab === 'all' ? 'border-b-2 border-blue-600 text-blue-600 font-semibold' : 'text-gray-600 hover:text-gray-800'
+          }`}
+        >
+          Все {tabCounts.all > 0 && <span className="text-xs text-gray-400">({tabCounts.all})</span>}
+        </button>
+        {GROUP_ORDER.map((gk) => {
+          const g = NOTIFICATION_GROUPS[gk];
+          if (!g) return null;
+          const cnt = tabCounts[gk] || 0;
+          if (cnt === 0) return null;
+          return (
+            <button
+              key={gk}
+              onClick={() => setTab(gk)}
+              className={`px-3 py-2 text-sm whitespace-nowrap ${
+                tab === gk ? 'border-b-2 border-blue-600 text-blue-600 font-semibold' : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              {g.icon} {g.shortLabel} <span className="text-xs text-gray-400">({cnt})</span>
+            </button>
+          );
+        })}
+      </div>
+
       {loading && items.length === 0 ? (
         <div className="text-center py-8">Загрузка...</div>
-      ) : items.length === 0 ? (
+      ) : visibleItems.length === 0 ? (
         <div className="bg-white rounded shadow p-8 text-center text-gray-500">
-          Уведомлений нет
+          {tab === 'all' ? 'Уведомлений нет' : 'В этой категории нет уведомлений'}
         </div>
       ) : (
         <>
           <div className="bg-white rounded shadow divide-y">
-            {items.map((n) => (
-              <Link
+            {visibleItems.map((n) => (
+              <button
                 key={n.id}
-                to={n.link || '/notifications'}
-                onClick={() => { removeItem(n.id); }}
-                className={`block p-4 hover:bg-gray-50 ${n.read_at ? '' : 'bg-blue-50'}`}
+                onClick={() => handleClickItem(n)}
+                className={`w-full text-left block p-4 hover:bg-gray-50 ${n.read_at ? '' : 'bg-blue-50'}`}
               >
                 <div className="flex gap-3">
                   {n.actor_avatar ? (
@@ -105,11 +157,11 @@ const Notifications = () => {
                     </div>
                   </div>
                 </div>
-              </Link>
+              </button>
             ))}
           </div>
 
-          {hasMore && (
+          {hasMore && tab === 'all' && (
             <div className="text-center mt-4">
               <button
                 onClick={loadMore}

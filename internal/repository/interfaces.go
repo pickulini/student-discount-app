@@ -307,5 +307,6 @@ type NotificationRepository interface {
     MarkRead(ctx context.Context, id, userID int64) error
     MarkAllRead(ctx context.Context, userID int64) error
     Delete(ctx context.Context, id, userID int64) error
+    DeleteAllByUser(ctx context.Context, userID int64) error
     DeleteOld(ctx context.Context, days int) (int, error)
 }

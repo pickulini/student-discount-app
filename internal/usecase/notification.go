@@ -188,3 +188,11 @@ func (u *NotificationUsecase) BroadcastSupportMessage(payload interface{}) {
 func (u *NotificationUsecase) BroadcastAdminEvent(eventType string, payload interface{}) {
     u.hub.Broadcast(eventType, payload)
 }
+
+func (u *NotificationUsecase) DeleteAllByUser(ctx context.Context, userID int64) error {
+    return u.notifRepo.DeleteAllByUser(ctx, userID)
+}
+
+func (u *NotificationUsecase) ListUnread(ctx context.Context, userID int64) ([]domain.Notification, error) {
+    return u.notifRepo.ListUnread(ctx, userID)
+}

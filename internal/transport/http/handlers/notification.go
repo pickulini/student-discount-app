@@ -7,7 +7,8 @@ import (
     "strconv"
     "time"
 
-    "your-project/internal/transport/http/middleware"
+    "your-project/internal/domain"
+	"your-project/internal/transport/http/middleware"
     "your-project/internal/usecase"
 
     "github.com/go-chi/chi/v5"
@@ -100,7 +101,13 @@ func (h *NotificationHandler) List(w http.ResponseWriter, r *http.Request) {
             offset = v
         }
     }
-    list, err := h.uc.List(r.Context(), userID, limit, offset)
+    var list []domain.Notification
+    var err error
+    if r.URL.Query().Get("filter") == "unread" {
+        list, err = h.uc.ListUnread(r.Context(), userID)
+    } else {
+        list, err = h.uc.List(r.Context(), userID, limit, offset)
+    }
     if err != nil {
         writeError(w, http.StatusInternalServerError, "failed")
         return
@@ -213,4 +220,19 @@ func (h *NotificationHandler) Delete(w http.ResponseWriter, r *http.Request) {
         return
     }
     writeJSON(w, http.StatusOK, map[string]string{"message": "deleted"})
+}
+
+
+// DELETE /api/v1/notifications/all
+func (h *NotificationHandler) DeleteAll(w http.ResponseWriter, r *http.Request) {
+    userID, ok := h.userID(r)
+    if !ok {
+        writeError(w, http.StatusUnauthorized, "unauthorized")
+        return
+    }
+    if err := h.uc.DeleteAllByUser(r.Context(), userID); err != nil {
+        writeError(w, http.StatusInternalServerError, "failed")
+        return
+    }
+    writeJSON(w, http.StatusOK, map[string]string{"message": "all deleted"})
 }

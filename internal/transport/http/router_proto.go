@@ -96,6 +96,7 @@ func NewRouterProto(
 		r.Get("/api/v1/notifications", notificationHandler.List)
 		r.Get("/api/v1/notifications/unread/count", notificationHandler.CountUnread)
 		r.Post("/api/v1/notifications/{id}/read", notificationHandler.MarkRead)
+		r.Delete("/api/v1/notifications/all", notificationHandler.DeleteAll)
 		r.Delete("/api/v1/notifications/{id}", notificationHandler.Delete)
 		r.Post("/api/v1/notifications/read-all", notificationHandler.MarkAllRead)
 		r.Get("/api/v1/users/me/notification-settings", notificationHandler.GetSettings)

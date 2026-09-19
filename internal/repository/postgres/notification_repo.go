@@ -186,7 +186,7 @@ func (r *NotificationRepo) MarkAllRead(ctx context.Context, userID int64) error 
 
 func (r *NotificationRepo) DeleteOld(ctx context.Context, days int) (int, error) {
     tag, err := r.db.Pool.Exec(ctx,
-        `DELETE FROM notifications WHERE created_at < NOW() - ($1 || ' days')::interval`,
+        `DELETE FROM notifications WHERE created_at < NOW() - make_interval(days => $1::int)`,
         days)
     if err != nil {
         return 0, err
@@ -198,5 +198,12 @@ func (r *NotificationRepo) Delete(ctx context.Context, id, userID int64) error {
     _, err := r.db.Pool.Exec(ctx,
         `DELETE FROM notifications WHERE id = $1 AND user_id = $2`,
         id, userID)
+    return err
+}
+
+func (r *NotificationRepo) DeleteAllByUser(ctx context.Context, userID int64) error {
+    _, err := r.db.Pool.Exec(ctx,
+        `DELETE FROM notifications WHERE user_id = $1`,
+        userID)
     return err
 }
