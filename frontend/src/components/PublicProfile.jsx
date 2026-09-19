@@ -76,7 +76,11 @@ const PublicProfile = () => {
   return (
     <div className="max-w-lg mx-auto bg-white p-6 rounded shadow">
       <div className="flex items-center gap-4 mb-6">
-        {avatarSrc ? (
+        {profile.avatar_visible === false ? (
+          <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 text-2xl">
+            🔒
+          </div>
+        ) : avatarSrc ? (
           <img
             src={avatarSrc}
             alt="Аватар"
@@ -90,7 +94,7 @@ const PublicProfile = () => {
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold truncate">{displayName}</h1>
           <p className="text-blue-600 text-sm">@{profile.username}</p>
-          {profile.university && (
+          {profile.university && profile.university_visible !== false && (
             <p className="text-gray-500 text-sm truncate">{profile.university}</p>
           )}
         </div>
@@ -106,8 +110,17 @@ const PublicProfile = () => {
 
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-blue-50 p-3 rounded text-center">
-          <p className="text-2xl font-bold text-blue-600">{profile.friends_count}</p>
-          <p className="text-xs text-gray-600">Друзей</p>
+          {profile.friends_list_visible === false ? (
+            <>
+              <p className="text-2xl font-bold text-gray-400">🔒</p>
+              <p className="text-xs text-gray-500">Скрыто</p>
+            </>
+          ) : (
+            <>
+              <p className="text-2xl font-bold text-blue-600">{profile.friends_count}</p>
+              <p className="text-xs text-gray-600">Друзей</p>
+            </>
+          )}
         </div>
         <div className="bg-gray-50 p-3 rounded text-center">
           <p className="text-sm font-semibold capitalize">{profile.student_status}</p>
@@ -121,7 +134,7 @@ const PublicProfile = () => {
         </div>
       )}
 
-      {attendingEvents.length > 0 && (
+      {attendingEvents.length > 0 && profile.attending_events_visible !== false && (
         <div className="mt-4 pt-4 border-t">
           <h3 className="font-semibold mb-3">Планирует посетить</h3>
           <div className="space-y-2">
@@ -144,7 +157,7 @@ const PublicProfile = () => {
         </div>
       )}
 
-      {companies.length > 0 && (
+      {companies.length > 0 && profile.offers_visible !== false && (
         <div className="mt-4 pt-4 border-t">
           <h3 className="font-semibold mb-3">Мои компании</h3>
           <div className="space-y-2">

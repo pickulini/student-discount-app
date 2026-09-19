@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import ImageUpload from './ImageUpload';
+import PrivacySettings from './PrivacySettings';
 import UserLink from './UserLink';
 
 const Profile = () => {
@@ -15,6 +16,7 @@ const Profile = () => {
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyMessage, setVerifyMessage] = useState('');
   const [form, setForm] = useState({ nickname: '', username: '', avatar_url: '', privacy_allow_subscriptions: true });
+  const [activeTab, setActiveTab] = useState('profile');
 
   const fetchProfile = async () => {
     try {
@@ -85,6 +87,32 @@ const Profile = () => {
 
   return (
     <div className="max-w-lg mx-auto bg-white p-6 rounded shadow">
+      {/* Табы */}
+      <div className="flex gap-1 border-b mb-4">
+        <button
+          onClick={() => setActiveTab('profile')}
+          className={`px-4 py-2 text-sm ${
+            activeTab === 'profile'
+              ? 'border-b-2 border-blue-600 text-blue-600 font-semibold'
+              : 'text-gray-600 hover:text-gray-800'
+          }`}
+        >
+          Профиль
+        </button>
+        <button
+          onClick={() => setActiveTab('privacy')}
+          className={`px-4 py-2 text-sm ${
+            activeTab === 'privacy'
+              ? 'border-b-2 border-blue-600 text-blue-600 font-semibold'
+              : 'text-gray-600 hover:text-gray-800'
+          }`}
+        >
+          🔒 Приватность
+        </button>
+      </div>
+
+      {activeTab === 'profile' && (
+        <>
       <div className="flex justify-between items-start mb-4">
         <h2 className="text-2xl font-bold">Профиль</h2>
         {!editMode && (
@@ -233,6 +261,10 @@ const Profile = () => {
           </div>
         </form>
       )}
+        </>
+      )}
+
+      {activeTab === 'privacy' && <PrivacySettings />}
     </div>
   );
 };

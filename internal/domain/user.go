@@ -27,6 +27,18 @@ type User struct {
     NotifyFriends bool `json:"notify_friends"`
     NotifyEvents  bool `json:"notify_events"`
     NotifyOffers  bool `json:"notify_offers"`
+
+    // Настройки приватности (10 полей)
+    AvatarVisibility           string `json:"avatar_visibility"`
+    EmailVisibility            string `json:"email_visibility"`
+    UniversityVisibility       string `json:"university_visibility"`
+    FriendsListVisibility      string `json:"friends_list_visibility"`
+    SubscribersVisibility      string `json:"subscribers_visibility"`
+    SubscriptionsVisibility    string `json:"subscriptions_visibility"`
+    AttendingEventsVisibility  string `json:"attending_events_visibility"`
+    OrganizingEventsVisibility string `json:"organizing_events_visibility"`
+    OffersVisibility           string `json:"offers_visibility"`
+    StatisticsVisibility       string `json:"statistics_visibility"`
     CreatedAt      time.Time  `json:"created_at"`
     UpdatedAt      time.Time  `json:"updated_at"`
 }
@@ -73,4 +85,16 @@ type UserPublicProfile struct {
     FriendsCount       int       `json:"friends_count"`
     AllowSubscriptions bool      `json:"allow_subscriptions"`
     CreatedAt          time.Time `json:"created_at"`
+
+    // Флаги видимости для текущего viewer-а
+    AvatarVisible           bool `json:"avatar_visible"`
+    EmailVisible            bool `json:"email_visible"`
+    UniversityVisible       bool `json:"university_visible"`
+    FriendsListVisible      bool `json:"friends_list_visible"`
+    SubscribersVisible      bool `json:"subscribers_visible"`
+    SubscriptionsVisible    bool `json:"subscriptions_visible"`
+    AttendingEventsVisible  bool `json:"attending_events_visible"`
+    OrganizingEventsVisible bool `json:"organizing_events_visible"`
+    OffersVisible           bool `json:"offers_visible"`
+    StatisticsVisible       bool `json:"statistics_visible"`
 }

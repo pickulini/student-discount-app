@@ -90,6 +90,7 @@ func NewRouterProto(
         r.Get("/api/v1/friends/status/{userId}", friendHandler.GetStatus)
         r.Delete("/api/v1/friends/{userId}", friendHandler.RemoveFriend)
         r.Patch("/api/v1/users/me", userHandler.UpdateProfile)
+		r.Patch("/api/v1/users/me/privacy", userHandler.UpdatePrivacy)
         r.Post("/api/v1/users/upload-avatar", uploadHandler.Upload)
 		r.Get("/api/v1/users/transactions", userHandler.GetTransactionHistory)
 		r.Get("/api/v1/notifications/stream", notificationHandler.Stream)

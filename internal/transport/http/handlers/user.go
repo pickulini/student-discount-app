@@ -42,8 +42,20 @@ func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
         "is_active":                   user.IsActive,
         "role":                        user.Role,
         "privacy_allow_subscriptions": user.PrivacyAllowSubscriptions,
-        "created_at":                  user.CreatedAt,
-        "updated_at":                  user.UpdatedAt,
+
+        "avatar_visibility":            user.AvatarVisibility,
+        "email_visibility":             user.EmailVisibility,
+        "university_visibility":        user.UniversityVisibility,
+        "friends_list_visibility":      user.FriendsListVisibility,
+        "subscribers_visibility":       user.SubscribersVisibility,
+        "subscriptions_visibility":     user.SubscriptionsVisibility,
+        "attending_events_visibility":  user.AttendingEventsVisibility,
+        "organizing_events_visibility": user.OrganizingEventsVisibility,
+        "offers_visibility":            user.OffersVisibility,
+        "statistics_visibility":        user.StatisticsVisibility,
+
+        "created_at": user.CreatedAt,
+        "updated_at": user.UpdatedAt,
     }
     writeJSON(w, http.StatusOK, response)
 }
@@ -119,8 +131,20 @@ func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
         "is_active":                   user.IsActive,
         "role":                        user.Role,
         "privacy_allow_subscriptions": user.PrivacyAllowSubscriptions,
-        "created_at":                  user.CreatedAt,
-        "updated_at":                  user.UpdatedAt,
+
+        "avatar_visibility":            user.AvatarVisibility,
+        "email_visibility":             user.EmailVisibility,
+        "university_visibility":        user.UniversityVisibility,
+        "friends_list_visibility":      user.FriendsListVisibility,
+        "subscribers_visibility":       user.SubscribersVisibility,
+        "subscriptions_visibility":     user.SubscriptionsVisibility,
+        "attending_events_visibility":  user.AttendingEventsVisibility,
+        "organizing_events_visibility": user.OrganizingEventsVisibility,
+        "offers_visibility":            user.OffersVisibility,
+        "statistics_visibility":        user.StatisticsVisibility,
+
+        "created_at": user.CreatedAt,
+        "updated_at": user.UpdatedAt,
     }
     writeJSON(w, http.StatusOK, response)
 }
@@ -133,12 +157,36 @@ func (h *UserHandler) GetPublicProfile(w http.ResponseWriter, r *http.Request) {
         writeError(w, http.StatusBadRequest, "username required")
         return
     }
-    profile, err := h.userUsecase.GetPublicProfile(r.Context(), username)
+    // viewer из контекста (если залогинен) или 0
+    var viewerID int64
+    if v, ok := r.Context().Value(middleware.UserIDKey).(int64); ok {
+        viewerID = v
+    }
+    profile, err := h.userUsecase.GetPublicProfileWithViewer(r.Context(), username, viewerID)
     if err != nil {
         writeError(w, http.StatusNotFound, "user not found")
         return
     }
     writeJSON(w, http.StatusOK, profile)
+}
+
+// PATCH /api/v1/users/me/privacy
+func (h *UserHandler) UpdatePrivacy(w http.ResponseWriter, r *http.Request) {
+    userID, ok := r.Context().Value(middleware.UserIDKey).(int64)
+    if !ok {
+        writeError(w, http.StatusUnauthorized, "unauthorized")
+        return
+    }
+    var req map[string]string
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        writeError(w, http.StatusBadRequest, "invalid request")
+        return
+    }
+    if err := h.userUsecase.UpdatePrivacy(r.Context(), userID, req); err != nil {
+        writeError(w, http.StatusInternalServerError, err.Error())
+        return
+    }
+    writeJSON(w, http.StatusOK, map[string]string{"message": "privacy updated"})
 }
 
 

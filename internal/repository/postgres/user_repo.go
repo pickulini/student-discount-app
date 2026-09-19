@@ -61,6 +61,16 @@ func (r *UserRepo) GetByID(ctx context.Context, id int64) (*domain.User, error) 
                      COALESCE(notify_friends, true),
                      COALESCE(notify_events, true),
                      COALESCE(notify_offers, true),
+                     COALESCE(avatar_visibility, 'public'),
+                     COALESCE(email_visibility, 'public'),
+                     COALESCE(university_visibility, 'public'),
+                     COALESCE(friends_list_visibility, 'public'),
+                     COALESCE(subscribers_visibility, 'public'),
+                     COALESCE(subscriptions_visibility, 'public'),
+                     COALESCE(attending_events_visibility, 'public'),
+                     COALESCE(organizing_events_visibility, 'public'),
+                     COALESCE(offers_visibility, 'public'),
+                     COALESCE(statistics_visibility, 'public'),
                      created_at, updated_at
               FROM users WHERE id = $1`
     var u domain.User
@@ -72,6 +82,10 @@ func (r *UserRepo) GetByID(ctx context.Context, id int64) (*domain.User, error) 
         &u.IsActive, &u.Role,
         &u.PrivacyAllowSubscriptions,
         &u.NotifyEnabled, &u.NotifyFriends, &u.NotifyEvents, &u.NotifyOffers,
+        &u.AvatarVisibility, &u.EmailVisibility, &u.UniversityVisibility,
+        &u.FriendsListVisibility, &u.SubscribersVisibility, &u.SubscriptionsVisibility,
+        &u.AttendingEventsVisibility, &u.OrganizingEventsVisibility,
+        &u.OffersVisibility, &u.StatisticsVisibility,
         &u.CreatedAt, &u.UpdatedAt,
     )
     if err != nil {
@@ -326,4 +340,88 @@ func (r *UserRepo) ListAdminIDs(ctx context.Context) ([]int64, error) {
         ids = append(ids, id)
     }
     return ids, rows.Err()
+}
+
+// UpdatePrivacy — обновляет произвольный набор полей приватности.
+// Ключи должны быть вида "avatar_visibility" и т.д.
+func (r *UserRepo) UpdatePrivacy(ctx context.Context, userID int64, settings map[string]string) error {
+    allowed := map[string]bool{
+        "avatar_visibility":            true,
+        "email_visibility":             true,
+        "university_visibility":        true,
+        "friends_list_visibility":      true,
+        "subscribers_visibility":       true,
+        "subscriptions_visibility":     true,
+        "attending_events_visibility":  true,
+        "organizing_events_visibility": true,
+        "offers_visibility":            true,
+        "statistics_visibility":        true,
+    }
+    for k, v := range settings {
+        if !allowed[k] {
+            continue
+        }
+        if v != "public" && v != "friends" && v != "private" {
+            continue
+        }
+        query := `UPDATE users SET ` + k + ` = $1, updated_at = NOW() WHERE id = $2`
+        if _, err := r.db.Pool.Exec(ctx, query, v, userID); err != nil {
+            return err
+        }
+    }
+    return nil
+}
+
+// GetPublicProfileByUsernameWithViewer — публичный профиль с флагами видимости
+func (r *UserRepo) GetPublicProfileByUsernameWithViewer(ctx context.Context, username string, viewerID int64) (*domain.UserPublicProfile, error) {
+    query := `
+        SELECT
+            u.id, u.username, u.nickname, u.full_name, u.avatar_url,
+            un.name AS university_name, u.student_status, u.role, u.created_at,
+            COALESCE((
+                SELECT COUNT(*) FROM friendships f
+                WHERE (f.requester_id = u.id OR f.addressee_id = u.id)
+                  AND f.status = 'accepted'
+            ), 0) AS friends_count,
+            COALESCE(u.privacy_allow_subscriptions, true),
+            can_view(COALESCE(u.avatar_visibility, 'public'), u.id, $2) AS avatar_visible,
+            can_view(COALESCE(u.email_visibility, 'public'), u.id, $2) AS email_visible,
+            can_view(COALESCE(u.university_visibility, 'public'), u.id, $2) AS university_visible,
+            can_view(COALESCE(u.friends_list_visibility, 'public'), u.id, $2) AS friends_list_visible,
+            can_view(COALESCE(u.subscribers_visibility, 'public'), u.id, $2) AS subscribers_visible,
+            can_view(COALESCE(u.subscriptions_visibility, 'public'), u.id, $2) AS subscriptions_visible,
+            can_view(COALESCE(u.attending_events_visibility, 'public'), u.id, $2) AS attending_events_visible,
+            can_view(COALESCE(u.organizing_events_visibility, 'public'), u.id, $2) AS organizing_events_visible,
+            can_view(COALESCE(u.offers_visibility, 'public'), u.id, $2) AS offers_visible,
+            can_view(COALESCE(u.statistics_visibility, 'public'), u.id, $2) AS statistics_visible
+        FROM users u
+        LEFT JOIN universities un ON un.id = u.university_id
+        WHERE lower(u.username) = lower($1)`
+
+    var p domain.UserPublicProfile
+    var usernameVal sql.NullString
+    var nickname, avatarURL, university sql.NullString
+    err := r.db.Pool.QueryRow(ctx, query, username, viewerID).Scan(
+        &p.ID, &usernameVal, &nickname, &p.FullName, &avatarURL,
+        &university, &p.StudentStatus, &p.Role, &p.CreatedAt, &p.FriendsCount,
+        &p.AllowSubscriptions,
+        &p.AvatarVisible, &p.EmailVisible, &p.UniversityVisible,
+        &p.FriendsListVisible, &p.SubscribersVisible, &p.SubscriptionsVisible,
+        &p.AttendingEventsVisible, &p.OrganizingEventsVisible,
+        &p.OffersVisible, &p.StatisticsVisible,
+    )
+    if err != nil {
+        return nil, err
+    }
+    p.Username = usernameVal.String
+    if nickname.Valid {
+        p.Nickname = &nickname.String
+    }
+    if avatarURL.Valid {
+        p.AvatarURL = &avatarURL.String
+    }
+    if university.Valid {
+        p.University = &university.String
+    }
+    return &p, nil
 }

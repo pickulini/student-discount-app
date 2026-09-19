@@ -134,3 +134,13 @@ func (u *UserUsecase) GetPublicProfile(ctx context.Context, username string) (*d
 func (u *UserUsecase) GetCompaniesByUsername(ctx context.Context, username string, currentUserID int64) ([]domain.CompanyWithSubscription, error) {
     return u.companyRepo.ListByUserUsername(ctx, username, currentUserID)
 }
+
+// UpdatePrivacy — обновляет настройки приватности
+func (u *UserUsecase) UpdatePrivacy(ctx context.Context, userID int64, settings map[string]string) error {
+    return u.userRepo.UpdatePrivacy(ctx, userID, settings)
+}
+
+// GetPublicProfileWithViewer — публичный профиль с флагами видимости
+func (u *UserUsecase) GetPublicProfileWithViewer(ctx context.Context, username string, viewerID int64) (*domain.UserPublicProfile, error) {
+    return u.userRepo.GetPublicProfileByUsernameWithViewer(ctx, username, viewerID)
+}

@@ -17,6 +17,8 @@ type UserRepository interface {
     GetByUsername(ctx context.Context, username string) (*domain.User, error)
     UpdateProfile(ctx context.Context, userID int64, nickname, username, avatarURL *string, privacyAllowSubscriptions *bool) error
     UpdateNotificationSettings(ctx context.Context, userID int64, enabled, friends, events, offers *bool) error
+    UpdatePrivacy(ctx context.Context, userID int64, settings map[string]string) error
+    GetPublicProfileByUsernameWithViewer(ctx context.Context, username string, viewerID int64) (*domain.UserPublicProfile, error)
     ListAdminIDs(ctx context.Context) ([]int64, error)
     Update(ctx context.Context, user *domain.User) error
     UpdateStudentStatus(ctx context.Context, userID int64, status string) error
