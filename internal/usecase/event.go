@@ -16,6 +16,7 @@ type EventUsecase struct {
     userRepo       repository.UserRepository
     attendeeRepo   repository.EventAttendeeRepository
     friendshipRepo repository.FriendshipRepository
+    subRepo        repository.CompanySubscriptionRepository
 }
 
 func NewEventUsecase(
@@ -24,6 +25,7 @@ func NewEventUsecase(
     userRepo repository.UserRepository,
     attendeeRepo repository.EventAttendeeRepository,
     friendshipRepo repository.FriendshipRepository,
+    subRepo repository.CompanySubscriptionRepository,
 ) *EventUsecase {
     return &EventUsecase{
         offerRepo:      offerRepo,
@@ -31,6 +33,7 @@ func NewEventUsecase(
         userRepo:       userRepo,
         attendeeRepo:   attendeeRepo,
         friendshipRepo: friendshipRepo,
+        subRepo:        subRepo,
     }
 }
 
@@ -218,9 +221,15 @@ func (u *EventUsecase) canViewEvent(ctx context.Context, userID int64, e *domain
         }
         return f.Status == "accepted", nil
     case domain.EventPrivacySubscribers:
-        // Подписчики компании-организатора — проверка на фронте не нужна, тут упрощённо
-        // TODO: проверка company_subscriptions
-        return true, nil
+        // Только для ивентов, организованных компанией
+        if e.CompanyID == nil {
+            return false, nil
+        }
+        subscribed, err := u.subRepo.IsSubscribed(ctx, userID, *e.CompanyID)
+        if err != nil {
+            return false, err
+        }
+        return subscribed, nil
     case domain.EventPrivacyUniversity:
         if e.EventUniversityID == nil {
             return false, nil

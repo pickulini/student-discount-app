@@ -81,7 +81,7 @@ func main() {
     tagUsecase := usecase.NewTagUsecase(tagRepo)
     friendUsecase := usecase.NewFriendUsecase(friendshipRepo, userRepo)
 	subscriptionUsecase := usecase.NewSubscriptionUsecase(companySubRepo, companyRepo, userRepo)
-	eventUsecase := usecase.NewEventUsecase(offerRepo, orderUsecase, userRepo, eventAttendeeRepo, friendshipRepo)
+	eventUsecase := usecase.NewEventUsecase(offerRepo, orderUsecase, userRepo, eventAttendeeRepo, friendshipRepo, companySubRepo)
 
     // Handlers
     walletHandler := handlers.NewWalletHandler(accountRepo, bonusRepo)
