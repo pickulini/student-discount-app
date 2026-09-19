@@ -15,7 +15,7 @@ type UserRepository interface {
     GetByID(ctx context.Context, id int64) (*domain.User, error)
     GetByReferralCode(ctx context.Context, code string) (*domain.User, error)
     GetByUsername(ctx context.Context, username string) (*domain.User, error)
-    UpdateProfile(ctx context.Context, userID int64, nickname, username, avatarURL *string) error
+    UpdateProfile(ctx context.Context, userID int64, nickname, username, avatarURL *string, privacyAllowSubscriptions *bool) error
     Update(ctx context.Context, user *domain.User) error
     UpdateStudentStatus(ctx context.Context, userID int64, status string) error
     UpdateBalance(ctx context.Context, userID int64, amount float64) error
@@ -60,6 +60,7 @@ type CompanyRepository interface {
     Create(ctx context.Context, c *domain.Company) error
     GetByID(ctx context.Context, id int64) (*domain.Company, error)
     List(ctx context.Context, limit, offset int) ([]domain.Company, error)
+    ListByUserUsername(ctx context.Context, username string, currentUserID int64) ([]domain.CompanyWithSubscription, error)
     Update(ctx context.Context, c *domain.Company) error
     Delete(ctx context.Context, id int64) error
 }

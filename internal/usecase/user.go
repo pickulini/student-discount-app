@@ -14,6 +14,7 @@ type UserUsecase struct {
     bonusRepo        repository.BonusRepository
     ledgerRepo       repository.LedgerRepository
     verificationRepo repository.StudentVerificationRepository
+    companyRepo      repository.CompanyRepository
 }
 
 func NewUserUsecase(
@@ -22,6 +23,7 @@ func NewUserUsecase(
     bonusRepo repository.BonusRepository,
     ledgerRepo repository.LedgerRepository,
     verificationRepo repository.StudentVerificationRepository,
+    companyRepo repository.CompanyRepository,
 ) *UserUsecase {
     return &UserUsecase{
         userRepo:         userRepo,
@@ -29,6 +31,7 @@ func NewUserUsecase(
         bonusRepo:        bonusRepo,
         ledgerRepo:       ledgerRepo,
         verificationRepo: verificationRepo,
+        companyRepo:      companyRepo,
     }
 }
 
@@ -60,7 +63,7 @@ func (u *UserUsecase) GetTransactionHistory(ctx context.Context, userID int64, l
 }
 
 // UpdateProfile делает частичное обновление — меняет только переданные поля
-func (u *UserUsecase) UpdateProfile(ctx context.Context, userID int64, nickname, username, avatarURL *string) error {
+func (u *UserUsecase) UpdateProfile(ctx context.Context, userID int64, nickname, username, avatarURL *string, privacyAllowSubscriptions *bool) error {
     // Загружаем текущего пользователя
     user, err := u.userRepo.GetByID(ctx, userID)
     if err != nil {
@@ -117,10 +120,17 @@ func (u *UserUsecase) UpdateProfile(ctx context.Context, userID int64, nickname,
         newUsername = user.Username
     }
 
-    return u.userRepo.UpdateProfile(ctx, userID, newNickname, newUsername, newAvatarURL)
+    return u.userRepo.UpdateProfile(ctx, userID, newNickname, newUsername, newAvatarURL, privacyAllowSubscriptions)
 }
 
 // GetPublicProfile возвращает публичные данные пользователя по username
 func (u *UserUsecase) GetPublicProfile(ctx context.Context, username string) (*domain.UserPublicProfile, error) {
     return u.userRepo.GetPublicProfileByUsername(ctx, username)
+}
+
+
+// GetCompaniesByUsername возвращает компании, привязанные к юзеру по username.
+// currentUserID = 0 — гость, is_subscribed везде false.
+func (u *UserUsecase) GetCompaniesByUsername(ctx context.Context, username string, currentUserID int64) ([]domain.CompanyWithSubscription, error) {
+    return u.companyRepo.ListByUserUsername(ctx, username, currentUserID)
 }

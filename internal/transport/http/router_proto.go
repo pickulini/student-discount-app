@@ -59,6 +59,7 @@ func NewRouterProto(
 	r.Get("/api/v1/tags/popular", tagHandler.Popular)
 	r.Get("/api/v1/tags/search", tagHandler.Search)
     r.Get("/api/v1/users/by-username/{username}", userHandler.GetPublicProfile)
+	r.Get("/api/v1/users/by-username/{username}/companies", userHandler.GetPublicCompanies)
 
 	// Публичные страницы оплаты (эмуляция СБП)
 	r.Get("/payments/sbp/checkout/{id}", paymentHandler.ConfirmPayment)

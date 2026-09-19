@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import SubscribeButton from './SubscribeButton';
 
 const PublicProfile = () => {
   const { handle } = useParams();
@@ -9,6 +10,8 @@ const PublicProfile = () => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [companies, setCompanies] = useState([]);
+  const [subscribedIDs, setSubscribedIDs] = useState(new Set());
 
   // /@username — параметр приходит как handle="@username"
   const username = (handle || '').startsWith('@') ? handle.slice(1) : null;
@@ -34,6 +37,21 @@ const PublicProfile = () => {
       })
       .finally(() => setLoading(false));
   }, [username]);
+
+  // Загружаем компании партнёра + свои подписки
+  useEffect(() => {
+    if (badUrl || !username) return;
+    api.get(`/users/by-username/${encodeURIComponent(username)}/companies`)
+      .then(res => setCompanies(res.data || []))
+      .catch(() => setCompanies([]));
+
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      api.get('/subscriptions/companies/ids')
+        .then(res => setSubscribedIDs(new Set(res.data || [])))
+        .catch(() => {});
+    }
+  }, [username, badUrl]);
 
   if (loading) return <div className="text-center py-8">Загрузка...</div>;
   if (error) {
@@ -95,6 +113,42 @@ const PublicProfile = () => {
       {profile.role && profile.role !== 'student' && (
         <div className="mb-4 text-sm text-gray-600">
           Роль: <span className="font-semibold">{profile.role}</span>
+        </div>
+      )}
+
+      {companies.length > 0 && (
+        <div className="mt-4 pt-4 border-t">
+          <h3 className="font-semibold mb-3">Мои компании</h3>
+          <div className="space-y-2">
+            {companies.map(c => (
+              <div key={c.id} className="flex items-center gap-3">
+                {c.logo_key ? (
+                  <img src={c.logo_key} alt="" className="w-10 h-10 rounded object-cover" />
+                ) : (
+                  <div className="w-10 h-10 rounded bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                    {c.name[0]?.toUpperCase()}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold truncate">{c.name}</div>
+                  {c.description && (
+                    <div className="text-xs text-gray-500 truncate">{c.description}</div>
+                  )}
+                </div>
+                <SubscribeButton
+                  companyId={c.id}
+                  initialSubscribed={subscribedIDs.has(c.id)}
+                  onChange={(isSub) => {
+                    setSubscribedIDs(prev => {
+                      const next = new Set(prev);
+                      if (isSub) next.add(c.id); else next.delete(c.id);
+                      return next;
+                    });
+                  }}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

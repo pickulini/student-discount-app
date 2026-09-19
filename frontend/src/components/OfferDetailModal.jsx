@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
 import OrderPaymentModal from './OrderPaymentModal';
+import SubscribeButton from './SubscribeButton';
 
 const OfferDetailModal = ({ offer, onClose }) => {
   const navigate = useNavigate();
@@ -10,6 +11,14 @@ const OfferDetailModal = ({ offer, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [order, setOrder] = useState(null);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+
+  useEffect(() => {
+    if (!offer || !user) return;
+    api.get('/subscriptions/companies/ids')
+      .then(res => setIsSubscribed((res.data || []).includes(offer.company_id)))
+      .catch(() => {});
+  }, [offer?.id, user]);
 
   if (!offer) return null;
 
@@ -68,7 +77,7 @@ const OfferDetailModal = ({ offer, onClose }) => {
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">✕</button>
           </div>
 
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-2 flex flex-wrap gap-2 items-center">
             <span className="inline-block bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
               {discountText}
             </span>
@@ -76,6 +85,13 @@ const OfferDetailModal = ({ offer, onClose }) => {
               <span className="inline-block bg-green-100 text-green-800 text-sm font-medium px-3 py-1 rounded-full">
                 Бонусы до {offer.max_bonus_percent}%
               </span>
+            )}
+            {user && offer.company_id && (
+              <SubscribeButton
+                companyId={offer.company_id}
+                initialSubscribed={isSubscribed}
+                onChange={setIsSubscribed}
+              />
             )}
           </div>
 

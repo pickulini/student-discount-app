@@ -50,6 +50,11 @@ func (u *FriendUsecase) SendFriendRequest(ctx context.Context, requesterID, addr
         return nil, errors.New("пользователь не найден")
     }
 
+    // Проверяем настройки приватности адресата
+    if !target.PrivacyAllowSubscriptions {
+        return nil, errors.New("этот пользователь запретил подписки")
+    }
+
     // Проверим существующую связь
     existing, _ := u.friendRepo.GetBetween(ctx, requesterID, addresseeID)
     if existing != nil {

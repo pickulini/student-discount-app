@@ -14,7 +14,7 @@ const Profile = () => {
   const [success, setSuccess] = useState('');
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyMessage, setVerifyMessage] = useState('');
-  const [form, setForm] = useState({ nickname: '', username: '', avatar_url: '' });
+  const [form, setForm] = useState({ nickname: '', username: '', avatar_url: '', privacy_allow_subscriptions: true });
 
   const fetchProfile = async () => {
     try {
@@ -24,6 +24,7 @@ const Profile = () => {
         nickname: res.data.nickname || '',
         username: res.data.username || '',
         avatar_url: res.data.avatar_url || '',
+        privacy_allow_subscriptions: res.data.privacy_allow_subscriptions !== false,
       });
     } catch (err) {
       console.error('Failed to load profile:', err);
@@ -46,6 +47,7 @@ const Profile = () => {
         nickname: form.nickname || null,
         username: form.username || null,
         avatar_url: form.avatar_url || null,
+        privacy_allow_subscriptions: form.privacy_allow_subscriptions,
       });
       setData(res.data);
       setEditMode(false);
@@ -196,6 +198,20 @@ const Profile = () => {
             </div>
             <p className="text-xs text-gray-500 mt-1">
               Уникальный тег для друзей. 3-30 символов: латиница, цифры, _
+            </p>
+          </div>
+
+          <div className="border-t pt-3">
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.privacy_allow_subscriptions}
+                onChange={e => setForm({ ...form, privacy_allow_subscriptions: e.target.checked })}
+              />
+              Разрешить другим пользователям отправлять мне заявки в друзья
+            </label>
+            <p className="text-xs text-gray-500 mt-1 ml-6">
+              Если выключено, никто не сможет подписаться на вас или добавить в друзья.
             </p>
           </div>
 

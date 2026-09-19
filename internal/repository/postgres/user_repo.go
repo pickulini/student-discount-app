@@ -55,7 +55,9 @@ func (r *UserRepo) GetByEmail(ctx context.Context, email string) (*domain.User, 
 
 func (r *UserRepo) GetByID(ctx context.Context, id int64) (*domain.User, error) {
     query := `SELECT id, email, password_hash, full_name, nickname, username, avatar_url, university_id, course, birth_date,
-                     student_status, referral_code, referred_by, is_active, role, created_at, updated_at
+                     student_status, referral_code, referred_by, is_active, role,
+                     COALESCE(privacy_allow_subscriptions, true),
+                     created_at, updated_at
               FROM users WHERE id = $1`
     var u domain.User
     err := r.db.Pool.QueryRow(ctx, query, id).Scan(
@@ -63,7 +65,9 @@ func (r *UserRepo) GetByID(ctx context.Context, id int64) (*domain.User, error) 
         &u.Nickname, &u.Username, &u.AvatarURL,
         &u.UniversityID, &u.Course, &u.BirthDate,
         &u.StudentStatus, &u.ReferralCode, &u.ReferredBy,
-        &u.IsActive, &u.Role, &u.CreatedAt, &u.UpdatedAt,
+        &u.IsActive, &u.Role,
+        &u.PrivacyAllowSubscriptions,
+        &u.CreatedAt, &u.UpdatedAt,
     )
     if err != nil {
         if errors.Is(err, pgx.ErrNoRows) {
@@ -168,9 +172,15 @@ func (r *UserRepo) GetByUsername(ctx context.Context, username string) (*domain.
     return &u, nil
 }
 
-func (r *UserRepo) UpdateProfile(ctx context.Context, userID int64, nickname, username, avatarURL *string) error {
-    query := `UPDATE users SET nickname = $1, username = $2, avatar_url = $3, updated_at = NOW() WHERE id = $4`
-    _, err := r.db.Pool.Exec(ctx, query, nickname, username, avatarURL, userID)
+func (r *UserRepo) UpdateProfile(ctx context.Context, userID int64, nickname, username, avatarURL *string, privacyAllowSubscriptions *bool) error {
+    query := `UPDATE users SET
+                nickname = COALESCE($1, nickname),
+                username = COALESCE($2, username),
+                avatar_url = COALESCE($3, avatar_url),
+                privacy_allow_subscriptions = COALESCE($4, privacy_allow_subscriptions),
+                updated_at = NOW()
+              WHERE id = $5`
+    _, err := r.db.Pool.Exec(ctx, query, nickname, username, avatarURL, privacyAllowSubscriptions, userID)
     return err
 }
 
@@ -254,7 +264,8 @@ func (r *UserRepo) GetPublicProfileByUsername(ctx context.Context, username stri
                    SELECT COUNT(*) FROM friendships f
                    WHERE (f.requester_id = u.id OR f.addressee_id = u.id)
                      AND f.status = 'accepted'
-               ), 0) AS friends_count
+               ), 0) AS friends_count,
+               COALESCE(u.privacy_allow_subscriptions, true)
         FROM users u
         LEFT JOIN universities un ON un.id = u.university_id
         WHERE lower(u.username) = lower($1)`
@@ -265,6 +276,7 @@ func (r *UserRepo) GetPublicProfileByUsername(ctx context.Context, username stri
     err := r.db.Pool.QueryRow(ctx, query, username).Scan(
         &p.ID, &usernameVal, &nickname, &p.FullName, &avatarURL,
         &university, &p.StudentStatus, &p.Role, &p.CreatedAt, &p.FriendsCount,
+        &p.AllowSubscriptions,
     )
     if err != nil {
         return nil, err

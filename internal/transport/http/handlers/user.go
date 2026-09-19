@@ -29,20 +29,21 @@ func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
         return
     }
     response := map[string]interface{}{
-        "id":             user.ID,
-        "email":          user.Email,
-        "full_name":      user.FullName,
-        "nickname":       user.Nickname,
-        "username":       user.Username,
-        "avatar_url":     user.AvatarURL,
-        "student_status": user.StudentStatus,
-        "referral_code":  user.ReferralCode,
-        "balance":        cashBalance,
-        "bonus_balance":  bonusBalance,
-        "is_active":      user.IsActive,
-        "role":           user.Role,
-        "created_at":     user.CreatedAt,
-        "updated_at":     user.UpdatedAt,
+        "id":                          user.ID,
+        "email":                       user.Email,
+        "full_name":                   user.FullName,
+        "nickname":                    user.Nickname,
+        "username":                    user.Username,
+        "avatar_url":                  user.AvatarURL,
+        "student_status":              user.StudentStatus,
+        "referral_code":               user.ReferralCode,
+        "balance":                     cashBalance,
+        "bonus_balance":               bonusBalance,
+        "is_active":                   user.IsActive,
+        "role":                        user.Role,
+        "privacy_allow_subscriptions": user.PrivacyAllowSubscriptions,
+        "created_at":                  user.CreatedAt,
+        "updated_at":                  user.UpdatedAt,
     }
     writeJSON(w, http.StatusOK, response)
 }
@@ -74,9 +75,10 @@ func (h *UserHandler) GetTransactionHistory(w http.ResponseWriter, r *http.Reque
 }
 
 type UpdateProfileRequest struct {
-    Nickname  *string `json:"nickname,omitempty"`
-    Username  *string `json:"username,omitempty"`
-    AvatarURL *string `json:"avatar_url,omitempty"`
+    Nickname                  *string `json:"nickname,omitempty"`
+    Username                  *string `json:"username,omitempty"`
+    AvatarURL                 *string `json:"avatar_url,omitempty"`
+    PrivacyAllowSubscriptions *bool   `json:"privacy_allow_subscriptions,omitempty"`
 }
 
 func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
@@ -92,7 +94,7 @@ func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    if err := h.userUsecase.UpdateProfile(r.Context(), userID, req.Nickname, req.Username, req.AvatarURL); err != nil {
+    if err := h.userUsecase.UpdateProfile(r.Context(), userID, req.Nickname, req.Username, req.AvatarURL, req.PrivacyAllowSubscriptions); err != nil {
         writeError(w, http.StatusBadRequest, err.Error())
         return
     }
@@ -104,20 +106,21 @@ func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
     }
 
     response := map[string]interface{}{
-        "id":             user.ID,
-        "email":          user.Email,
-        "full_name":      user.FullName,
-        "nickname":       user.Nickname,
-        "username":       user.Username,
-        "avatar_url":     user.AvatarURL,
-        "student_status": user.StudentStatus,
-        "referral_code":  user.ReferralCode,
-        "balance":        cashBalance,
-        "bonus_balance":  bonusBalance,
-        "is_active":      user.IsActive,
-        "role":           user.Role,
-        "created_at":     user.CreatedAt,
-        "updated_at":     user.UpdatedAt,
+        "id":                          user.ID,
+        "email":                       user.Email,
+        "full_name":                   user.FullName,
+        "nickname":                    user.Nickname,
+        "username":                    user.Username,
+        "avatar_url":                  user.AvatarURL,
+        "student_status":              user.StudentStatus,
+        "referral_code":               user.ReferralCode,
+        "balance":                     cashBalance,
+        "bonus_balance":               bonusBalance,
+        "is_active":                   user.IsActive,
+        "role":                        user.Role,
+        "privacy_allow_subscriptions": user.PrivacyAllowSubscriptions,
+        "created_at":                  user.CreatedAt,
+        "updated_at":                  user.UpdatedAt,
     }
     writeJSON(w, http.StatusOK, response)
 }
@@ -136,4 +139,22 @@ func (h *UserHandler) GetPublicProfile(w http.ResponseWriter, r *http.Request) {
         return
     }
     writeJSON(w, http.StatusOK, profile)
+}
+
+
+// GetPublicCompanies — компании, привязанные к партнёру (публичный)
+// Если юзер авторизован — флаг is_subscribed будет для него.
+func (h *UserHandler) GetPublicCompanies(w http.ResponseWriter, r *http.Request) {
+    username := chi.URLParam(r, "username")
+    if username == "" {
+        writeError(w, http.StatusBadRequest, "username required")
+        return
+    }
+    // Публичный роут — is_subscribed вычисляем на фронте через /subscriptions/companies/ids
+    companies, err := h.userUsecase.GetCompaniesByUsername(r.Context(), username, 0)
+    if err != nil {
+        writeError(w, http.StatusInternalServerError, "failed to load companies")
+        return
+    }
+    writeJSON(w, http.StatusOK, companies)
 }

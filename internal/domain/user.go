@@ -19,7 +19,8 @@ type User struct {
     IsActive       bool       `json:"is_active"`
     Balance        float64    `json:"balance"`
     Role           string     `json:"role"`
-    VerificationExpiresAt *time.Time `json:"student_verification_expires_at,omitempty"` // student, merchant, admin
+    VerificationExpiresAt *time.Time `json:"student_verification_expires_at,omitempty"`
+    PrivacyAllowSubscriptions bool `json:"privacy_allow_subscriptions"`
     CreatedAt      time.Time  `json:"created_at"`
     UpdatedAt      time.Time  `json:"updated_at"`
 }
@@ -55,14 +56,15 @@ type UserSession struct {
 
 // Публичный профиль — то, что видно по ссылке /@username
 type UserPublicProfile struct {
-    ID            int64   `json:"id"`
-    Username      string  `json:"username"`
-    Nickname      *string `json:"nickname,omitempty"`
-    FullName      string  `json:"full_name"`
-    AvatarURL     *string `json:"avatar_url,omitempty"`
-    University    *string `json:"university,omitempty"`
-    StudentStatus string  `json:"student_status"`
-    Role          string  `json:"role"`
-    FriendsCount  int     `json:"friends_count"`
-    CreatedAt     time.Time `json:"created_at"`
+    ID                 int64     `json:"id"`
+    Username           string    `json:"username"`
+    Nickname           *string   `json:"nickname,omitempty"`
+    FullName           string    `json:"full_name"`
+    AvatarURL          *string   `json:"avatar_url,omitempty"`
+    University         *string   `json:"university,omitempty"`
+    StudentStatus      string    `json:"student_status"`
+    Role               string    `json:"role"`
+    FriendsCount       int       `json:"friends_count"`
+    AllowSubscriptions bool      `json:"allow_subscriptions"`
+    CreatedAt          time.Time `json:"created_at"`
 }
