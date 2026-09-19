@@ -265,3 +265,19 @@ func (h *EventHandler) AttendingByUsername(w http.ResponseWriter, r *http.Reques
     }
     writeJSON(w, http.StatusOK, list)
 }
+
+
+// GET /api/v1/merchant/events/stats
+func (h *EventHandler) MyEventStats(w http.ResponseWriter, r *http.Request) {
+    userID, ok := h.userID(r)
+    if !ok {
+        writeError(w, http.StatusUnauthorized, "unauthorized")
+        return
+    }
+    stats, err := h.uc.MyEventStats(r.Context(), userID)
+    if err != nil {
+        writeError(w, http.StatusInternalServerError, "failed")
+        return
+    }
+    writeJSON(w, http.StatusOK, stats)
+}

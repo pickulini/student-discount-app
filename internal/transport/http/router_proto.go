@@ -208,6 +208,7 @@ func NewRouterProto(
 			r.Get("/api/v1/merchant/statistics/daily", merchantHandler.GetDailyStats)
 			r.Get("/api/v1/merchant/balance", merchantHandler.GetBalance)
 			r.Get("/api/v1/merchant/transactions", merchantHandler.GetTransactions)
+			r.Get("/api/v1/merchant/events/stats", eventHandler.MyEventStats)
 			r.Get("/api/v1/merchant/events", eventHandler.MyMerchant)
 		})
 	})

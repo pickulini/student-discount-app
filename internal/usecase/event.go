@@ -349,3 +349,67 @@ func (u *EventUsecase) AttendingByUsername(ctx context.Context, username string,
     }
     return result, nil
 }
+
+type EventStats struct {
+    TotalEvents        int     `json:"total_events"`
+    PublishedEvents    int     `json:"published_events"`
+    PendingEvents      int     `json:"pending_events"`
+    DraftEvents        int     `json:"draft_events"`
+    RejectedEvents     int     `json:"rejected_events"`
+    TotalAttendees     int     `json:"total_attendees"`
+    AvgAttendees       float64 `json:"avg_attendees"`
+    TopEvents          []domain.Offer `json:"top_events"`
+}
+
+// MyEventStats — агрегаты по ивентам организатора.
+func (u *EventUsecase) MyEventStats(ctx context.Context, userID int64) (*EventStats, error) {
+    events, err := u.offerRepo.ListEvents(ctx, &userID, "", 500, 0)
+    if err != nil {
+        return nil, err
+    }
+
+    stats := &EventStats{}
+    stats.TotalEvents = len(events)
+
+    var publishedWithAttendees int
+    for _, e := range events {
+        switch e.Status {
+        case "published":
+            stats.PublishedEvents++
+            stats.TotalAttendees += e.AttendeesCount
+            publishedWithAttendees++
+        case "pending_review", "pending_partner_approval":
+            stats.PendingEvents++
+        case "draft":
+            stats.DraftEvents++
+        case "rejected":
+            stats.RejectedEvents++
+        }
+    }
+
+    if publishedWithAttendees > 0 {
+        stats.AvgAttendees = float64(stats.TotalAttendees) / float64(publishedWithAttendees)
+    }
+
+    // Топ-3 по attendees_count (только published)
+    published := make([]domain.Offer, 0)
+    for _, e := range events {
+        if e.Status == "published" {
+            published = append(published, e)
+        }
+    }
+    // Простая сортировка по attendees_count desc
+    for i := 0; i < len(published); i++ {
+        for j := i + 1; j < len(published); j++ {
+            if published[j].AttendeesCount > published[i].AttendeesCount {
+                published[i], published[j] = published[j], published[i]
+            }
+        }
+    }
+    if len(published) > 3 {
+        published = published[:3]
+    }
+    stats.TopEvents = published
+
+    return stats, nil
+}

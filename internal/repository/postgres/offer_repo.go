@@ -325,7 +325,12 @@ func (r *OfferRepo) ListEvents(ctx context.Context, organizerID *int64, status s
     if limit <= 0 || limit > 200 {
         limit = 50
     }
-    query := `SELECT ` + offerColumns + ` FROM offers WHERE is_event = true`
+    query := `SELECT ` + offerColumns + `,
+        COALESCE((
+            SELECT COUNT(*) FROM event_attendees ea
+            WHERE ea.event_id = offers.id AND ea.status = 'going'
+        ), 0) AS attendees_count
+        FROM offers WHERE is_event = true`
     args := []interface{}{}
     argIdx := 1
 
@@ -351,9 +356,60 @@ func (r *OfferRepo) ListEvents(ctx context.Context, organizerID *int64, status s
 
     result := make([]domain.Offer, 0)
     for rows.Next() {
-        o, err := scanOffer(rows.Scan)
+        var o domain.Offer
+        var imageURL, address, phone, website, workingHours, rejectionReason sql.NullString
+        var companyID, organizerIDVal, eventUniversityID sql.NullInt64
+        var adminEditedData []byte
+        var adminEditComment, partnerRejectComment sql.NullString
+
+        err := rows.Scan(
+            &o.ID, &companyID, &o.Title, &o.Description,
+            &o.DiscountType, &o.DiscountValue, &o.SpecialPrice,
+            &o.StartAt, &o.EndAt, &o.Status, &o.MaxUses, &o.CurrentUses,
+            &o.BonusAllowed, &o.MaxBonusPercent, &o.CreatedAt, &o.UpdatedAt,
+            &imageURL, &address, &phone, &website, &workingHours, &rejectionReason,
+            &o.IsEvent, &organizerIDVal, &o.EventPrivacy, &eventUniversityID,
+            &adminEditedData, &adminEditComment, &partnerRejectComment,
+            &o.AttendeesCount,
+        )
         if err != nil {
             return nil, err
+        }
+        if companyID.Valid {
+            o.CompanyID = &companyID.Int64
+        }
+        if organizerIDVal.Valid {
+            o.OrganizerID = &organizerIDVal.Int64
+        }
+        if eventUniversityID.Valid {
+            o.EventUniversityID = &eventUniversityID.Int64
+        }
+        if imageURL.Valid {
+            o.ImageURL = &imageURL.String
+        }
+        if address.Valid {
+            o.Address = &address.String
+        }
+        if phone.Valid {
+            o.Phone = &phone.String
+        }
+        if website.Valid {
+            o.Website = &website.String
+        }
+        if workingHours.Valid {
+            o.WorkingHours = &workingHours.String
+        }
+        if rejectionReason.Valid {
+            o.RejectionReason = &rejectionReason.String
+        }
+        if len(adminEditedData) > 0 {
+            o.AdminEditedData = adminEditedData
+        }
+        if adminEditComment.Valid {
+            o.AdminEditComment = &adminEditComment.String
+        }
+        if partnerRejectComment.Valid {
+            o.PartnerRejectComment = &partnerRejectComment.String
         }
         result = append(result, o)
     }
