@@ -2,6 +2,7 @@ package usecase
 
 import (
     "context"
+    "strings"
     "crypto/rand"
     "crypto/sha256"
     "encoding/hex"
@@ -99,6 +100,24 @@ func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName st
     var referredBy *int64
     if referrer != nil {
         referredBy = &referrer.ID
+    }
+
+    // Автоопределение вуза по домену email
+    if universityID == nil {
+        if at := strings.LastIndex(email, "@"); at > 0 {
+            emailDomain := strings.ToLower(email[at+1:])
+            log.Printf("[AUTH] looking up university by domain: %s", emailDomain)
+            uni, err := u.uniRepo.GetByDomain(ctx, emailDomain)
+            if err != nil {
+                log.Printf("[AUTH] GetByDomain error: %v", err)
+            } else if uni != nil {
+                log.Printf("[AUTH] matched university id=%d name=%s", uni.ID, uni.Name)
+                uid := uni.ID
+                universityID = &uid
+            } else {
+                log.Printf("[AUTH] no university for domain %s", emailDomain)
+            }
+        }
     }
 
     username := generateUniqueUsername(ctx, u.userRepo, fullName)

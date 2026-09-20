@@ -18,7 +18,7 @@ func NewUniversityRepo(db *DB) repository.UniversityRepository {
 }
 
 func (r *UniversityRepo) GetByDomain(ctx context.Context, domainName string) (*domain.University, error) {
-    query := `SELECT id, name, short_name, is_active, created_at, updated_at
+    query := `SELECT id, name, short_name, domains, is_active, created_at, updated_at
               FROM universities
               WHERE is_active = true AND domains @> to_jsonb($1::text)
               LIMIT 1`
@@ -40,7 +40,7 @@ func (r *UniversityRepo) GetByDomain(ctx context.Context, domainName string) (*d
 }
 
 func (r *UniversityRepo) GetByID(ctx context.Context, id int64) (*domain.University, error) {
-    query := `SELECT id, name, short_name, is_active, created_at, updated_at
+    query := `SELECT id, name, short_name, domains, is_active, created_at, updated_at
               FROM universities WHERE id = $1`
     var u domain.University
     var domainsJSON []byte
