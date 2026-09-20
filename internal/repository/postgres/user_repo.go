@@ -425,3 +425,10 @@ func (r *UserRepo) GetPublicProfileByUsernameWithViewer(ctx context.Context, use
     }
     return &p, nil
 }
+
+func (r *UserRepo) SetUniversity(ctx context.Context, userID int64, universityID *int64) error {
+    _, err := r.db.Pool.Exec(ctx,
+        `UPDATE users SET university_id = $1, updated_at = NOW() WHERE id = $2`,
+        universityID, userID)
+    return err
+}

@@ -437,3 +437,26 @@ func (h *AdminHandler) GetOfferDetail(w http.ResponseWriter, r *http.Request) {
     }
     writeJSON(w, http.StatusOK, offer)
 }
+
+
+// PATCH /api/v1/admin/users/{id}/university
+func (h *AdminHandler) SetUserUniversity(w http.ResponseWriter, r *http.Request) {
+    idStr := chi.URLParam(r, "id")
+    id, err := strconv.ParseInt(idStr, 10, 64)
+    if err != nil {
+        writeError(w, http.StatusBadRequest, "invalid user id")
+        return
+    }
+    var req struct {
+        UniversityID *int64 `json:"university_id"`
+    }
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        writeError(w, http.StatusBadRequest, "invalid request")
+        return
+    }
+    if err := h.adminUsecase.SetUserUniversity(r.Context(), id, req.UniversityID); err != nil {
+        writeError(w, http.StatusInternalServerError, err.Error())
+        return
+    }
+    writeJSON(w, http.StatusOK, map[string]string{"message": "university updated"})
+}

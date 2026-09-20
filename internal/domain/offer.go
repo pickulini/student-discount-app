@@ -38,6 +38,7 @@ type Offer struct {
     EventPrivacy      string     `json:"event_privacy,omitempty"`
     EventUniversityID *int64     `json:"event_university_id,omitempty"`
     AttendeesCount    int        `json:"attendees_count,omitempty"`
+    InterestedCount   int        `json:"interested_count,omitempty"`
     MyAttendeeStatus  *string    `json:"my_attendee_status,omitempty"`
 
     // Админские правки до подтверждения партнёром
@@ -47,6 +48,9 @@ type Offer struct {
 
     CreatedAt time.Time `json:"created_at"`
     UpdatedAt time.Time `json:"updated_at"`
+
+    RecurrenceRule  *string    `json:"recurrence_rule,omitempty"`
+    RecurrenceUntil *time.Time `json:"recurrence_until,omitempty"`
 }
 
 const OfferStatusPendingPartnerApproval = "pending_partner_approval"

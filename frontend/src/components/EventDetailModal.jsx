@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
+import { formatRecurrence } from '../utils/recurrence';
 import { useAuth } from '../context/AuthContext';
 
 const EventDetailModal = ({ event: initialEvent, onClose, onAttendeeChange }) => {
@@ -53,6 +54,29 @@ const EventDetailModal = ({ event: initialEvent, onClose, onAttendeeChange }) =>
     }
   };
 
+  const handleInterested = async () => {
+    if (!user) {
+      onClose();
+      navigate('/login');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const isCurrentlyInterested = event.my_attendee_status === 'interested';
+      await api.post(`/events/${event.id}/rsvp`, {
+        status: isCurrentlyInterested ? 'none' : 'interested',
+      });
+      const res = await api.get(`/events/${event.id}`);
+      setEvent(res.data);
+      if (onAttendeeChange) onAttendeeChange();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Ошибка');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCancel = async () => {
     if (!confirm('Отменить участие?')) return;
     setLoading(true);
@@ -76,7 +100,7 @@ const EventDetailModal = ({ event: initialEvent, onClose, onAttendeeChange }) =>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">✕</button>
           </div>
 
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-2 flex flex-wrap gap-2 items-center">
             <span className={`text-sm font-medium px-3 py-1 rounded-full ${
               isPaid ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
             }`}>
@@ -87,9 +111,24 @@ const EventDetailModal = ({ event: initialEvent, onClose, onAttendeeChange }) =>
                 ✓ Вы идёте
               </span>
             )}
+            {event.my_attendee_status === 'interested' && (
+              <span className="bg-yellow-100 text-yellow-800 text-sm font-medium px-3 py-1 rounded-full">
+                ⭐ Вы интересуетесь
+              </span>
+            )}
             {event.attendees_count > 0 && (
               <span className="bg-gray-100 text-gray-700 text-sm font-medium px-3 py-1 rounded-full">
                 {event.attendees_count} идут
+              </span>
+            )}
+            {event.interested_count > 0 && (
+              <span className="bg-yellow-50 text-yellow-800 text-sm font-medium px-3 py-1 rounded-full">
+                ⭐ {event.interested_count} интересуются
+              </span>
+            )}
+            {event.recurrence_rule && (
+              <span className="bg-purple-100 text-purple-800 text-sm font-medium px-3 py-1 rounded-full">
+                🔄 {formatRecurrence(event.recurrence_rule, event.recurrence_until)}
               </span>
             )}
           </div>
@@ -140,13 +179,26 @@ const EventDetailModal = ({ event: initialEvent, onClose, onAttendeeChange }) =>
                 {loading ? '...' : 'Отменить участие'}
               </button>
             ) : (
-              <button
-                onClick={handleSchedule}
-                disabled={loading}
-                className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-              >
-                {loading ? '...' : isPaid ? 'Запланировать' : 'Пойду'}
-              </button>
+              <>
+                <button
+                  onClick={handleSchedule}
+                  disabled={loading}
+                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                >
+                  {loading ? '...' : isPaid ? 'Запланировать' : 'Пойду'}
+                </button>
+                <button
+                  onClick={handleInterested}
+                  disabled={loading}
+                  className={`flex-1 border py-2 rounded-lg transition disabled:opacity-50 ${
+                    event.my_attendee_status === 'interested'
+                      ? 'border-yellow-400 bg-yellow-50 text-yellow-800'
+                      : 'border-yellow-400 text-yellow-700 hover:bg-yellow-50'
+                  }`}
+                >
+                  {loading ? '...' : event.my_attendee_status === 'interested' ? '⭐ Уже интересуюсь' : '⭐ Может быть'}
+                </button>
+              </>
             )}
             <button
               onClick={onClose}

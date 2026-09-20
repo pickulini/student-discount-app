@@ -43,6 +43,8 @@ type CreateEventRequest struct {
     EventUniversityID *int64     `json:"event_university_id,omitempty"`
     MaxUses           *int       `json:"max_uses,omitempty"`
     SpecialPrice      *float64   `json:"special_price,omitempty"`
+    RecurrenceRule    *string    `json:"recurrence_rule,omitempty"`
+    RecurrenceUntil   *string    `json:"recurrence_until,omitempty"`
 }
 
 func (h *EventHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -72,6 +74,14 @@ func (h *EventHandler) Create(w http.ResponseWriter, r *http.Request) {
         }
     }
 
+    var recurrenceUntil *time.Time
+    if req.RecurrenceUntil != nil && *req.RecurrenceUntil != "" {
+        t, err := time.Parse(time.RFC3339, *req.RecurrenceUntil)
+        if err == nil {
+            recurrenceUntil = &t
+        }
+    }
+
     event, err := h.uc.CreateEvent(r.Context(), usecase.CreateEventInput{
         OrganizerID:       userID,
         CompanyID:         req.CompanyID,
@@ -85,6 +95,8 @@ func (h *EventHandler) Create(w http.ResponseWriter, r *http.Request) {
         EventUniversityID: req.EventUniversityID,
         MaxUses:           req.MaxUses,
         SpecialPrice:      req.SpecialPrice,
+        RecurrenceRule:    req.RecurrenceRule,
+        RecurrenceUntil:   recurrenceUntil,
     })
     if err != nil {
         writeError(w, http.StatusBadRequest, err.Error())
@@ -280,4 +292,30 @@ func (h *EventHandler) MyEventStats(w http.ResponseWriter, r *http.Request) {
         return
     }
     writeJSON(w, http.StatusOK, stats)
+}
+
+// POST /api/v1/events/{id}/rsvp
+func (h *EventHandler) SetRSVP(w http.ResponseWriter, r *http.Request) {
+    userID, ok := h.userID(r)
+    if !ok {
+        writeError(w, http.StatusUnauthorized, "unauthorized")
+        return
+    }
+    id, ok := h.eventID(r)
+    if !ok {
+        writeError(w, http.StatusBadRequest, "invalid id")
+        return
+    }
+    var req struct {
+        Status string `json:"status"`
+    }
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        writeError(w, http.StatusBadRequest, "invalid request")
+        return
+    }
+    if err := h.uc.SetRSVP(r.Context(), userID, id, req.Status); err != nil {
+        writeError(w, http.StatusBadRequest, err.Error())
+        return
+    }
+    writeJSON(w, http.StatusOK, map[string]string{"message": "ok"})
 }

@@ -67,6 +67,8 @@ type CreateEventInput struct {
     EventUniversityID *int64
     MaxUses           *int
     SpecialPrice      *float64
+    RecurrenceRule    *string
+    RecurrenceUntil   *time.Time
 }
 
 func (u *EventUsecase) CreateEvent(ctx context.Context, input CreateEventInput) (*domain.Offer, error) {
@@ -124,6 +126,8 @@ func (u *EventUsecase) CreateEvent(ctx context.Context, input CreateEventInput) 
         OrganizerID:       &input.OrganizerID,
         EventPrivacy:      privacy,
         EventUniversityID: input.EventUniversityID,
+        RecurrenceRule:    input.RecurrenceRule,
+        RecurrenceUntil:   input.RecurrenceUntil,
     }
 
     if err := u.offerRepo.Create(ctx, event); err != nil {
@@ -210,9 +214,11 @@ func (u *EventUsecase) GetEvent(ctx context.Context, eventID, currentUserID int6
         return nil, errors.New("нет доступа к этому ивенту")
     }
 
-    // Счётчик участников
+    // Счётчики
     count, _ := u.attendeeRepo.CountByEvent(ctx, eventID, domain.AttendeeGoing)
     event.AttendeesCount = count
+    interestedCount, _ := u.attendeeRepo.CountByEvent(ctx, eventID, domain.AttendeeInterested)
+    event.InterestedCount = interestedCount
 
     // Мой статус
     if a, err := u.attendeeRepo.GetByEventAndUser(ctx, eventID, currentUserID); err == nil && a != nil {
@@ -413,3 +419,38 @@ func (u *EventUsecase) MyEventStats(ctx context.Context, userID int64) (*EventSt
 
     return stats, nil
 }
+
+
+// SetRSVP — установить мой статус на ивенте.
+// "going" — только через Schedule (создаёт order), этот метод принимает "interested" и "none".
+func (u *EventUsecase) SetRSVP(ctx context.Context, userID, eventID int64, status string) error {
+    event, err := u.GetEvent(ctx, eventID, userID)
+    if err != nil {
+        return err
+    }
+    if event.Status != "published" {
+        return errors.New("ивент ещё не опубликован")
+    }
+
+    switch status {
+    case "interested":
+        return u.attendeeRepo.Upsert(ctx, &domain.EventAttendee{
+            EventID: eventID,
+            UserID:  userID,
+            Status:  domain.AttendeeInterested,
+        })
+    case "none":
+        // Удаляем только interested/declined. going удаляется через CancelSchedule.
+        existing, err := u.attendeeRepo.GetByEventAndUser(ctx, eventID, userID)
+        if err != nil || existing == nil {
+            return nil
+        }
+        if existing.Status == domain.AttendeeGoing {
+            return errors.New("для отмены участия используйте CancelSchedule")
+        }
+        return u.attendeeRepo.Delete(ctx, eventID, userID)
+    }
+    return errors.New("неверный статус")
+}
+
+// interestedCount — вынести в GetEvent

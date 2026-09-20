@@ -53,6 +53,7 @@ func NewRouterProto(
 	r.Post("/api/v1/auth/register", authHandler.Register)
 	r.Post("/api/v1/auth/login", authHandler.Login)
 	r.Get("/api/v1/companies", companyHandler.ListCompanies)
+	r.Get("/api/v1/universities", companyHandler.ListUniversities)
 	r.Get("/api/v1/offers", companyHandler.ListOffers)
     r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir("/app/uploads"))))
 	r.Get("/api/v1/offers/nearby", companyHandler.GetNearbyOffers)
@@ -127,6 +128,7 @@ func NewRouterProto(
 		r.Post("/api/v1/events", eventHandler.Create)
 		r.Post("/api/v1/events/{id}/submit", eventHandler.Submit)
 		r.Post("/api/v1/events/{id}/schedule", eventHandler.Schedule)
+		r.Post("/api/v1/events/{id}/rsvp", eventHandler.SetRSVP)
 		r.Delete("/api/v1/events/{id}/schedule", eventHandler.CancelSchedule)
 
 		// Заказы
@@ -160,6 +162,7 @@ func NewRouterProto(
 			// Пользователи
 			r.Get("/api/v1/admin/users", adminHandler.ListUsers)
 			r.Put("/api/v1/admin/users/role", adminHandler.UpdateUserRole)
+			r.Patch("/api/v1/admin/users/{id}/university", adminHandler.SetUserUniversity)
 			r.Get("/api/v1/admin/users/{id}", adminHandler.GetUser)
 			r.Get("/api/v1/admin/users/{id}/stats", adminHandler.GetUserDetailedStats)
 

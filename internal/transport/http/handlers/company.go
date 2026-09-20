@@ -78,3 +78,14 @@ func (h *CompanyHandler) GetNearbyOffers(w http.ResponseWriter, r *http.Request)
     }
     writeJSON(w, http.StatusOK, result)
 }
+
+
+// GET /api/v1/universities — публичный список вузов
+func (h *CompanyHandler) ListUniversities(w http.ResponseWriter, r *http.Request) {
+    unis, err := h.companyUsecase.ListActiveUniversities(r.Context())
+    if err != nil {
+        writeError(w, http.StatusInternalServerError, "failed to load universities")
+        return
+    }
+    writeJSON(w, http.StatusOK, unis)
+}

@@ -6,6 +6,8 @@ import { useAuth } from '../context/AuthContext';
 
 const EMPTY = {
   title: '',
+  recurrence_rule: '',
+  recurrence_until: '',
   description: '',
   start_at: '',
   end_at: '',
@@ -58,6 +60,10 @@ const EventForm = () => {
         event_university_id: form.event_university_id ? parseInt(form.event_university_id) : undefined,
         special_price: form.special_price > 0 ? parseFloat(form.special_price) : undefined,
         max_uses: form.max_uses ? parseInt(form.max_uses) : undefined,
+        recurrence_rule: form.recurrence_rule || undefined,
+        recurrence_until: form.recurrence_rule && form.recurrence_until
+          ? new Date(form.recurrence_until).toISOString()
+          : undefined,
       };
 
       const res = await api.post('/events', payload);
@@ -131,6 +137,36 @@ const EventForm = () => {
               className="w-full border p-2 rounded"
             />
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm mb-1">Повторение</label>
+            <select
+              value={form.recurrence_rule}
+              onChange={e => setForm({ ...form, recurrence_rule: e.target.value })}
+              className="w-full border p-2 rounded"
+            >
+              <option value="">Не повторять</option>
+              <option value="FREQ=DAILY">Ежедневно</option>
+              <option value="FREQ=WEEKLY">Еженедельно</option>
+              <option value="FREQ=MONTHLY">Ежемесячно</option>
+            </select>
+          </div>
+          {form.recurrence_rule && (
+            <div>
+              <label className="block text-sm mb-1">Повторять до</label>
+              <input
+                type="date"
+                value={form.recurrence_until}
+                onChange={e => setForm({ ...form, recurrence_until: e.target.value })}
+                className="w-full border p-2 rounded"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Оставьте пустым для бессрочного повторения
+              </p>
+            </div>
+          )}
         </div>
 
         <div>

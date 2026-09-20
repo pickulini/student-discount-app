@@ -32,7 +32,7 @@ func main() {
     userRepo := postgres.NewUserRepo(db)
     sessionRepo := &postgres.SessionRepo{}
     studentVerifRepo := postgres.NewStudentVerificationRepo(db)
-    uniRepo := &postgres.UniversityRepo{}
+    uniRepo := postgres.NewUniversityRepo(db)
     orderRepo := postgres.NewOrderRepo(db)
     accountRepo := postgres.NewAccountRepo(db)
     ledgerRepo := postgres.NewLedgerRepo(db)
@@ -74,7 +74,7 @@ func main() {
         hasher, jwtManager, cfg.FrontendURL,
     )
     userUsecase := usecase.NewUserUsecase(userRepo, accountRepo, bonusRepo, ledgerRepo, studentVerifRepo, companyRepo)
-    companyUsecase := usecase.NewCompanyUsecase(companyRepo, locationRepo, offerRepo)
+    companyUsecase := usecase.NewCompanyUsecase(companyRepo, locationRepo, offerRepo, uniRepo)
     orderUsecase := usecase.NewOrderUsecase(orderRepo, offerRepo, userRepo, accountRepo, ledgerRepo, bonusRepo, merchantAccountRepo, merchantTxRepo, eventAttendeeRepo, db.Pool)
     paymentUsecase := usecase.NewPaymentUsecase(accountRepo, ledgerRepo, bonusRepo, paymentRepo)
     referralUsecase := usecase.NewReferralUsecase(referralRepo, userRepo)

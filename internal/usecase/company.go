@@ -7,20 +7,23 @@ import (
 )
 
 type CompanyUsecase struct {
-    companyRepo  repository.CompanyRepository
-    locationRepo repository.LocationRepository
-    offerRepo    repository.OfferRepository
+    companyRepo    repository.CompanyRepository
+    locationRepo   repository.LocationRepository
+    offerRepo      repository.OfferRepository
+    universityRepo repository.UniversityRepository
 }
 
 func NewCompanyUsecase(
     companyRepo repository.CompanyRepository,
     locationRepo repository.LocationRepository,
     offerRepo repository.OfferRepository,
+    universityRepo repository.UniversityRepository,
 ) *CompanyUsecase {
     return &CompanyUsecase{
-        companyRepo:  companyRepo,
-        locationRepo: locationRepo,
-        offerRepo:    offerRepo,
+        companyRepo:    companyRepo,
+        locationRepo:   locationRepo,
+        offerRepo:      offerRepo,
+        universityRepo: universityRepo,
     }
 }
 
@@ -42,4 +45,9 @@ func (u *CompanyUsecase) ListOffers(ctx context.Context, filters map[string]inte
 
 func (u *CompanyUsecase) GetOffer(ctx context.Context, id int64) (*domain.Offer, error) {
     return u.offerRepo.GetByID(ctx, id)
+}
+
+
+func (u *CompanyUsecase) ListActiveUniversities(ctx context.Context) ([]domain.University, error) {
+    return u.universityRepo.ListActive(ctx)
 }

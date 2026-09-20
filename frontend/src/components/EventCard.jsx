@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatRecurrence } from '../utils/recurrence';
 
 const EventCard = ({ event, onClick }) => {
   const isPaid = event.special_price && event.special_price > 0;
@@ -34,6 +35,12 @@ const EventCard = ({ event, onClick }) => {
           </span>
         </div>
 
+        {event.recurrence_rule && (
+          <div className="mt-1 inline-block bg-purple-100 text-purple-800 text-xs font-medium px-2 py-0.5 rounded-full self-start">
+            🔄 {formatRecurrence(event.recurrence_rule, event.recurrence_until)}
+          </div>
+        )}
+
         <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
           <span className="inline-flex items-center gap-1">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -55,6 +62,11 @@ const EventCard = ({ event, onClick }) => {
         {event.my_attendee_status === 'going' && (
           <div className="mt-2 inline-block bg-green-100 text-green-800 text-xs font-medium px-2 py-0.5 rounded-full self-start">
             ✓ Вы идёте
+          </div>
+        )}
+        {event.my_attendee_status === 'interested' && (
+          <div className="mt-2 inline-block bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-0.5 rounded-full self-start">
+            ⭐ Вы интересуетесь
           </div>
         )}
       </div>

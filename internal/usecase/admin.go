@@ -586,3 +586,7 @@ func (u *AdminUsecase) AdminEditOffer(ctx context.Context, offerID int64, update
 func (u *AdminUsecase) AdminGetOffer(ctx context.Context, id int64) (*domain.Offer, error) {
     return u.offerRepo.GetByID(ctx, id)
 }
+
+func (u *AdminUsecase) SetUserUniversity(ctx context.Context, userID int64, universityID *int64) error {
+    return u.userRepo.SetUniversity(ctx, userID, universityID)
+}

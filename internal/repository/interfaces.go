@@ -24,6 +24,7 @@ type UserRepository interface {
     UpdateStudentStatus(ctx context.Context, userID int64, status string) error
     UpdateBalance(ctx context.Context, userID int64, amount float64) error
     UpdateRole(ctx context.Context, userID int64, role string) error
+    SetUniversity(ctx context.Context, userID int64, universityID *int64) error
     List(ctx context.Context, limit, offset int) ([]domain.User, error)
     SearchUsers(ctx context.Context, excludeID int64, query string, limit int) ([]domain.UserPublicCard, error)
     UsernameExists(ctx context.Context, username string) (bool, error)
@@ -57,6 +58,7 @@ type SessionRepository interface {
 type UniversityRepository interface {
     GetByDomain(ctx context.Context, domain string) (*domain.University, error)
     GetByID(ctx context.Context, id int64) (*domain.University, error)
+    ListActive(ctx context.Context) ([]domain.University, error)
 }
 
 // ---- Company ----

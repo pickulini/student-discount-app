@@ -36,6 +36,8 @@ type CreateOfferRequest struct {
     Latitude        *float64 `json:"latitude,omitempty"`
     Longitude       *float64 `json:"longitude,omitempty"`
     PlaceName       *string  `json:"place_name,omitempty"`
+    RecurrenceRule  *string  `json:"recurrence_rule,omitempty"`
+    RecurrenceUntil *string  `json:"recurrence_until,omitempty"`
     Phone           *string `json:"phone,omitempty"`
     Website         *string `json:"website,omitempty"`
     WorkingHours    *string `json:"working_hours,omitempty"`
@@ -145,6 +147,7 @@ func (h *MerchantHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
         Latitude:        req.Latitude,
         Longitude:       req.Longitude,
         PlaceName:       req.PlaceName,
+        RecurrenceRule:  req.RecurrenceRule,
         Phone:           req.Phone,
         Website:         req.Website,
         WorkingHours:    req.WorkingHours,
@@ -292,6 +295,7 @@ func (h *MerchantHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
         Latitude:        req.Latitude,
         Longitude:       req.Longitude,
         PlaceName:       req.PlaceName,
+        RecurrenceRule:  req.RecurrenceRule,
         Phone:           req.Phone,
         Website:         req.Website,
         WorkingHours:    req.WorkingHours,
