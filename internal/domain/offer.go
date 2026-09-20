@@ -37,8 +37,8 @@ type Offer struct {
     OrganizerID       *int64     `json:"organizer_id,omitempty"`
     EventPrivacy      string     `json:"event_privacy,omitempty"`
     EventUniversityID *int64     `json:"event_university_id,omitempty"`
-    AttendeesCount    int        `json:"attendees_count,omitempty"`
-    InterestedCount   int        `json:"interested_count,omitempty"`
+    AttendeesCount    int        `json:"attendees_count"`
+    InterestedCount   int        `json:"interested_count"`
     MyAttendeeStatus  *string    `json:"my_attendee_status,omitempty"`
 
     // Админские правки до подтверждения партнёром

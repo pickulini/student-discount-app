@@ -354,7 +354,11 @@ func (r *OfferRepo) ListEvents(ctx context.Context, organizerID *int64, status s
         COALESCE((
             SELECT COUNT(*) FROM event_attendees ea
             WHERE ea.event_id = offers.id AND ea.status = 'going'
-        ), 0) AS attendees_count
+        ), 0) AS attendees_count,
+        COALESCE((
+            SELECT COUNT(*) FROM event_attendees ea
+            WHERE ea.event_id = offers.id AND ea.status = 'interested'
+        ), 0) AS interested_count
         FROM offers WHERE is_event = true`
     args := []interface{}{}
     argIdx := 1
@@ -401,6 +405,7 @@ func (r *OfferRepo) ListEvents(ctx context.Context, organizerID *int64, status s
             &latitude, &longitude, &placeName,
             &recurrenceRule, &recurrenceUntil,
             &o.AttendeesCount,
+            &o.InterestedCount,
         )
         if err != nil {
             return nil, err

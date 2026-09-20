@@ -357,14 +357,16 @@ func (u *EventUsecase) AttendingByUsername(ctx context.Context, username string,
 }
 
 type EventStats struct {
-    TotalEvents        int     `json:"total_events"`
-    PublishedEvents    int     `json:"published_events"`
-    PendingEvents      int     `json:"pending_events"`
-    DraftEvents        int     `json:"draft_events"`
-    RejectedEvents     int     `json:"rejected_events"`
-    TotalAttendees     int     `json:"total_attendees"`
-    AvgAttendees       float64 `json:"avg_attendees"`
+    TotalEvents        int            `json:"total_events"`
+    PublishedEvents    int            `json:"published_events"`
+    PendingEvents      int            `json:"pending_events"`
+    DraftEvents        int            `json:"draft_events"`
+    RejectedEvents     int            `json:"rejected_events"`
+    TotalAttendees     int            `json:"total_attendees"`
+    TotalInterested    int            `json:"total_interested"`
+    AvgAttendees       float64        `json:"avg_attendees"`
     TopEvents          []domain.Offer `json:"top_events"`
+    TopInterested      []domain.Offer `json:"top_interested"`
 }
 
 // MyEventStats — агрегаты по ивентам организатора.
@@ -383,6 +385,7 @@ func (u *EventUsecase) MyEventStats(ctx context.Context, userID int64) (*EventSt
         case "published":
             stats.PublishedEvents++
             stats.TotalAttendees += e.AttendeesCount
+            stats.TotalInterested += e.InterestedCount
             publishedWithAttendees++
         case "pending_review", "pending_partner_approval":
             stats.PendingEvents++
@@ -416,6 +419,28 @@ func (u *EventUsecase) MyEventStats(ctx context.Context, userID int64) (*EventSt
         published = published[:3]
     }
     stats.TopEvents = published
+
+    // Топ-3 по interested_count (только published)
+    byInterested := make([]domain.Offer, 0)
+    for _, e := range events {
+        if e.Status == "published" {
+            byInterested = append(byInterested, e)
+        }
+    }
+    for i := 0; i < len(byInterested); i++ {
+        for j := i + 1; j < len(byInterested); j++ {
+            if byInterested[j].InterestedCount > byInterested[i].InterestedCount {
+                byInterested[i], byInterested[j] = byInterested[j], byInterested[i]
+            }
+        }
+    }
+    if len(byInterested) > 3 {
+        byInterested = byInterested[:3]
+    }
+    if byInterested == nil {
+        byInterested = []domain.Offer{}
+    }
+    stats.TopInterested = byInterested
 
     return stats, nil
 }

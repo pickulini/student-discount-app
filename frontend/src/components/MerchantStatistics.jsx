@@ -175,7 +175,7 @@ const MerchantStatistics = () => {
       {/* === ИВЕНТЫ === */}
       {tab === 'events' && eventStats && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
             <div className="bg-blue-100 p-3 rounded shadow">
               <p className="text-xs text-gray-600">Всего ивентов</p>
               <p className="text-2xl font-bold">{eventStats.total_events}</p>
@@ -189,8 +189,12 @@ const MerchantStatistics = () => {
               <p className="text-2xl font-bold">{eventStats.pending_events}</p>
             </div>
             <div className="bg-purple-100 p-3 rounded shadow">
-              <p className="text-xs text-gray-600">Участников</p>
+              <p className="text-xs text-gray-600">👥 Идут</p>
               <p className="text-2xl font-bold">{eventStats.total_attendees}</p>
+            </div>
+            <div className="bg-orange-100 p-3 rounded shadow">
+              <p className="text-xs text-gray-600">⭐ Интерес</p>
+              <p className="text-2xl font-bold">{eventStats.total_interested || 0}</p>
             </div>
             <div className="bg-gray-100 p-3 rounded shadow">
               <p className="text-xs text-gray-600">Средний размер</p>
@@ -201,6 +205,30 @@ const MerchantStatistics = () => {
           {eventStats.rejected_events > 0 && (
             <div className="bg-red-50 border border-red-200 text-red-800 rounded p-3 mb-4 text-sm">
               Отклонено ивентов: <strong>{eventStats.rejected_events}</strong>
+            </div>
+          )}
+
+          {eventStats.top_interested && eventStats.top_interested.length > 0 && eventStats.top_interested.some(e => e.interested_count > 0) && (
+            <div className="bg-white rounded shadow p-4 mb-6">
+              <h3 className="text-lg font-semibold mb-3">⭐ Топ-3 по интересу</h3>
+              <div className="space-y-3">
+                {eventStats.top_interested.filter(e => e.interested_count > 0).map(e => (
+                  <div key={e.id}>
+                    <div className="flex justify-between text-sm mb-1">
+                      <Link to={`/events`} className="text-blue-600 hover:underline truncate mr-2">
+                        {e.title}
+                      </Link>
+                      <span className="font-semibold whitespace-nowrap">⭐ {e.interested_count}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-orange-500 h-2 rounded-full transition-all"
+                        style={{ width: `${((e.interested_count || 0) / Math.max(...eventStats.top_interested.map(x => x.interested_count || 0), 1)) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -241,6 +269,7 @@ const MerchantStatistics = () => {
                       <th className="p-2 text-left">Название</th>
                       <th className="p-2 text-left">Статус</th>
                       <th className="p-2 text-right">Идут</th>
+                      <th className="p-2 text-right">Интерес</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -262,6 +291,7 @@ const MerchantStatistics = () => {
                           </span>
                         </td>
                         <td className="p-2 text-right font-semibold">{e.attendees_count || 0}</td>
+                        <td className="p-2 text-right font-semibold text-orange-600">⭐ {e.interested_count || 0}</td>
                       </tr>
                     ))}
                   </tbody>
