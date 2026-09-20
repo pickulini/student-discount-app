@@ -23,6 +23,10 @@ type User struct {
     VerificationExpiresAt *time.Time `json:"student_verification_expires_at,omitempty"`
     PrivacyAllowSubscriptions bool `json:"privacy_allow_subscriptions"`
 
+    // VIP-статус (пока только флаг, в будущем — платная подписка)
+    IsVIP    bool       `json:"is_vip"`
+    VIPUntil *time.Time `json:"vip_until,omitempty"`
+
     // Настройки уведомлений
     NotifyEnabled bool `json:"notify_enabled"`
     NotifyFriends bool `json:"notify_friends"`

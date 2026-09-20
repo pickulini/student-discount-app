@@ -1,0 +1,5 @@
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS is_vip BOOLEAN NOT NULL DEFAULT false,
+    ADD COLUMN IF NOT EXISTS vip_until TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS idx_users_vip ON users(is_vip) WHERE is_vip = true;

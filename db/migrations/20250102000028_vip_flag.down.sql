@@ -1,0 +1,4 @@
+DROP INDEX IF EXISTS idx_users_vip;
+ALTER TABLE users
+    DROP COLUMN IF EXISTS vip_until,
+    DROP COLUMN IF EXISTS is_vip;

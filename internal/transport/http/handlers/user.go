@@ -42,6 +42,7 @@ func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
         "bonus_balance":               bonusBalance,
         "is_active":                   user.IsActive,
         "role":                        user.Role,
+        "is_vip":                      user.IsVIP,
         "privacy_allow_subscriptions": user.PrivacyAllowSubscriptions,
 
         "avatar_visibility":            user.AvatarVisibility,
@@ -132,6 +133,7 @@ func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
         "bonus_balance":               bonusBalance,
         "is_active":                   user.IsActive,
         "role":                        user.Role,
+        "is_vip":                      user.IsVIP,
         "privacy_allow_subscriptions": user.PrivacyAllowSubscriptions,
 
         "avatar_visibility":            user.AvatarVisibility,

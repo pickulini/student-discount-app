@@ -71,6 +71,8 @@ func (r *UserRepo) GetByID(ctx context.Context, id int64) (*domain.User, error) 
                      COALESCE(organizing_events_visibility, 'public'),
                      COALESCE(offers_visibility, 'public'),
                      COALESCE(statistics_visibility, 'public'),
+                     COALESCE(is_vip, false),
+                     vip_until,
                      created_at, updated_at
               FROM users WHERE id = $1`
     var u domain.User
@@ -86,6 +88,7 @@ func (r *UserRepo) GetByID(ctx context.Context, id int64) (*domain.User, error) 
         &u.FriendsListVisibility, &u.SubscribersVisibility, &u.SubscriptionsVisibility,
         &u.AttendingEventsVisibility, &u.OrganizingEventsVisibility,
         &u.OffersVisibility, &u.StatisticsVisibility,
+        &u.IsVIP, &u.VIPUntil,
         &u.CreatedAt, &u.UpdatedAt,
     )
     if err != nil {
