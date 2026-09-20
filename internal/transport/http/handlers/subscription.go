@@ -107,9 +107,13 @@ func (h *SubscriptionHandler) CompanyStats(w http.ResponseWriter, r *http.Reques
 		writeError(w, http.StatusBadRequest, "invalid company id")
 		return
 	}
-	stats, err := h.uc.Stats(r.Context(), companyID)
+	var viewerID int64
+	if v, ok := r.Context().Value(middleware.UserIDKey).(int64); ok {
+		viewerID = v
+	}
+	stats, err := h.uc.Stats(r.Context(), companyID, viewerID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed")
+		writeError(w, http.StatusForbidden, err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, stats)

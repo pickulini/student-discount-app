@@ -67,6 +67,7 @@ type CompanyRepository interface {
     GetByID(ctx context.Context, id int64) (*domain.Company, error)
     List(ctx context.Context, limit, offset int) ([]domain.Company, error)
     ListByUserUsername(ctx context.Context, username string, currentUserID int64) ([]domain.CompanyWithSubscription, error)
+    ListSubscribedByUser(ctx context.Context, userID int64) ([]domain.CompanyWithSubscription, error)
     Update(ctx context.Context, c *domain.Company) error
     Delete(ctx context.Context, id int64) error
 }
@@ -284,6 +285,7 @@ type CompanySubscriptionRepository interface {
     CountByCompany(ctx context.Context, companyID int64) (int, error)
     ListByUser(ctx context.Context, userID int64) ([]domain.Company, error)
     ListSubscribedCompanyIDs(ctx context.Context, userID int64) ([]int64, error)
+    CanViewStatistics(ctx context.Context, companyID, viewerID int64) (bool, error)
 }
 
 

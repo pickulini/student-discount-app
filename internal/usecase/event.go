@@ -302,6 +302,12 @@ func (u *EventUsecase) EventsByUsername(ctx context.Context, username string, cu
     if err != nil || organizer == nil {
         return []domain.Offer{}, nil
     }
+
+    // Проверяем приватность "organizing_events_visibility"
+    if !u.canViewOrganizingEvents(ctx, organizer, currentUserID) {
+        return []domain.Offer{}, nil
+    }
+
     events, err := u.offerRepo.ListEvents(ctx, &organizer.ID, "published", 100, 0)
     if err != nil {
         return nil, err
@@ -314,6 +320,32 @@ func (u *EventUsecase) EventsByUsername(ctx context.Context, username string, cu
         }
     }
     return result, nil
+}
+
+// canViewOrganizingEvents — проверяет видимость списка ивентов организатора.
+func (u *EventUsecase) canViewOrganizingEvents(ctx context.Context, owner *domain.User, viewerID int64) bool {
+    if owner == nil {
+        return false
+    }
+    if owner.ID == viewerID {
+        return true
+    }
+    switch owner.OrganizingEventsVisibility {
+    case "", "public":
+        return true
+    case "private":
+        return false
+    case "friends":
+        if viewerID == 0 {
+            return false
+        }
+        f, err := u.friendshipRepo.GetBetween(ctx, viewerID, owner.ID)
+        if err != nil || f == nil {
+            return false
+        }
+        return f.Status == "accepted"
+    }
+    return false
 }
 
 // RegisterAttendee — вызывается из OrderUsecase при оплате.
@@ -338,6 +370,12 @@ func (u *EventUsecase) AttendingByUsername(ctx context.Context, username string,
     if err != nil || user == nil {
         return []domain.Offer{}, nil
     }
+
+    // Проверяем приватность "attending_events_visibility"
+    if !u.canViewAttendingEvents(ctx, user, currentUserID) {
+        return []domain.Offer{}, nil
+    }
+
     ids, err := u.attendeeRepo.ListEventIDsByUser(ctx, user.ID, domain.AttendeeGoing)
     if err != nil || len(ids) == 0 {
         return []domain.Offer{}, nil
@@ -479,3 +517,30 @@ func (u *EventUsecase) SetRSVP(ctx context.Context, userID, eventID int64, statu
 }
 
 // interestedCount — вынести в GetEvent
+
+
+// canViewAttendingEvents — проверяет видимость списка "Планирует посетить".
+func (u *EventUsecase) canViewAttendingEvents(ctx context.Context, owner *domain.User, viewerID int64) bool {
+    if owner == nil {
+        return false
+    }
+    if owner.ID == viewerID {
+        return true
+    }
+    switch owner.AttendingEventsVisibility {
+    case "", "public":
+        return true
+    case "private":
+        return false
+    case "friends":
+        if viewerID == 0 {
+            return false
+        }
+        f, err := u.friendshipRepo.GetBetween(ctx, viewerID, owner.ID)
+        if err != nil || f == nil {
+            return false
+        }
+        return f.Status == "accepted"
+    }
+    return false
+}

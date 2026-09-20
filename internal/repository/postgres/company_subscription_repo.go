@@ -102,3 +102,32 @@ func (r *CompanySubscriptionRepo) ListSubscribedCompanyIDs(ctx context.Context, 
 	}
 	return ids, rows.Err()
 }
+
+
+func (r *CompanySubscriptionRepo) CanViewStatistics(ctx context.Context, companyID, viewerID int64) (bool, error) {
+    query := `
+        SELECT COALESCE(
+            BOOL_OR(
+                CASE
+                    WHEN u.statistics_visibility IS NULL OR u.statistics_visibility = 'public' THEN true
+                    WHEN u.statistics_visibility = 'private' THEN u.id = $2
+                    WHEN u.statistics_visibility = 'friends' THEN (
+                        $2 > 0 AND EXISTS(
+                            SELECT 1 FROM friendships f
+                            WHERE f.status = 'accepted'
+                              AND ((f.requester_id = u.id AND f.addressee_id = $2)
+                                OR (f.addressee_id = u.id AND f.requester_id = $2))
+                        )
+                    )
+                    ELSE true
+                END
+            ),
+            true
+        )
+        FROM company_users cu
+        JOIN users u ON u.id = cu.user_id
+        WHERE cu.company_id = $1`
+    var visible bool
+    err := r.db.Pool.QueryRow(ctx, query, companyID, viewerID).Scan(&visible)
+    return visible, err
+}

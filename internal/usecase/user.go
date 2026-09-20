@@ -15,6 +15,7 @@ type UserUsecase struct {
     ledgerRepo       repository.LedgerRepository
     verificationRepo repository.StudentVerificationRepository
     companyRepo      repository.CompanyRepository
+    friendshipRepo   repository.FriendshipRepository
 }
 
 func NewUserUsecase(
@@ -24,7 +25,7 @@ func NewUserUsecase(
     ledgerRepo repository.LedgerRepository,
     verificationRepo repository.StudentVerificationRepository,
     companyRepo repository.CompanyRepository,
-) *UserUsecase {
+    friendshipRepo repository.FriendshipRepository,) *UserUsecase {
     return &UserUsecase{
         userRepo:         userRepo,
         accountRepo:      accountRepo,
@@ -32,6 +33,7 @@ func NewUserUsecase(
         ledgerRepo:       ledgerRepo,
         verificationRepo: verificationRepo,
         companyRepo:      companyRepo,
+        friendshipRepo:   friendshipRepo,
     }
 }
 
@@ -132,7 +134,51 @@ func (u *UserUsecase) GetPublicProfile(ctx context.Context, username string) (*d
 // GetCompaniesByUsername возвращает компании, привязанные к юзеру по username.
 // currentUserID = 0 — гость, is_subscribed везде false.
 func (u *UserUsecase) GetCompaniesByUsername(ctx context.Context, username string, currentUserID int64) ([]domain.CompanyWithSubscription, error) {
+    // Проверяем приватность "offers_visibility" владельца
+    owner, err := u.userRepo.GetByUsername(ctx, username)
+    if err != nil || owner == nil {
+        return []domain.CompanyWithSubscription{}, nil
+    }
+    if !u.canViewCompanies(ctx, owner, currentUserID) {
+        return []domain.CompanyWithSubscription{}, nil
+    }
     return u.companyRepo.ListByUserUsername(ctx, username, currentUserID)
+}
+
+// canViewCompanies — проверяет видимость "Мои компании" партнёра.
+func (u *UserUsecase) canViewCompanies(ctx context.Context, owner *domain.User, viewerID int64) bool {
+    if owner == nil {
+        return false
+    }
+    if owner.ID == viewerID {
+        return true
+    }
+    switch owner.OffersVisibility {
+    case "", "public":
+        return true
+    case "private":
+        return false
+    case "friends":
+        if viewerID == 0 {
+            return false
+        }
+        // Нужен доступ к friendshipRepo
+        // Если его нет в UserUsecase — используем fallback через БД
+        return u.checkFriendship(ctx, viewerID, owner.ID)
+    }
+    return false
+}
+
+// checkFriendship — упрощённая проверка (через userRepo или напрямую)
+func (u *UserUsecase) checkFriendship(ctx context.Context, userA, userB int64) bool {
+    if u.friendshipRepo == nil {
+        return false
+    }
+    f, err := u.friendshipRepo.GetBetween(ctx, userA, userB)
+    if err != nil || f == nil {
+        return false
+    }
+    return f.Status == "accepted"
 }
 
 // UpdatePrivacy — обновляет настройки приватности
@@ -143,4 +189,36 @@ func (u *UserUsecase) UpdatePrivacy(ctx context.Context, userID int64, settings 
 // GetPublicProfileWithViewer — публичный профиль с флагами видимости
 func (u *UserUsecase) GetPublicProfileWithViewer(ctx context.Context, username string, viewerID int64) (*domain.UserPublicProfile, error) {
     return u.userRepo.GetPublicProfileByUsernameWithViewer(ctx, username, viewerID)
+}
+
+// GetSubscriptionsByUsername — компании, на которые подписан юзер.
+func (u *UserUsecase) GetSubscriptionsByUsername(ctx context.Context, username string, viewerID int64) ([]domain.CompanyWithSubscription, error) {
+    owner, err := u.userRepo.GetByUsername(ctx, username)
+    if err != nil || owner == nil {
+        return []domain.CompanyWithSubscription{}, nil
+    }
+    if !u.canViewSubscriptions(ctx, owner, viewerID) {
+        return []domain.CompanyWithSubscription{}, nil
+    }
+    // Используем subRepo через отдельный repo (или добавим его в UserUsecase)
+    // Пока через userRepo — в БД
+    return u.companyRepo.ListSubscribedByUser(ctx, owner.ID)
+}
+
+func (u *UserUsecase) canViewSubscriptions(ctx context.Context, owner *domain.User, viewerID int64) bool {
+    if owner == nil {
+        return false
+    }
+    if owner.ID == viewerID {
+        return true
+    }
+    switch owner.SubscriptionsVisibility {
+    case "", "public":
+        return true
+    case "private":
+        return false
+    case "friends":
+        return u.checkFriendship(ctx, viewerID, owner.ID)
+    }
+    return false
 }

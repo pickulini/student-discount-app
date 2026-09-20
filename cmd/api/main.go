@@ -73,7 +73,7 @@ func main() {
         accountRepo, bonusRepo, referralRepo, antifraudRepo,
         hasher, jwtManager, cfg.FrontendURL,
     )
-    userUsecase := usecase.NewUserUsecase(userRepo, accountRepo, bonusRepo, ledgerRepo, studentVerifRepo, companyRepo)
+    userUsecase := usecase.NewUserUsecase(userRepo, accountRepo, bonusRepo, ledgerRepo, studentVerifRepo, companyRepo, friendshipRepo)
     companyUsecase := usecase.NewCompanyUsecase(companyRepo, locationRepo, offerRepo, uniRepo)
     orderUsecase := usecase.NewOrderUsecase(orderRepo, offerRepo, userRepo, accountRepo, ledgerRepo, bonusRepo, merchantAccountRepo, merchantTxRepo, eventAttendeeRepo, db.Pool)
     paymentUsecase := usecase.NewPaymentUsecase(accountRepo, ledgerRepo, bonusRepo, paymentRepo)

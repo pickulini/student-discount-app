@@ -13,6 +13,7 @@ const PublicProfile = () => {
   const [companies, setCompanies] = useState([]);
   const [subscribedIDs, setSubscribedIDs] = useState(new Set());
   const [attendingEvents, setAttendingEvents] = useState([]);
+  const [userSubscriptions, setUserSubscriptions] = useState([]);
 
   // /@username — параметр приходит как handle="@username"
   const username = (handle || '').startsWith('@') ? handle.slice(1) : null;
@@ -56,6 +57,10 @@ const PublicProfile = () => {
     api.get(`/users/by-username/${encodeURIComponent(username)}/attending`)
       .then(res => setAttendingEvents(res.data || []))
       .catch(() => setAttendingEvents([]));
+
+    api.get(`/users/by-username/${encodeURIComponent(username)}/subscriptions`)
+      .then(res => setUserSubscriptions(res.data || []))
+      .catch(() => setUserSubscriptions([]));
   }, [username, badUrl]);
 
   if (loading) return <div className="text-center py-8">Загрузка...</div>;
@@ -128,6 +133,13 @@ const PublicProfile = () => {
         </div>
       </div>
 
+      {profile.subscriptions_visible === false && (
+        <div className="mt-4 pt-4 border-t">
+          <h3 className="font-semibold mb-2 text-gray-600">Подписки</h3>
+          <div className="text-sm text-gray-400">🔒 Скрыто настройками приватности</div>
+        </div>
+      )}
+
       {profile.role && profile.role !== 'student' && (
         <div className="mb-4 text-sm text-gray-600">
           Роль: <span className="font-semibold">{profile.role}</span>
@@ -151,6 +163,42 @@ const PublicProfile = () => {
                     })}
                   </div>
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {userSubscriptions.length > 0 && profile.subscriptions_visible !== false && (
+        <div className="mt-4 pt-4 border-t">
+          <h3 className="font-semibold mb-3">Подписки</h3>
+          <div className="space-y-2">
+            {userSubscriptions.map(c => (
+              <div key={c.id} className="flex items-center gap-3">
+                {c.logo_key ? (
+                  <img src={c.logo_key} alt="" className="w-10 h-10 rounded object-cover" />
+                ) : (
+                  <div className="w-10 h-10 rounded bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                    {c.name[0]?.toUpperCase()}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold truncate">{c.name}</div>
+                  {c.description && (
+                    <div className="text-xs text-gray-500 truncate">{c.description}</div>
+                  )}
+                </div>
+                <SubscribeButton
+                  companyId={c.id}
+                  initialSubscribed={subscribedIDs.has(c.id)}
+                  onChange={(isSub) => {
+                    setSubscribedIDs(prev => {
+                      const next = new Set(prev);
+                      if (isSub) next.add(c.id); else next.delete(c.id);
+                      return next;
+                    });
+                  }}
+                />
               </div>
             ))}
           </div>

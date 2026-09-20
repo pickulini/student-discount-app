@@ -210,3 +210,23 @@ func (h *UserHandler) GetPublicCompanies(w http.ResponseWriter, r *http.Request)
     }
     writeJSON(w, http.StatusOK, companies)
 }
+
+
+// GET /api/v1/users/by-username/{username}/subscriptions
+func (h *UserHandler) GetPublicSubscriptions(w http.ResponseWriter, r *http.Request) {
+    username := chi.URLParam(r, "username")
+    if username == "" {
+        writeError(w, http.StatusBadRequest, "username required")
+        return
+    }
+    var viewerID int64
+    if v, ok := r.Context().Value(middleware.UserIDKey).(int64); ok {
+        viewerID = v
+    }
+    subs, err := h.userUsecase.GetSubscriptionsByUsername(r.Context(), username, viewerID)
+    if err != nil {
+        writeError(w, http.StatusInternalServerError, "failed")
+        return
+    }
+    writeJSON(w, http.StatusOK, subs)
+}

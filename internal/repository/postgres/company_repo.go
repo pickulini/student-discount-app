@@ -138,3 +138,28 @@ func (r *CompanyRepo) ListByUserUsername(ctx context.Context, username string, c
 
 // ListByUserUsername — компании, привязанные к юзеру по username.
 // currentUserID = 0 (гость) → is_subscribed всегда false.
+
+// ListSubscribedByUser — компании, на которые подписан user.
+func (r *CompanyRepo) ListSubscribedByUser(ctx context.Context, userID int64) ([]domain.CompanyWithSubscription, error) {
+    query := `
+        SELECT c.id, c.name, COALESCE(c.description, ''), c.logo_key, c.is_active, true
+        FROM company_subscriptions s
+        JOIN companies c ON c.id = s.company_id
+        WHERE s.user_id = $1 AND c.is_active = true
+        ORDER BY s.created_at DESC`
+    rows, err := r.db.Pool.Query(ctx, query, userID)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    result := make([]domain.CompanyWithSubscription, 0)
+    for rows.Next() {
+        var c domain.CompanyWithSubscription
+        if err := rows.Scan(&c.ID, &c.Name, &c.Description, &c.LogoKey, &c.IsActive, &c.IsSubscribed); err != nil {
+            return nil, err
+        }
+        result = append(result, c)
+    }
+    return result, rows.Err()
+}

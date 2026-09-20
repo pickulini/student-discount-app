@@ -64,7 +64,14 @@ func (u *SubscriptionUsecase) MyCompanies(ctx context.Context, userID int64) ([]
 	return result, nil
 }
 
-func (u *SubscriptionUsecase) Stats(ctx context.Context, companyID int64) (*domain.CompanyStats, error) {
+func (u *SubscriptionUsecase) Stats(ctx context.Context, companyID, viewerID int64) (*domain.CompanyStats, error) {
+	visible, err := u.subRepo.CanViewStatistics(ctx, companyID, viewerID)
+	if err != nil {
+		return nil, err
+	}
+	if !visible {
+		return nil, errors.New("статистика компании скрыта настройками приватности")
+	}
 	count, err := u.subRepo.CountByCompany(ctx, companyID)
 	if err != nil {
 		return nil, err
