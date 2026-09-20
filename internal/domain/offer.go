@@ -24,6 +24,9 @@ type Offer struct {
     Tags            []Tag      `json:"tags,omitempty"`
     ImageURL        *string    `json:"image_url,omitempty"`
     Address         *string    `json:"address,omitempty"`
+    Latitude        *float64   `json:"latitude,omitempty"`
+    Longitude       *float64   `json:"longitude,omitempty"`
+    PlaceName       *string    `json:"place_name,omitempty"`
     Phone           *string    `json:"phone,omitempty"`
     Website         *string    `json:"website,omitempty"`
     WorkingHours    *string    `json:"working_hours,omitempty"`

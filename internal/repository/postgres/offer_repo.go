@@ -27,6 +27,8 @@ func scanOffer(scan func(dest ...interface{}) error) (domain.Offer, error) {
     var companyID, organizerID, eventUniversityID sql.NullInt64
     var adminEditedData []byte
     var adminEditComment, partnerRejectComment sql.NullString
+    var latitude, longitude sql.NullFloat64
+    var placeName sql.NullString
 
     err := scan(
         &o.ID, &companyID, &o.Title, &o.Description,
@@ -36,6 +38,7 @@ func scanOffer(scan func(dest ...interface{}) error) (domain.Offer, error) {
         &imageURL, &address, &phone, &website, &workingHours, &rejectionReason,
         &o.IsEvent, &organizerID, &o.EventPrivacy, &eventUniversityID,
         &adminEditedData, &adminEditComment, &partnerRejectComment,
+        &latitude, &longitude, &placeName,
     )
     if err != nil {
         return o, err
@@ -76,17 +79,26 @@ func scanOffer(scan func(dest ...interface{}) error) (domain.Offer, error) {
     if partnerRejectComment.Valid {
         o.PartnerRejectComment = &partnerRejectComment.String
     }
+    if latitude.Valid {
+        o.Latitude = &latitude.Float64
+    }
+    if longitude.Valid {
+        o.Longitude = &longitude.Float64
+    }
+    if placeName.Valid {
+        o.PlaceName = &placeName.String
+    }
     return o, nil
 }
 
-const offerColumns = `id, company_id, title, description, discount_type, discount_value, special_price, start_at, end_at, status, max_uses, current_uses, bonus_allowed, max_bonus_percent, created_at, updated_at, image_url, address, phone, website, working_hours, rejection_reason, is_event, organizer_id, event_privacy, event_university_id, admin_edited_data, admin_edit_comment, partner_reject_comment`
+const offerColumns = `id, company_id, title, description, discount_type, discount_value, special_price, start_at, end_at, status, max_uses, current_uses, bonus_allowed, max_bonus_percent, created_at, updated_at, image_url, address, phone, website, working_hours, rejection_reason, is_event, organizer_id, event_privacy, event_university_id, admin_edited_data, admin_edit_comment, partner_reject_comment, latitude, longitude, place_name`
 
 // Та же последовательность, но с префиксом "o." (для запросов с алиасами)
-const offerColumnsPrefixed = `o.id, o.company_id, o.title, o.description, o.discount_type, o.discount_value, o.special_price, o.start_at, o.end_at, o.status, o.max_uses, o.current_uses, o.bonus_allowed, o.max_bonus_percent, o.created_at, o.updated_at, o.image_url, o.address, o.phone, o.website, o.working_hours, o.rejection_reason, o.is_event, o.organizer_id, o.event_privacy, o.event_university_id, o.admin_edited_data, o.admin_edit_comment, o.partner_reject_comment`
+const offerColumnsPrefixed = `o.id, o.company_id, o.title, o.description, o.discount_type, o.discount_value, o.special_price, o.start_at, o.end_at, o.status, o.max_uses, o.current_uses, o.bonus_allowed, o.max_bonus_percent, o.created_at, o.updated_at, o.image_url, o.address, o.phone, o.website, o.working_hours, o.rejection_reason, o.is_event, o.organizer_id, o.event_privacy, o.event_university_id, o.admin_edited_data, o.admin_edit_comment, o.partner_reject_comment, o.latitude, o.longitude, o.place_name`
 
 func (r *OfferRepo) Create(ctx context.Context, o *domain.Offer) error {
-    query := `INSERT INTO offers (company_id, title, description, discount_type, discount_value, start_at, end_at, status, max_uses, current_uses, bonus_allowed, max_bonus_percent, image_url, address, phone, website, working_hours, is_event, organizer_id, event_privacy, event_university_id) 
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) RETURNING id, created_at, updated_at`
+    query := `INSERT INTO offers (company_id, title, description, discount_type, discount_value, start_at, end_at, status, max_uses, current_uses, bonus_allowed, max_bonus_percent, image_url, address, phone, website, working_hours, is_event, organizer_id, event_privacy, event_university_id, latitude, longitude, place_name) 
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24) RETURNING id, created_at, updated_at`
 
     eventPrivacy := o.EventPrivacy
     if eventPrivacy == "" {
@@ -99,6 +111,7 @@ func (r *OfferRepo) Create(ctx context.Context, o *domain.Offer) error {
         o.BonusAllowed, o.MaxBonusPercent,
         o.ImageURL, o.Address, o.Phone, o.Website, o.WorkingHours,
         o.IsEvent, o.OrganizerID, eventPrivacy, o.EventUniversityID,
+        o.Latitude, o.Longitude, o.PlaceName,
     ).Scan(&o.ID, &o.CreatedAt, &o.UpdatedAt)
     if err != nil {
         log.Printf("OfferRepo.Create SQL error: %v", err)
@@ -243,7 +256,7 @@ func (r *OfferRepo) IncrementUsesTx(ctx context.Context, tx pgx.Tx, id int64) er
 }
 
 func (r *OfferRepo) Update(ctx context.Context, o *domain.Offer) error {
-    query := `UPDATE offers SET title=$1, description=$2, discount_type=$3, discount_value=$4, special_price=$5, start_at=$6, end_at=$7, status=$8, max_uses=$9, bonus_allowed=$10, max_bonus_percent=$11, image_url=$12, address=$13, phone=$14, website=$15, working_hours=$16, rejection_reason=$17, is_event=$18, organizer_id=$19, event_privacy=$20, event_university_id=$21, updated_at=NOW() WHERE id=$22`
+    query := `UPDATE offers SET title=$1, description=$2, discount_type=$3, discount_value=$4, special_price=$5, start_at=$6, end_at=$7, status=$8, max_uses=$9, bonus_allowed=$10, max_bonus_percent=$11, image_url=$12, address=$13, phone=$14, website=$15, working_hours=$16, rejection_reason=$17, is_event=$18, organizer_id=$19, event_privacy=$20, event_university_id=$21, latitude=$22, longitude=$23, place_name=$24, updated_at=NOW() WHERE id=$25`
     _, err := r.db.Pool.Exec(ctx, query,
         o.Title, o.Description, o.DiscountType, o.DiscountValue,
         o.SpecialPrice, o.StartAt, o.EndAt, o.Status, o.MaxUses,
@@ -251,6 +264,7 @@ func (r *OfferRepo) Update(ctx context.Context, o *domain.Offer) error {
         o.ImageURL, o.Address, o.Phone, o.Website, o.WorkingHours,
         o.RejectionReason,
         o.IsEvent, o.OrganizerID, o.EventPrivacy, o.EventUniversityID,
+        o.Latitude, o.Longitude, o.PlaceName,
         o.ID,
     )
     return err
@@ -450,6 +464,9 @@ func (r *OfferRepo) ApplyAdminEdits(ctx context.Context, id int64) error {
                   website = COALESCE(admin_edited_data->>'website', website),
                   working_hours = COALESCE(admin_edited_data->>'working_hours', working_hours),
                   image_url = COALESCE(admin_edited_data->>'image_url', image_url),
+                  latitude = COALESCE((admin_edited_data->>'latitude')::double precision, latitude),
+                  longitude = COALESCE((admin_edited_data->>'longitude')::double precision, longitude),
+                  place_name = COALESCE(admin_edited_data->>'place_name', place_name),
                   admin_edited_data = NULL,
                   admin_edit_comment = NULL,
                   partner_reject_comment = NULL,

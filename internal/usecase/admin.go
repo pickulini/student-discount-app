@@ -543,6 +543,9 @@ func (u *AdminUsecase) AdminEditOffer(ctx context.Context, offerID int64, update
         "website":           updated.Website,
         "working_hours":     updated.WorkingHours,
         "image_url":         updated.ImageURL,
+        "latitude":          updated.Latitude,
+        "longitude":         updated.Longitude,
+        "place_name":        updated.PlaceName,
     }
     if updated.MaxUses != nil {
         snapshot["max_uses"] = *updated.MaxUses

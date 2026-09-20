@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
 import OrderPaymentModal from './OrderPaymentModal';
 import SubscribeButton from './SubscribeButton';
+import { yandexMapUrl, yandexSearchUrl } from '../utils/mapLinks';
 
 const OfferDetailModal = ({ offer, onClose }) => {
   const navigate = useNavigate();
@@ -108,7 +109,16 @@ const OfferDetailModal = ({ offer, onClose }) => {
             {offer.address && (
               <div>
                 <p className="font-semibold text-gray-600">Адрес</p>
-                <p className="text-gray-800">{offer.address}</p>
+                <a
+                  href={offer.latitude && offer.longitude
+                    ? yandexMapUrl(offer.latitude, offer.longitude)
+                    : yandexSearchUrl(offer.address)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline"
+                >
+                  📍 {offer.address}
+                </a>
               </div>
             )}
             {offer.phone && (

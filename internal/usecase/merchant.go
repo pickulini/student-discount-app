@@ -141,7 +141,7 @@ func (u *MerchantUsecase) resolveAndSetTags(ctx context.Context, offerID int64, 
             return err
         }
         tagIDs = append(tagIDs, tag.ID)
-        if len(tagIDs) >= 10 {
+        if len(tagIDs) >= 5 {
             break
         }
     }
@@ -296,6 +296,9 @@ func (u *MerchantUsecase) UpdateOffer(ctx context.Context, userID, offerID int64
     offer.MaxBonusPercent = updated.MaxBonusPercent
     offer.ImageURL = updated.ImageURL
     offer.Address = updated.Address
+    offer.Latitude = updated.Latitude
+    offer.Longitude = updated.Longitude
+    offer.PlaceName = updated.PlaceName
     offer.Phone = updated.Phone
     offer.Website = updated.Website
     offer.WorkingHours = updated.WorkingHours

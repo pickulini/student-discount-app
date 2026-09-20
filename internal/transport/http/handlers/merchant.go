@@ -31,8 +31,11 @@ type CreateOfferRequest struct {
     MaxBonusPercent int     `json:"max_bonus_percent"`
     TagIDs          []int64 `json:"tag_ids,omitempty"`     // legacy
     Hashtags        []string `json:"hashtags,omitempty"`   // новые хештеги
-    ImageURL        *string `json:"image_url,omitempty"`
-    Address         *string `json:"address,omitempty"`
+    ImageURL        *string  `json:"image_url,omitempty"`
+    Address         *string  `json:"address,omitempty"`
+    Latitude        *float64 `json:"latitude,omitempty"`
+    Longitude       *float64 `json:"longitude,omitempty"`
+    PlaceName       *string  `json:"place_name,omitempty"`
     Phone           *string `json:"phone,omitempty"`
     Website         *string `json:"website,omitempty"`
     WorkingHours    *string `json:"working_hours,omitempty"`
@@ -139,6 +142,9 @@ func (h *MerchantHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
         MaxBonusPercent: req.MaxBonusPercent,
         ImageURL:        req.ImageURL,
         Address:         req.Address,
+        Latitude:        req.Latitude,
+        Longitude:       req.Longitude,
+        PlaceName:       req.PlaceName,
         Phone:           req.Phone,
         Website:         req.Website,
         WorkingHours:    req.WorkingHours,
@@ -283,6 +289,9 @@ func (h *MerchantHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
         MaxBonusPercent: req.MaxBonusPercent,
         ImageURL:        req.ImageURL,
         Address:         req.Address,
+        Latitude:        req.Latitude,
+        Longitude:       req.Longitude,
+        PlaceName:       req.PlaceName,
         Phone:           req.Phone,
         Website:         req.Website,
         WorkingHours:    req.WorkingHours,

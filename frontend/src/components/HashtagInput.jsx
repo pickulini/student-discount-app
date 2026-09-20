@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../api/client';
 
-const MAX_TAGS = 10;
+const MAX_TAGS = 5;
 
 export default function HashtagInput({ value = [], onChange, placeholder = 'Введите хештег и нажмите Enter' }) {
   const [input, setInput] = useState('');
@@ -43,7 +43,7 @@ export default function HashtagInput({ value = [], onChange, placeholder = 'Вв
     return () => document.removeEventListener('mousedown', onClickOutside);
   }, []);
 
-  const normalize = (s) => s.trim().replace(/^#+/, '').trim();
+  const normalize = (s) => s.trim().replace(/^#+/, '').trim().toLowerCase();
 
   const addTag = (raw) => {
     const t = normalize(raw);

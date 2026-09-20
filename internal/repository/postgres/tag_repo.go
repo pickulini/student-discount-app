@@ -2,6 +2,8 @@ package postgres
 
 import (
 	"context"
+	"errors"
+	"strings"
 
 	"your-project/internal/domain"
 	"your-project/internal/repository"
@@ -116,24 +118,44 @@ func (r *TagRepo) ListAllAdmin(ctx context.Context, status string, limit, offset
 // ---- Создание / upsert ----
 
 func (r *TagRepo) Upsert(ctx context.Context, name, slug string, createdBy *int64) (*domain.Tag, error) {
-	// сначала пробуем найти по slug
-	existing, err := r.GetBySlug(ctx, slug)
-	if err == nil && existing != nil {
-		return existing, nil
-	}
+    // Нормализация: trim + lowercase
+    name = strings.ToLower(strings.TrimSpace(name))
+    slug = strings.ToLower(strings.TrimSpace(slug))
+    if name == "" || slug == "" {
+        return nil, errors.New("empty tag")
+    }
 
-	query := `INSERT INTO tags (name, slug, status, created_by)
-	          VALUES ($1, $2, 'pending', $3)
-	          ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
-	          RETURNING id, name, slug, status, created_by, created_at`
-	var t domain.Tag
-	err = r.db.Pool.QueryRow(ctx, query, name, slug, createdBy).Scan(
-		&t.ID, &t.Name, &t.Slug, &t.Status, &t.CreatedBy, &t.CreatedAt,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return &t, nil
+    // 1) Сначала ищем по lower(name) — это защищает от дублей типа "Еда"/"еда"
+    var t domain.Tag
+    err := r.db.Pool.QueryRow(ctx,
+        `SELECT id, name, slug, status, created_by, created_at
+         FROM tags WHERE LOWER(name) = $1 LIMIT 1`, name,
+    ).Scan(&t.ID, &t.Name, &t.Slug, &t.Status, &t.CreatedBy, &t.CreatedAt)
+    if err == nil {
+        return &t, nil
+    }
+    if !errors.Is(err, pgx.ErrNoRows) {
+        return nil, err
+    }
+
+    // 2) Потом по slug
+    existing, err := r.GetBySlug(ctx, slug)
+    if err == nil && existing != nil {
+        return existing, nil
+    }
+
+    // 3) INSERT нового тега (name уже lowercase)
+    insert := `INSERT INTO tags (name, slug, status, created_by)
+               VALUES ($1, $2, 'pending', $3)
+               ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
+               RETURNING id, name, slug, status, created_by, created_at`
+    err = r.db.Pool.QueryRow(ctx, insert, name, slug, createdBy).Scan(
+        &t.ID, &t.Name, &t.Slug, &t.Status, &t.CreatedBy, &t.CreatedAt,
+    )
+    if err != nil {
+        return nil, err
+    }
+    return &t, nil
 }
 
 // ---- Связь с офферами ----

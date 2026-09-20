@@ -2,11 +2,15 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import ImageUpload from './ImageUpload';
 import HashtagInput from './HashtagInput';
+import LocationPicker from './LocationPicker';
 import AdminEditDiffModal from './AdminEditDiffModal';
 
 const EMPTY_FORM = {
   company_id: '',
   title: '',
+  latitude: null,
+  longitude: null,
+  place_name: '',
   description: '',
   discount_type: 'percentage',
   discount_value: 10,
@@ -78,6 +82,9 @@ const MerchantOffers = () => {
       max_bonus_percent: offer.max_bonus_percent || 0,
       image_url: offer.image_url || '',
       address: offer.address || '',
+      latitude: offer.latitude || null,
+      longitude: offer.longitude || null,
+      place_name: offer.place_name || '',
       phone: offer.phone || '',
       website: offer.website || '',
       working_hours: offer.working_hours || '',
@@ -105,6 +112,9 @@ const MerchantOffers = () => {
       hashtags: hashtags,
       image_url: form.image_url || undefined,
       address: form.address || undefined,
+      latitude: form.latitude || undefined,
+      longitude: form.longitude || undefined,
+      place_name: form.place_name || undefined,
       phone: form.phone || undefined,
       website: form.website || undefined,
       working_hours: form.working_hours || undefined,
@@ -235,6 +245,24 @@ const MerchantOffers = () => {
               />
             </div>
 
+            <div className="md:col-span-2">
+              <LocationPicker
+                value={{
+                  latitude: form.latitude,
+                  longitude: form.longitude,
+                  place_name: form.place_name,
+                  address: form.address,
+                }}
+                onChange={(v) => setForm({
+                  ...form,
+                  latitude: v.latitude,
+                  longitude: v.longitude,
+                  place_name: v.place_name,
+                  address: v.address || form.address,
+                })}
+              />
+            </div>
+
             <div>
               <label className="block text-sm">Адрес</label>
               <input
@@ -244,6 +272,9 @@ const MerchantOffers = () => {
                 className="w-full border p-2 rounded"
                 placeholder="г. Москва, ул. Примерная, д. 1"
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Можно править вручную или установить точку на карте — адрес подтянется автоматически
+              </p>
             </div>
             <div>
               <label className="block text-sm">Телефон</label>

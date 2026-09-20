@@ -1,4 +1,5 @@
 import React from 'react';
+import { yandexMapUrl, yandexSearchUrl } from '../utils/mapLinks';
 
 const OfferCard = ({ offer, onClick, subscribed = false }) => {
   const discountText = offer.discount_type === 'percentage'
@@ -48,6 +49,25 @@ const OfferCard = ({ offer, onClick, subscribed = false }) => {
                 #{tag.name}
               </span>
             ))}
+          </div>
+        )}
+
+        {offer.address && (
+          <div className="mt-1 flex items-start gap-1 text-xs text-gray-500 line-clamp-2">
+            <svg className="w-3 h-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            </svg>
+            <a
+              href={offer.latitude && offer.longitude
+                ? yandexMapUrl(offer.latitude, offer.longitude)
+                : yandexSearchUrl(offer.address)}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="text-blue-600 hover:underline"
+            >
+              {offer.address}
+            </a>
           </div>
         )}
 
