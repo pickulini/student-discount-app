@@ -1,17 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import UserStatsModal from './UserStatsModal';
+import UniversityPickerModal from './UniversityPickerModal';
 
 const AdminUsers = () => {
   const [users, setUsers] = useState([]);
+  const [universities, setUniversities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedUserId, setSelectedUserId] = useState(null);
+  const [editingUniversityUserId, setEditingUniversityUserId] = useState(null);
 
-  useEffect(() => {
+  const fetchUsers = () => {
+    setLoading(true);
     api.get('/admin/users')
       .then(res => setUsers(res.data || []))
       .catch(console.error)
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchUsers();
+    api.get('/universities')
+      .then(res => setUniversities(res.data || []))
+      .catch(console.error);
   }, []);
 
   if (loading) return <div>Загрузка...</div>;
@@ -27,6 +38,7 @@ const AdminUsers = () => {
               <th className="p-2 text-left">Email</th>
               <th className="p-2 text-left">Имя</th>
               <th className="p-2 text-left">Статус</th>
+              <th className="p-2 text-left">Вуз</th>
               <th className="p-2 text-right">Баланс</th>
               <th className="p-2 text-left">Действия</th>
             </tr>
@@ -38,6 +50,15 @@ const AdminUsers = () => {
                 <td className="p-2">{user.email}</td>
                 <td className="p-2">{user.full_name}</td>
                 <td className="p-2">{user.student_status}</td>
+                <td className="p-2">
+                  <button
+                    onClick={() => setEditingUniversityUserId(user.id)}
+                    className="text-left hover:text-blue-600 hover:underline"
+                    title="Изменить вуз"
+                  >
+                    {user.university_name || <span className="text-gray-400">—</span>}
+                  </button>
+                </td>
                 <td className="p-2 text-right">{user.balance} ₽</td>
                 <td className="p-2">
                   <button
@@ -52,8 +73,21 @@ const AdminUsers = () => {
           </tbody>
         </table>
       </div>
+
       {selectedUserId && (
         <UserStatsModal userId={selectedUserId} onClose={() => setSelectedUserId(null)} />
+      )}
+
+      {editingUniversityUserId && (
+        <UniversityPickerModal
+          userId={editingUniversityUserId}
+          currentUniversityId={
+            users.find(u => u.id === editingUniversityUserId)?.university_id
+          }
+          universities={universities}
+          onClose={() => setEditingUniversityUserId(null)}
+          onSaved={fetchUsers}
+        />
       )}
     </div>
   );

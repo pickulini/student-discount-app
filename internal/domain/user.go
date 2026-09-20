@@ -11,6 +11,7 @@ type User struct {
     Username       *string    `json:"username,omitempty"`
     AvatarURL      *string    `json:"avatar_url,omitempty"`
     UniversityID   *int64     `json:"university_id,omitempty"`
+    UniversityName *string    `json:"university_name,omitempty"`
     Course         *int       `json:"course,omitempty"`
     BirthDate      *time.Time `json:"birth_date,omitempty"`
     StudentStatus  string     `json:"student_status"`

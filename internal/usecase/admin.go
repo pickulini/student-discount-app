@@ -61,25 +61,38 @@ func NewAdminUsecase(
 
 // ---- Пользователи ----
 func (u *AdminUsecase) ListUsers(ctx context.Context, limit, offset int) ([]domain.User, error) {
-    query := `SELECT u.id, u.email, u.full_name, u.student_status, u.referral_code, u.is_active, u.created_at, u.updated_at,
+    query := `SELECT u.id, u.email, u.full_name, u.student_status, u.referral_code, u.is_active,
+                     u.university_id,
+                     COALESCE(un.name, '') AS university_name,
+                     u.created_at, u.updated_at,
                      COALESCE(a.balance, 0) as account_balance
               FROM users u
               LEFT JOIN accounts a ON u.id = a.user_id AND a.type = 'cash'
+              LEFT JOIN universities un ON un.id = u.university_id
               ORDER BY u.id LIMIT $1 OFFSET $2`
     rows, err := u.db.Query(ctx, query, limit, offset)
     if err != nil {
         return nil, err
     }
     defer rows.Close()
-    var users []domain.User
+    users := make([]domain.User, 0)
     for rows.Next() {
         var u domain.User
         var accountBalance float64
+        var universityName string
         if err := rows.Scan(&u.ID, &u.Email, &u.FullName, &u.StudentStatus,
-            &u.ReferralCode, &u.IsActive, &u.CreatedAt, &u.UpdatedAt, &accountBalance); err != nil {
+            &u.ReferralCode, &u.IsActive,
+            &u.UniversityID,
+            &universityName,
+            &u.CreatedAt, &u.UpdatedAt, &accountBalance); err != nil {
             return nil, err
         }
         u.Balance = accountBalance
+        // UniversityName как дополнительное поле (добавим в domain)
+        u.UniversityName = &universityName
+        if universityName == "" {
+            u.UniversityName = nil
+        }
         users = append(users, u)
     }
     return users, nil
