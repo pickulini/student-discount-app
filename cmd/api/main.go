@@ -30,7 +30,7 @@ func main() {
 
     // Репозитории
     userRepo := postgres.NewUserRepo(db)
-    sessionRepo := &postgres.SessionRepo{}
+    sessionRepo := postgres.NewSessionRepo(db)
     studentVerifRepo := postgres.NewStudentVerificationRepo(db)
     uniRepo := postgres.NewUniversityRepo(db)
     orderRepo := postgres.NewOrderRepo(db)

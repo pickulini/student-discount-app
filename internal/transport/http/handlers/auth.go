@@ -3,9 +3,12 @@ package handlers
 import (
     "encoding/json"
     "net/http"
+    "strconv"
     "your-project/internal/domain"
     "your-project/internal/transport/http/middleware"
     "your-project/internal/usecase"
+
+    "github.com/go-chi/chi/v5"
 )
 
 type AuthHandler struct {
@@ -110,4 +113,95 @@ func (h *AuthHandler) RequestVerification(w http.ResponseWriter, r *http.Request
         return
     }
     writeJSON(w, http.StatusOK, map[string]string{"status": "pending"})
+}
+
+// PATCH /api/v1/users/me/password
+func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
+    userID, ok := r.Context().Value(middleware.UserIDKey).(int64)
+    if !ok {
+        writeError(w, http.StatusUnauthorized, "unauthorized")
+        return
+    }
+    var req struct {
+        OldPassword string `json:"old_password"`
+        NewPassword string `json:"new_password"`
+    }
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        writeError(w, http.StatusBadRequest, "invalid request")
+        return
+    }
+    if err := h.authUsecase.ChangePassword(r.Context(), userID, req.OldPassword, req.NewPassword); err != nil {
+        writeError(w, http.StatusBadRequest, err.Error())
+        return
+    }
+    writeJSON(w, http.StatusOK, map[string]string{"message": "password changed"})
+}
+
+// GET /api/v1/users/me/sessions
+func (h *AuthHandler) ListSessions(w http.ResponseWriter, r *http.Request) {
+    userID, ok := r.Context().Value(middleware.UserIDKey).(int64)
+    if !ok {
+        writeError(w, http.StatusUnauthorized, "unauthorized")
+        return
+    }
+    sessions, err := h.authUsecase.ListSessions(r.Context(), userID)
+    if err != nil {
+        writeError(w, http.StatusInternalServerError, "failed")
+        return
+    }
+    writeJSON(w, http.StatusOK, sessions)
+}
+
+// DELETE /api/v1/users/me/sessions/{id}
+func (h *AuthHandler) RevokeSession(w http.ResponseWriter, r *http.Request) {
+    userID, ok := r.Context().Value(middleware.UserIDKey).(int64)
+    if !ok {
+        writeError(w, http.StatusUnauthorized, "unauthorized")
+        return
+    }
+    id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+    if err != nil {
+        writeError(w, http.StatusBadRequest, "invalid id")
+        return
+    }
+    if err := h.authUsecase.RevokeSession(r.Context(), userID, id); err != nil {
+        writeError(w, http.StatusBadRequest, err.Error())
+        return
+    }
+    writeJSON(w, http.StatusOK, map[string]string{"message": "revoked"})
+}
+
+// DELETE /api/v1/users/me/sessions
+func (h *AuthHandler) RevokeAllSessions(w http.ResponseWriter, r *http.Request) {
+    userID, ok := r.Context().Value(middleware.UserIDKey).(int64)
+    if !ok {
+        writeError(w, http.StatusUnauthorized, "unauthorized")
+        return
+    }
+    if err := h.authUsecase.RevokeAllSessions(r.Context(), userID); err != nil {
+        writeError(w, http.StatusInternalServerError, err.Error())
+        return
+    }
+    writeJSON(w, http.StatusOK, map[string]string{"message": "all revoked"})
+}
+
+// DELETE /api/v1/users/me
+func (h *AuthHandler) DeleteAccount(w http.ResponseWriter, r *http.Request) {
+    userID, ok := r.Context().Value(middleware.UserIDKey).(int64)
+    if !ok {
+        writeError(w, http.StatusUnauthorized, "unauthorized")
+        return
+    }
+    var req struct {
+        Password string `json:"password"`
+    }
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        writeError(w, http.StatusBadRequest, "invalid request")
+        return
+    }
+    if err := h.authUsecase.DeleteAccount(r.Context(), userID, req.Password); err != nil {
+        writeError(w, http.StatusBadRequest, err.Error())
+        return
+    }
+    writeJSON(w, http.StatusOK, map[string]string{"message": "account deleted"})
 }

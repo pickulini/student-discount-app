@@ -435,3 +435,15 @@ func (r *UserRepo) SetUniversity(ctx context.Context, userID int64, universityID
         universityID, userID)
     return err
 }
+
+func (r *UserRepo) UpdatePassword(ctx context.Context, userID int64, passwordHash string) error {
+    _, err := r.db.Pool.Exec(ctx,
+        `UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2`,
+        passwordHash, userID)
+    return err
+}
+
+func (r *UserRepo) DeleteUser(ctx context.Context, userID int64) error {
+    _, err := r.db.Pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID)
+    return err
+}

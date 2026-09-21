@@ -25,6 +25,8 @@ type UserRepository interface {
     UpdateBalance(ctx context.Context, userID int64, amount float64) error
     UpdateRole(ctx context.Context, userID int64, role string) error
     SetUniversity(ctx context.Context, userID int64, universityID *int64) error
+    UpdatePassword(ctx context.Context, userID int64, passwordHash string) error
+    DeleteUser(ctx context.Context, userID int64) error
     List(ctx context.Context, limit, offset int) ([]domain.User, error)
     SearchUsers(ctx context.Context, excludeID int64, query string, limit int) ([]domain.UserPublicCard, error)
     UsernameExists(ctx context.Context, username string) (bool, error)
@@ -52,6 +54,8 @@ type SessionRepository interface {
     Revoke(ctx context.Context, id int64) error
     RevokeAll(ctx context.Context, userID int64) error
     UpdateLastUsed(ctx context.Context, id int64) error
+    ListByUserID(ctx context.Context, userID int64) ([]domain.UserSession, error)
+    GetByID(ctx context.Context, id int64) (*domain.UserSession, error)
 }
 
 // ---- University ----

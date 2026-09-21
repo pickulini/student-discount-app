@@ -331,3 +331,65 @@ func itoa(n int) string {
     }
     return string(digits)
 }
+
+// ChangePassword — смена пароля с проверкой старого.
+func (u *AuthUsecase) ChangePassword(ctx context.Context, userID int64, oldPassword, newPassword string) error {
+    if len(newPassword) < 8 {
+        return errors.New("пароль должен быть не менее 8 символов")
+    }
+    user, err := u.userRepo.GetByID(ctx, userID)
+    if err != nil || user == nil {
+        return errors.New("пользователь не найден")
+    }
+    ok, err := u.hasher.Verify(oldPassword, user.PasswordHash)
+    if err != nil || !ok {
+        return errors.New("неверный текущий пароль")
+    }
+    newHash, err := u.hasher.Hash(newPassword)
+    if err != nil {
+        return err
+    }
+    if err := u.userRepo.UpdatePassword(ctx, userID, newHash); err != nil {
+        return err
+    }
+    // Отзываем все сессии, кроме текущей — пользователь перелогинится
+    _ = u.sessionRepo.RevokeAll(ctx, userID)
+    return nil
+}
+
+// ListSessions — активные сессии пользователя.
+func (u *AuthUsecase) ListSessions(ctx context.Context, userID int64) ([]domain.UserSession, error) {
+    return u.sessionRepo.ListByUserID(ctx, userID)
+}
+
+// RevokeSession — отозвать сессию пользователя.
+func (u *AuthUsecase) RevokeSession(ctx context.Context, userID, sessionID int64) error {
+    session, err := u.sessionRepo.GetByID(ctx, sessionID)
+    if err != nil || session == nil {
+        return errors.New("сессия не найдена")
+    }
+    if session.UserID != userID {
+        return errors.New("это не ваша сессия")
+    }
+    return u.sessionRepo.Revoke(ctx, sessionID)
+}
+
+// RevokeAllSessions — отозвать все сессии.
+func (u *AuthUsecase) RevokeAllSessions(ctx context.Context, userID int64) error {
+    return u.sessionRepo.RevokeAll(ctx, userID)
+}
+
+// DeleteAccount — удаление аккаунта с проверкой пароля.
+func (u *AuthUsecase) DeleteAccount(ctx context.Context, userID int64, password string) error {
+    user, err := u.userRepo.GetByID(ctx, userID)
+    if err != nil || user == nil {
+        return errors.New("пользователь не найден")
+    }
+    ok, err := u.hasher.Verify(password, user.PasswordHash)
+    if err != nil || !ok {
+        return errors.New("неверный пароль")
+    }
+    // Отзываем все сессии перед удалением
+    _ = u.sessionRepo.RevokeAll(ctx, userID)
+    return u.userRepo.DeleteUser(ctx, userID)
+}
