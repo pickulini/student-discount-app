@@ -10,6 +10,14 @@ import Profile from './components/Profile';
 import Wallet from './components/Wallet';
 import Referral from './components/Referral';
 import Friends from './components/Friends';
+import SettingsLayout from './components/SettingsLayout';
+import Settings from './components/Settings';
+import SettingsProfile from './components/SettingsProfile';
+import SettingsPrivacy from './components/SettingsPrivacy';
+import SettingsNotifications from './components/SettingsNotifications';
+import SettingsVerification from './components/SettingsVerification';
+import SettingsSecurity from './components/SettingsSecurity';
+import SettingsAccount from './components/SettingsAccount';
 import PublicProfile from './components/PublicProfile';
 import Subscriptions from './components/Subscriptions';
 import Events from './components/Events';
@@ -47,6 +55,15 @@ function App() {
             <Route path="wallet" element={<Wallet />} />
             <Route path="referral" element={<Referral />} />
             <Route path="friends" element={<Friends />} />
+            <Route path="settings" element={<SettingsLayout />}>
+              <Route index element={<Settings />} />
+              <Route path="profile" element={<SettingsProfile />} />
+              <Route path="privacy" element={<SettingsPrivacy />} />
+              <Route path="notifications" element={<SettingsNotifications />} />
+              <Route path="verification" element={<SettingsVerification />} />
+              <Route path="security" element={<SettingsSecurity />} />
+              <Route path="account" element={<SettingsAccount />} />
+            </Route>
             <Route path="subscriptions" element={<Subscriptions />} />
             <Route path="events" element={<Events />} />
             <Route path="notifications" element={<Notifications />} />
