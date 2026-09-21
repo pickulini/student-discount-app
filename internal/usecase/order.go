@@ -86,7 +86,7 @@ func (u *OrderUsecase) CreateOrder(ctx context.Context, input CreateOrderInput) 
         return nil, errors.New("bonus account not found")
     }
 
-    subtotal := 1000.0
+    subtotal := offer.BasePrice
     if offer.IsEvent {
         // Для ивентов subtotal = цена билета (может быть 0)
         if offer.SpecialPrice != nil {
@@ -97,6 +97,9 @@ func (u *OrderUsecase) CreateOrder(ctx context.Context, input CreateOrderInput) 
         if subtotal < 0 {
             subtotal = 0
         }
+    }
+    if subtotal <= 0 {
+        subtotal = 1000 // fallback, если base_price не задан
     }
     discount := 0.0
     if offer.DiscountType == "percentage" {

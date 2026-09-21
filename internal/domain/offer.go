@@ -11,6 +11,7 @@ type Offer struct {
     Title           string     `json:"title"`
     Description     string     `json:"description"`
     Terms           *string    `json:"terms,omitempty"`
+    BasePrice       float64    `json:"base_price"`
     DiscountType    string     `json:"discount_type"`
     DiscountValue   float64    `json:"discount_value"`
     SpecialPrice    *float64   `json:"special_price,omitempty"`

@@ -7,6 +7,7 @@ const EMPTY_FORM = {
   description: '',
   discount_type: 'percentage',
   discount_value: 0,
+  base_price: 1000,
   special_price: '',
   start_at: '',
   end_at: '',
@@ -46,6 +47,7 @@ const AdminOfferDetailModal = ({ offerId, onClose, onUpdate }) => {
           description: res.data.description || '',
           discount_type: res.data.discount_type || 'percentage',
           discount_value: res.data.discount_value || 0,
+          base_price: res.data.base_price || 1000,
           special_price: res.data.special_price || '',
           start_at: toLocalDatetime(res.data.start_at),
           end_at: toLocalDatetime(res.data.end_at),
@@ -77,6 +79,7 @@ const AdminOfferDetailModal = ({ offerId, onClose, onUpdate }) => {
         description: form.description,
         discount_type: form.discount_type,
         discount_value: parseFloat(form.discount_value) || 0,
+        base_price: parseFloat(form.base_price) || 0,
         special_price: form.special_price ? parseFloat(form.special_price) : undefined,
         start_at: form.start_at ? new Date(form.start_at).toISOString() : '',
         end_at: form.end_at ? new Date(form.end_at).toISOString() : '',
@@ -171,6 +174,7 @@ const AdminOfferDetailModal = ({ offerId, onClose, onUpdate }) => {
 
                   <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                     <div><strong>Компания:</strong> #{offer.company_id || '—'}</div>
+                    <div><strong>Базовая цена:</strong> {offer.base_price} ₽</div>
                     <div><strong>Скидка:</strong> {offer.discount_value}{offer.discount_type === 'percentage' ? '%' : ' ₽'}</div>
                     {offer.special_price && <div><strong>Спец. цена:</strong> {offer.special_price} ₽</div>}
                     <div><strong>Начало:</strong> {new Date(offer.start_at).toLocaleString('ru-RU')}</div>
@@ -262,6 +266,17 @@ const AdminOfferDetailModal = ({ offerId, onClose, onUpdate }) => {
                   />
 
                   <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm mb-1">Базовая цена (₽)</label>
+                      <input
+                        type="number"
+                        value={form.base_price}
+                        onChange={e => setForm({ ...form, base_price: e.target.value })}
+                        className="w-full border p-2 rounded"
+                        min="0"
+                        step="1"
+                      />
+                    </div>
                     <div>
                       <label className="block text-sm mb-1">Тип скидки</label>
                       <select

@@ -2,9 +2,18 @@ import React from 'react';
 import { yandexMapUrl, yandexSearchUrl } from '../utils/mapLinks';
 
 const OfferCard = ({ offer, onClick, subscribed = false }) => {
+  const basePrice = offer.base_price || 0;
+  let finalPrice = basePrice;
+  if (offer.discount_type === 'percentage') {
+    finalPrice = basePrice * (1 - offer.discount_value / 100);
+  } else {
+    finalPrice = Math.max(0, basePrice - offer.discount_value);
+  }
+  const hasDiscount = basePrice > 0 && finalPrice < basePrice;
+
   const discountText = offer.discount_type === 'percentage'
-    ? `${offer.discount_value}%`
-    : `${offer.discount_value} ₽`;
+    ? `−${offer.discount_value}%`
+    : `−${offer.discount_value} ₽`;
 
   const imageSrc = offer.image_url
     ? (offer.image_url.startsWith('http') ? offer.image_url : offer.image_url)
@@ -34,13 +43,33 @@ const OfferCard = ({ offer, onClick, subscribed = false }) => {
         </span>
       )}
       <div className="p-4 flex flex-col flex-1">
-        <div className="flex justify-between items-start">
+        <div className="flex justify-between items-start gap-2">
           <h3 className="text-lg font-semibold text-gray-800 line-clamp-1">{offer.title}</h3>
-          <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap">
+          <span className="bg-red-100 text-red-800 text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap">
             {discountText}
           </span>
         </div>
-        <p className="text-gray-600 text-sm mt-1 line-clamp-2 flex-1">{offer.description}</p>
+
+        <div className="mt-2 flex items-baseline gap-2">
+          {hasDiscount ? (
+            <>
+              <span className="text-2xl font-bold text-gray-900">
+                {finalPrice.toFixed(0)} ₽
+              </span>
+              <span className="text-sm text-gray-400 line-through">
+                {basePrice.toFixed(0)} ₽
+              </span>
+            </>
+          ) : basePrice > 0 ? (
+            <span className="text-2xl font-bold text-gray-900">
+              {basePrice.toFixed(0)} ₽
+            </span>
+          ) : (
+            <span className="text-lg font-semibold text-blue-600">Бесплатно</span>
+          )}
+        </div>
+
+        <p className="text-gray-600 text-sm mt-2 line-clamp-2 flex-1">{offer.description}</p>
 
         {offer.tags && offer.tags.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">

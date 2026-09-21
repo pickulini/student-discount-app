@@ -23,9 +23,18 @@ const OfferDetailModal = ({ offer, onClose }) => {
 
   if (!offer) return null;
 
+  const basePrice = offer.base_price || 0;
+  let finalPrice = basePrice;
+  if (offer.discount_type === 'percentage') {
+    finalPrice = basePrice * (1 - offer.discount_value / 100);
+  } else {
+    finalPrice = Math.max(0, basePrice - offer.discount_value);
+  }
+  const hasDiscount = basePrice > 0 && finalPrice < basePrice;
+
   const discountText = offer.discount_type === 'percentage'
-    ? `${offer.discount_value}%`
-    : `${offer.discount_value} ₽`;
+    ? `−${offer.discount_value}%`
+    : `−${offer.discount_value} ₽`;
 
   const imageSrc = offer.image_url
     ? (offer.image_url.startsWith('http') ? offer.image_url : offer.image_url)
@@ -78,10 +87,26 @@ const OfferDetailModal = ({ offer, onClose }) => {
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">✕</button>
           </div>
 
-          <div className="mt-2 flex flex-wrap gap-2 items-center">
-            <span className="inline-block bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
-              {discountText}
-            </span>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            {hasDiscount ? (
+              <>
+                <span className="text-3xl font-bold text-gray-900">
+                  {finalPrice.toFixed(0)} ₽
+                </span>
+                <span className="text-lg text-gray-400 line-through">
+                  {basePrice.toFixed(0)} ₽
+                </span>
+                <span className="bg-red-100 text-red-800 text-sm font-semibold px-3 py-1 rounded-full">
+                  {discountText}
+                </span>
+              </>
+            ) : basePrice > 0 ? (
+              <span className="text-3xl font-bold text-gray-900">
+                {basePrice.toFixed(0)} ₽
+              </span>
+            ) : (
+              <span className="text-2xl font-bold text-blue-600">Бесплатно</span>
+            )}
             {offer.bonus_allowed && (
               <span className="inline-block bg-green-100 text-green-800 text-sm font-medium px-3 py-1 rounded-full">
                 Бонусы до {offer.max_bonus_percent}%

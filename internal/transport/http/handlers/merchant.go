@@ -25,6 +25,7 @@ type CreateOfferRequest struct {
     Description     string  `json:"description"`
     DiscountType    string  `json:"discount_type"`
     DiscountValue   float64 `json:"discount_value"`
+    BasePrice       float64 `json:"base_price"`
     StartAt         string  `json:"start_at"`
     EndAt           string  `json:"end_at"`
     BonusAllowed    *bool   `json:"bonus_allowed,omitempty"`
@@ -137,6 +138,7 @@ func (h *MerchantHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
         Description:     req.Description,
         DiscountType:    req.DiscountType,
         DiscountValue:   req.DiscountValue,
+        BasePrice:       req.BasePrice,
         StartAt:         startAt,
         EndAt:           endAt,
         Status:          "draft",
@@ -286,6 +288,7 @@ func (h *MerchantHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
         Description:     req.Description,
         DiscountType:    req.DiscountType,
         DiscountValue:   req.DiscountValue,
+        BasePrice:       req.BasePrice,
         StartAt:         startAt,
         EndAt:           endAt,
         BonusAllowed:    bonusAllowed,

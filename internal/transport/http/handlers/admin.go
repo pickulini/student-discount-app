@@ -104,6 +104,7 @@ type AdminCreateOfferRequest struct {
     Description     string      `json:"description"`
     DiscountType    string      `json:"discount_type"`
     DiscountValue   float64     `json:"discount_value"`
+    BasePrice       float64     `json:"base_price"`
     StartAt         string      `json:"start_at"`
     EndAt           string      `json:"end_at"`
     Status          string      `json:"status"`
@@ -201,6 +202,7 @@ func (h *AdminHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
         Description:     req.Description,
         DiscountType:    req.DiscountType,
         DiscountValue:   req.DiscountValue,
+        BasePrice:       req.BasePrice,
         StartAt:         startAt,
         EndAt:           endAt,
         Status:          req.Status,
@@ -270,6 +272,7 @@ func (h *AdminHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
         Description:     req.Description,
         DiscountType:    req.DiscountType,
         DiscountValue:   req.DiscountValue,
+        BasePrice:       req.BasePrice,
         StartAt:         startAt,
         EndAt:           endAt,
         Status:          req.Status,

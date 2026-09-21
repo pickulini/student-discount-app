@@ -14,6 +14,7 @@ const EMPTY_FORM = {
   description: '',
   discount_type: 'percentage',
   discount_value: 10,
+  base_price: 1000,
   start_at: '',
   end_at: '',
   bonus_allowed: false,
@@ -76,6 +77,7 @@ const MerchantOffers = () => {
       description: offer.description || '',
       discount_type: offer.discount_type || 'percentage',
       discount_value: offer.discount_value || 0,
+      base_price: offer.base_price || 1000,
       start_at: toLocalDatetime(offer.start_at),
       end_at: toLocalDatetime(offer.end_at),
       bonus_allowed: !!offer.bonus_allowed,
@@ -105,6 +107,7 @@ const MerchantOffers = () => {
       description: form.description,
       discount_type: form.discount_type,
       discount_value: parseFloat(form.discount_value),
+      base_price: parseFloat(form.base_price) || 0,
       start_at: form.start_at ? new Date(form.start_at).toISOString() : '',
       end_at: form.end_at ? new Date(form.end_at).toISOString() : '',
       bonus_allowed: form.bonus_allowed,
@@ -308,6 +311,22 @@ const MerchantOffers = () => {
             </div>
 
             <div>
+              <label className="block text-sm">Базовая цена (₽)</label>
+              <input
+                type="number"
+                value={form.base_price}
+                onChange={e => setForm({...form, base_price: parseFloat(e.target.value) || 0})}
+                className="w-full border p-2 rounded"
+                placeholder="1000"
+                min="0"
+                step="1"
+                required
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Стоимость без скидки. Скидка применяется к этой цене.
+              </p>
+            </div>
+            <div>
               <label className="block text-sm">Тип скидки</label>
               <select
                 value={form.discount_type}
@@ -406,7 +425,12 @@ const MerchantOffers = () => {
           {offers.map(o => (
             <tr key={o.id} className="border-b">
               <td className="p-2">{o.title}</td>
-              <td className="p-2">{o.discount_value}{o.discount_type === 'percentage' ? '%' : ' ₽'}</td>
+              <td className="p-2">
+                <div className="text-xs text-gray-500">{o.base_price} ₽</div>
+                <div className="font-semibold text-red-600">
+                  −{o.discount_value}{o.discount_type === 'percentage' ? '%' : ' ₽'}
+                </div>
+              </td>
               <td className="p-2">
                 <span className={`px-2 py-1 rounded text-white text-sm ${
                   o.status === 'published' ? 'bg-green-500' :
