@@ -3,6 +3,7 @@ import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import ImageUpload from './ImageUpload';
 import PrivacySettings from './PrivacySettings';
+import VerificationModal from './VerificationModal';
 import UserLink from './UserLink';
 
 const Profile = () => {
@@ -15,6 +16,7 @@ const Profile = () => {
   const [success, setSuccess] = useState('');
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyMessage, setVerifyMessage] = useState('');
+  const [showVerification, setShowVerification] = useState(false);
   const [form, setForm] = useState({ nickname: '', username: '', avatar_url: '', privacy_allow_subscriptions: true });
   const [activeTab, setActiveTab] = useState('profile');
 
@@ -62,18 +64,8 @@ const Profile = () => {
     }
   };
 
-  const handleRequestVerification = async () => {
-    setVerifyLoading(true);
-    setVerifyMessage('');
-    try {
-      const res = await api.post('/students/verify');
-      setVerifyMessage(res.data.message || 'Заявка отправлена');
-      fetchProfile();
-    } catch (err) {
-      setVerifyMessage(err.response?.data?.error || 'Ошибка отправки заявки');
-    } finally {
-      setVerifyLoading(false);
-    }
+  const handleRequestVerification = () => {
+    setShowVerification(true);
   };
 
   if (loading) return <div className="text-center py-8">Загрузка...</div>;
@@ -265,6 +257,16 @@ const Profile = () => {
       )}
 
       {activeTab === 'privacy' && <PrivacySettings />}
+
+      {showVerification && (
+        <VerificationModal
+          onClose={() => setShowVerification(false)}
+          onSuccess={() => {
+            setVerifyMessage('Заявка отправлена на проверку');
+            fetchProfile();
+          }}
+        />
+      )}
     </div>
   );
 };

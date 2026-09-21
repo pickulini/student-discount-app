@@ -59,6 +59,8 @@ type UniversityRepository interface {
     GetByDomain(ctx context.Context, domain string) (*domain.University, error)
     GetByID(ctx context.Context, id int64) (*domain.University, error)
     ListActive(ctx context.Context) ([]domain.University, error)
+    GetByName(ctx context.Context, name string) (*domain.University, error)
+    Create(ctx context.Context, u *domain.University) error
 }
 
 // ---- Company ----

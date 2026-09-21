@@ -220,17 +220,56 @@ func (u *AuthUsecase) Login(ctx context.Context, email, password, deviceName, us
     return accessToken, refreshToken, nil
 }
 
-func (u *AuthUsecase) RequestVerification(ctx context.Context, userID int64) error {
+type VerificationRequest struct {
+    UniversityID      *int64
+    UniversityName    string
+    StudentIdentifier string
+    DocumentKey       string
+    SelfieKey         string
+}
+
+func (u *AuthUsecase) RequestVerification(ctx context.Context, userID int64, req VerificationRequest) error {
     existing, err := u.studentVerifRepo.GetByUserID(ctx, userID)
     if err == nil && existing != nil {
-        if existing.Status == "pending" || existing.Status == "verified" {
-            return nil
+        if existing.Status == "pending" {
+            return errors.New("заявка уже отправлена и рассматривается")
+        }
+        if existing.Status == "verified" {
+            return errors.New("вы уже верифицированы")
         }
     }
+
+    if req.DocumentKey == "" {
+        return errors.New("приложите фото студенческого")
+    }
+    if req.SelfieKey == "" {
+        return errors.New("приложите селфи")
+    }
+
+    // Если user ввёл свой вуз (не из списка) — ищем по названию, если нет — создаём
+    if req.UniversityID == nil && req.UniversityName != "" {
+        uni, err := u.uniRepo.GetByName(ctx, req.UniversityName)
+        if err != nil || uni == nil {
+            newUni := &domain.University{
+                Name:     req.UniversityName,
+                IsActive: true,
+            }
+            if err := u.uniRepo.Create(ctx, newUni); err != nil {
+                return errors.New("не удалось создать вуз: " + err.Error())
+            }
+            uni = newUni
+        }
+        req.UniversityID = &uni.ID
+    }
+
     verif := &domain.StudentVerification{
-        UserID: userID,
-        Method: "manual",
-        Status: "pending",
+        UserID:            userID,
+        Method:            "manual",
+        Status:            "pending",
+        UniversityID:      req.UniversityID,
+        StudentIdentifier: req.StudentIdentifier,
+        DocumentKey:       req.DocumentKey,
+        SelfieKey:         req.SelfieKey,
     }
     return u.studentVerifRepo.Create(ctx, verif)
 }

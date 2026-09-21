@@ -85,8 +85,28 @@ func (h *AuthHandler) RequestVerification(w http.ResponseWriter, r *http.Request
         writeError(w, http.StatusUnauthorized, "unauthorized")
         return
     }
-    if err := h.authUsecase.RequestVerification(r.Context(), userID); err != nil {
-        writeError(w, http.StatusInternalServerError, "failed to request verification")
+
+    var req struct {
+        UniversityID      *int64 `json:"university_id,omitempty"`
+        UniversityName    string `json:"university_name,omitempty"`
+        StudentIdentifier string `json:"student_identifier"`
+        DocumentKey       string `json:"document_key"`
+        SelfieKey         string `json:"selfie_key"`
+    }
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        writeError(w, http.StatusBadRequest, "invalid request")
+        return
+    }
+
+    err := h.authUsecase.RequestVerification(r.Context(), userID, usecase.VerificationRequest{
+        UniversityID:      req.UniversityID,
+        UniversityName:    req.UniversityName,
+        StudentIdentifier: req.StudentIdentifier,
+        DocumentKey:       req.DocumentKey,
+        SelfieKey:         req.SelfieKey,
+    })
+    if err != nil {
+        writeError(w, http.StatusBadRequest, err.Error())
         return
     }
     writeJSON(w, http.StatusOK, map[string]string{"status": "pending"})

@@ -87,3 +87,32 @@ func (r *UniversityRepo) ListActive(ctx context.Context) ([]domain.University, e
     }
     return result, rows.Err()
 }
+
+func (r *UniversityRepo) GetByName(ctx context.Context, name string) (*domain.University, error) {
+    query := `SELECT id, name, short_name, domains, is_active, created_at, updated_at
+              FROM universities WHERE LOWER(name) = LOWER($1) LIMIT 1`
+    var u domain.University
+    var domainsJSON []byte
+    err := r.db.Pool.QueryRow(ctx, query, name).Scan(
+        &u.ID, &u.Name, &u.ShortName, &domainsJSON, &u.IsActive, &u.CreatedAt, &u.UpdatedAt,
+    )
+    if err != nil {
+        return nil, err
+    }
+    if len(domainsJSON) > 0 {
+        _ = json.Unmarshal(domainsJSON, &u.Domains)
+    }
+    if u.Domains == nil {
+        u.Domains = []string{}
+    }
+    return &u, nil
+}
+
+func (r *UniversityRepo) Create(ctx context.Context, u *domain.University) error {
+    query := `INSERT INTO universities (name, short_name, domains, is_active)
+              VALUES ($1, $2, '[]'::jsonb, true)
+              RETURNING id, created_at, updated_at`
+    return r.db.Pool.QueryRow(ctx, query, u.Name, u.ShortName).Scan(
+        &u.ID, &u.CreatedAt, &u.UpdatedAt,
+    )
+}

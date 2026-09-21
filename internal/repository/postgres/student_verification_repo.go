@@ -18,10 +18,13 @@ func NewStudentVerificationRepo(db *DB) repository.StudentVerificationRepository
 }
 
 func (r *StudentVerificationRepo) Create(ctx context.Context, v *domain.StudentVerification) error {
-    query := `INSERT INTO student_verifications (user_id, method, status, university_id, student_identifier, document_key) 
-              VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, created_at, updated_at`
+    query := `INSERT INTO student_verifications (user_id, method, status, university_id, student_identifier, document_key, selfie_key) 
+              VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, created_at, updated_at`
+    var docKey, selfieKey interface{}
+    if v.DocumentKey != "" { docKey = v.DocumentKey }
+    if v.SelfieKey != "" { selfieKey = v.SelfieKey }
     err := r.db.Pool.QueryRow(ctx, query,
-        v.UserID, v.Method, v.Status, v.UniversityID, v.StudentIdentifier, v.DocumentKey,
+        v.UserID, v.Method, v.Status, v.UniversityID, v.StudentIdentifier, docKey, selfieKey,
     ).Scan(&v.ID, &v.CreatedAt, &v.UpdatedAt)
     return err
 }
@@ -79,34 +82,45 @@ func (r *StudentVerificationRepo) GetByID(ctx context.Context, id int64) (*domai
 }
 
 func (r *StudentVerificationRepo) List(ctx context.Context, limit, offset int) ([]domain.StudentVerification, error) {
-    query := `SELECT id, user_id, method, status, university_id, student_identifier, document_key, created_at, updated_at 
-              FROM student_verifications ORDER BY id LIMIT $1 OFFSET $2`
+    query := `SELECT v.id, v.user_id, v.method, v.status, v.university_id, v.student_identifier, 
+                     v.document_key, v.selfie_key, v.created_at, v.updated_at,
+                     u.nickname, u.username, u.email, u.full_name,
+                     un.name
+              FROM student_verifications v
+              LEFT JOIN users u ON u.id = v.user_id
+              LEFT JOIN universities un ON un.id = v.university_id
+              ORDER BY v.id DESC LIMIT $1 OFFSET $2`
     rows, err := r.db.Pool.Query(ctx, query, limit, offset)
     if err != nil {
         return nil, err
     }
     defer rows.Close()
-    var verifications []domain.StudentVerification
+    result := make([]domain.StudentVerification, 0)
     for rows.Next() {
         var v domain.StudentVerification
         var universityID sql.NullInt64
-        var studentIdentifier, documentKey sql.NullString
+        var studentIdentifier, documentKey, selfieKey sql.NullString
+        var nickname, username sql.NullString
+        var email, fullName sql.NullString
+        var universityName sql.NullString
         if err := rows.Scan(&v.ID, &v.UserID, &v.Method, &v.Status, &universityID,
-            &studentIdentifier, &documentKey, &v.CreatedAt, &v.UpdatedAt); err != nil {
+            &studentIdentifier, &documentKey, &selfieKey, &v.CreatedAt, &v.UpdatedAt,
+            &nickname, &username, &email, &fullName,
+            &universityName); err != nil {
             return nil, err
         }
-        if universityID.Valid {
-            v.UniversityID = &universityID.Int64
-        }
-        if studentIdentifier.Valid {
-            v.StudentIdentifier = studentIdentifier.String
-        }
-        if documentKey.Valid {
-            v.DocumentKey = documentKey.String
-        }
-        verifications = append(verifications, v)
+        if universityID.Valid { v.UniversityID = &universityID.Int64 }
+        if universityName.Valid { v.UniversityName = &universityName.String }
+        if studentIdentifier.Valid { v.StudentIdentifier = studentIdentifier.String }
+        if documentKey.Valid { v.DocumentKey = documentKey.String }
+        if selfieKey.Valid { v.SelfieKey = selfieKey.String }
+        if nickname.Valid { v.UserNickname = &nickname.String }
+        if username.Valid { v.UserUsername = &username.String }
+        v.UserEmail = email.String
+        v.UserFullName = fullName.String
+        result = append(result, v)
     }
-    return verifications, nil
+    return result, nil
 }
 
 func (r *StudentVerificationRepo) UpdateStatus(ctx context.Context, id int64, status string, verifiedBy int64, rejectionReason string) error {

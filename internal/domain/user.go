@@ -54,8 +54,16 @@ type StudentVerification struct {
     Method           string     `json:"method"`
     Status           string     `json:"status"`
     UniversityID     *int64     `json:"university_id,omitempty"`
+    UniversityName   *string    `json:"university_name,omitempty"`
     StudentIdentifier string    `json:"student_identifier,omitempty"`
     DocumentKey      string     `json:"document_key,omitempty"`
+    SelfieKey        string     `json:"selfie_key,omitempty"`
+
+    // Для админского просмотра
+    UserNickname *string `json:"user_nickname,omitempty"`
+    UserUsername *string `json:"user_username,omitempty"`
+    UserEmail    string  `json:"user_email,omitempty"`
+    UserFullName string  `json:"user_full_name,omitempty"`
     VerifiedBy       *int64     `json:"verified_by,omitempty"`
     VerifiedAt       *time.Time `json:"verified_at,omitempty"`
     ExpiresAt        *time.Time `json:"expires_at,omitempty"`
