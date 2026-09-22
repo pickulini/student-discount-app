@@ -56,6 +56,16 @@ export const Label = ({ children, className = '' }) => (
   </div>
 );
 
+/** Мелкий uppercase-лейбл для заголовков секций ленты ("РЯДОМ С ТОБОЙ", "ПОПУЛЯРНОЕ"). */
+export const Eyebrow = ({ children, className = '' }) => (
+  <div className={`text-eyebrow text-ink-faint ${className}`}>{children}</div>
+);
+
+/** Техническая подпись — метраж, время, счётчики: маленький, приглушённый, с табличными цифрами. */
+export const Caption = ({ children, className = '' }) => (
+  <div className={`text-caption text-xs text-ink-faint ${className}`}>{children}</div>
+);
+
 export const Badge = ({ children, filled = false, className = '' }) => (
   <span
     className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-[var(--radius-xs)] text-xs font-semibold ${
@@ -67,7 +77,7 @@ export const Badge = ({ children, filled = false, className = '' }) => (
 );
 
 export const PageTitle = ({ children, className = '' }) => (
-  <h1 className={`text-2xl font-semibold text-ink mb-6 ${className}`}>{children}</h1>
+  <h1 className={`text-editorial text-3xl text-ink mb-6 ${className}`}>{children}</h1>
 );
 
 export const ErrorText = ({ children }) =>

@@ -95,6 +95,7 @@ private struct SendFriendRequestBody: Encodable {
 struct FriendsView: View {
     @StateObject private var viewModel = FriendsViewModel()
     @State private var tab: FriendsTab = .friends
+    @State private var didStartLoading = false
 
     var body: some View {
         VStack(spacing: Theme.Spacing.l) {
@@ -118,7 +119,11 @@ struct FriendsView: View {
         .background(Theme.Colors.background.ignoresSafeArea())
         .navigationTitle("Друзья")
         .toolbarBackground(Theme.Colors.background, for: .navigationBar)
-        .task { await viewModel.loadAll() }
+        .onAppear {
+            guard !didStartLoading else { return }
+            didStartLoading = true
+            Task { await viewModel.loadAll() }
+        }
     }
 
     private var friendsList: some View {

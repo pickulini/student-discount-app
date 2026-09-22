@@ -21,6 +21,7 @@ final class OrdersListViewModel: ObservableObject {
 /// История — заказы/полученные скидки, тихим списком без товарных карточек.
 struct OrdersListView: View {
     @StateObject private var viewModel = OrdersListViewModel()
+    @State private var didStartLoading = false
 
     var body: some View {
         Group {
@@ -48,7 +49,14 @@ struct OrdersListView: View {
         .background(Theme.Colors.background.ignoresSafeArea())
         .navigationTitle("История")
         .toolbarBackground(Theme.Colors.background, for: .navigationBar)
-        .task { await viewModel.load() }
+        .onAppear {
+            // `.task` не всегда надёжно стартует на пуш-экранах вида
+            // Профиль → История/Друзья/Уведомления/Кошелёк — используем
+            // `.onAppear` с защитой от повторного запуска.
+            guard !didStartLoading else { return }
+            didStartLoading = true
+            Task { await viewModel.load() }
+        }
     }
 }
 

@@ -5,9 +5,9 @@ import SwiftUI
 enum Theme {
 
     enum Colors {
-        static let background = Color(hex: "0D0E10")
-        static let surface = Color(hex: "171717")
-        static let surfaceSecondary = Color(hex: "1D1D1D")
+        static let background = Color(hex: "121316")
+        static let surface = Color(hex: "1B1C1F")
+        static let surfaceSecondary = Color(hex: "222327")
 
         static let textPrimary = Color(hex: "F2F2F2")
         static let textSecondary = Color(hex: "8A8A8A")
@@ -30,10 +30,20 @@ enum Theme {
         static let xxxl: CGFloat = 32
     }
 
+    /// Более угловатая версия: прямые линии — часть визуального языка,
+    /// скругления используются минимально, только чтобы снять остроту углов.
     enum Radius {
-        static let small: CGFloat = 9
-        static let medium: CGFloat = 13
-        static let hero: CGFloat = 20
+        static let small: CGFloat = 4
+        static let medium: CGFloat = 6
+        static let hero: CGFloat = 10
+    }
+
+    /// Фиксированные размеры, которые не должны "плавать" от исходной
+    /// фотографии — иначе карточки в ленте получают разную высоту и
+    /// заезжают друг на друга.
+    enum Sizing {
+        static let cardImageHeight: CGFloat = 168
+        static let heroImageHeight: CGFloat = 260
     }
 
     enum Typography {

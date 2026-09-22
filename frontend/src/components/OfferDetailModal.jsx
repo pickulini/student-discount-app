@@ -83,30 +83,23 @@ const OfferDetailModal = ({ offer, onClose }) => {
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" onClick={onClose}>
       <div className="bg-surface border border-line rounded-[var(--radius-lg)] max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="p-6">
-          <div className="flex justify-between items-start">
-            <h2 className="text-2xl font-bold text-ink">{offer.title}</h2>
+          <div className="flex justify-between items-start gap-3">
+            <h2 className="text-editorial text-2xl text-ink uppercase">{offer.title}</h2>
             <button onClick={onClose} className="text-ink-faint hover:text-ink text-2xl leading-none">✕</button>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-3">
+          {/* Скидка — главный акцентный элемент, цена вторична (ТЗ, раздел 8-9). */}
+          <div className="mt-3 flex flex-wrap items-baseline gap-3">
             {hasDiscount ? (
               <>
-                <span className="text-3xl font-bold text-ink">
-                  {finalPrice.toFixed(0)} ₽
-                </span>
-                <span className="text-lg text-ink-faint line-through">
-                  {basePrice.toFixed(0)} ₽
-                </span>
-                <span className="bg-danger/10 text-danger text-sm font-semibold px-3 py-1 rounded-[var(--radius-xs)]">
-                  {discountText}
-                </span>
+                <span className="text-editorial text-3xl text-accent">{discountText}</span>
+                <span className="text-base text-ink">{finalPrice.toFixed(0)} ₽</span>
+                <span className="text-sm text-ink-faint line-through">{basePrice.toFixed(0)} ₽</span>
               </>
             ) : basePrice > 0 ? (
-              <span className="text-3xl font-bold text-ink">
-                {basePrice.toFixed(0)} ₽
-              </span>
+              <span className="text-base text-ink">{basePrice.toFixed(0)} ₽</span>
             ) : (
-              <span className="text-2xl font-bold text-accent">Бесплатно</span>
+              <span className="text-editorial text-2xl text-accent">Бесплатно</span>
             )}
             {offer.bonus_allowed && (
               <span className="inline-block bg-accent/10 text-accent text-sm font-medium px-3 py-1 rounded-[var(--radius-xs)]">

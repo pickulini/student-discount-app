@@ -18,6 +18,7 @@
 		26B2AA0E7CDB5F57C0E95D76 /* AppNotification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 549D06431B0E44D7E90E357D /* AppNotification.swift */; };
 		27545D5D36F36C91055977F4 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 776F37E8B7213AFCB276EB0F /* LoginView.swift */; };
 		2F416F0B93910634829D15D7 /* EventsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81E070EE30C4CE82874E221F /* EventsListView.swift */; };
+		35FCFB41318C132044B828C5 /* PaymentConfirmSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 967BBCF5E3379E30F0780911 /* PaymentConfirmSheet.swift */; };
 		48F925CCF7741C4AFFA5F9A5 /* StudentDiscountApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C18A6FEF222F1ADCC7A97EFC /* StudentDiscountApp.swift */; };
 		55BD70C7A260AD80DBF8EDB8 /* Buttons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B288FE3B599088B3295BD9A /* Buttons.swift */; };
 		6584638D3C2B50EA212AA06A /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F8E2A33F834A6C5E6DFEE8A /* OnboardingView.swift */; };
@@ -30,6 +31,7 @@
 		81E9BE7AAC85DFD01A13B509 /* FriendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BD0A8528B66E49B56076960 /* FriendsView.swift */; };
 		8321A816ED323F66C53FF35D /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E322D16FAFC6FF4812566EB /* User.swift */; };
 		85C542C85E1FD34A7F2A617B /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A99FDD14B7363B4E99BF18FC /* RootView.swift */; };
+		86837FE6B430586B8B572A90 /* Payment.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDEFCCDED9730A0485F0F3EE /* Payment.swift */; };
 		8E39F57ECD1BED4FD21CDBA6 /* DiscountsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B87866C13DFE64CEEB0A5 /* DiscountsListView.swift */; };
 		90177ADFF06475C5DB1BA536 /* RegisterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F6CECC24B80E0FD6AC62DBF /* RegisterView.swift */; };
 		98997AEF8BE5BF215EF15A08 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E71FA51F8AE65DB7A3A7A2F /* HomeView.swift */; };
@@ -44,6 +46,7 @@
 		F13B0E203E8FA59D51C132DA /* EventDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FF89B2F115D0A89E3856E05 /* EventDetailView.swift */; };
 		F5E2FA8F22844ACE5E64CE22 /* PlaceCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21F935E50C839A3E359483C8 /* PlaceCard.swift */; };
 		FB05E2847C23E8130F0E8104 /* OrdersListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 247AB2E9A9925927041B8859 /* OrdersListView.swift */; };
+		FBB7BBB5E17E2EA155497F5A /* SBPCheckoutSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36E63F7653512D37F73605A4 /* SBPCheckoutSheet.swift */; };
 		FEC479269A05363B559E6FF6 /* WalletView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20C2C8027E7883668A9026FA /* WalletView.swift */; };
 /* End PBXBuildFile section */
 
@@ -56,6 +59,7 @@
 		21F935E50C839A3E359483C8 /* PlaceCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceCard.swift; sourceTree = "<group>"; };
 		247AB2E9A9925927041B8859 /* OrdersListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrdersListView.swift; sourceTree = "<group>"; };
 		33E1C3EA55859966F0990144 /* OfferImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfferImageView.swift; sourceTree = "<group>"; };
+		36E63F7653512D37F73605A4 /* SBPCheckoutSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SBPCheckoutSheet.swift; sourceTree = "<group>"; };
 		3B288FE3B599088B3295BD9A /* Buttons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Buttons.swift; sourceTree = "<group>"; };
 		3B30A7CA89EED9BFA784A725 /* Wallet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wallet.swift; sourceTree = "<group>"; };
 		3E71FA51F8AE65DB7A3A7A2F /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
@@ -70,6 +74,7 @@
 		7F76A2603D471F8E2EB69D4E /* Offer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Offer.swift; sourceTree = "<group>"; };
 		81E070EE30C4CE82874E221F /* EventsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventsListView.swift; sourceTree = "<group>"; };
 		8FF89B2F115D0A89E3856E05 /* EventDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventDetailView.swift; sourceTree = "<group>"; };
+		967BBCF5E3379E30F0780911 /* PaymentConfirmSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentConfirmSheet.swift; sourceTree = "<group>"; };
 		9712F50516622DDEC880C9E1 /* APIError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIError.swift; sourceTree = "<group>"; };
 		9BA06583500723AB36860F48 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		9DDBED6649E0D2ABAD4D91E9 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
@@ -86,6 +91,7 @@
 		EAE9C468B606E6AD54077FED /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
 		EDD55831555B16D563493A58 /* StudentDiscountApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = StudentDiscountApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F2772CCE68BE68C779DB1CF3 /* AuthModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthModels.swift; sourceTree = "<group>"; };
+		FDEFCCDED9730A0485F0F3EE /* Payment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Payment.swift; sourceTree = "<group>"; };
 		FFE136281CB57F363453B87A /* Friend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Friend.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -173,6 +179,7 @@
 				FFE136281CB57F363453B87A /* Friend.swift */,
 				7F76A2603D471F8E2EB69D4E /* Offer.swift */,
 				6F3A1EE7940AE877DB3765BB /* Order.swift */,
+				FDEFCCDED9730A0485F0F3EE /* Payment.swift */,
 				9E322D16FAFC6FF4812566EB /* User.swift */,
 				3B30A7CA89EED9BFA784A725 /* Wallet.swift */,
 			);
@@ -262,6 +269,8 @@
 				1A1F4C9471807D0738D7DB8F /* CategoryTabs.swift */,
 				E9A0FAA4A4D49F8292A5ABDB /* DottedPath.swift */,
 				33E1C3EA55859966F0990144 /* OfferImageView.swift */,
+				967BBCF5E3379E30F0780911 /* PaymentConfirmSheet.swift */,
+				36E63F7653512D37F73605A4 /* SBPCheckoutSheet.swift */,
 				B4AE607CB054622F6E2B555C /* SectionHeader.swift */,
 				C9CC98F8D31C76913C87B715 /* StateViews.swift */,
 			);
@@ -324,8 +333,6 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
-				TargetAttributes = {
-				};
 			};
 			buildConfigurationList = CAE240A7091A0646128FCA17 /* Build configuration list for PBXProject "StudentDiscountApp" */;
 			developmentRegion = en;
@@ -375,10 +382,13 @@
 				6584638D3C2B50EA212AA06A /* OnboardingView.swift in Sources */,
 				B67BE4E2AFDE689A4A2467E0 /* Order.swift in Sources */,
 				FB05E2847C23E8130F0E8104 /* OrdersListView.swift in Sources */,
+				86837FE6B430586B8B572A90 /* Payment.swift in Sources */,
+				35FCFB41318C132044B828C5 /* PaymentConfirmSheet.swift in Sources */,
 				F5E2FA8F22844ACE5E64CE22 /* PlaceCard.swift in Sources */,
 				04AAA69F3AFBD51D0DB49EF3 /* ProfileView.swift in Sources */,
 				90177ADFF06475C5DB1BA536 /* RegisterView.swift in Sources */,
 				85C542C85E1FD34A7F2A617B /* RootView.swift in Sources */,
+				FBB7BBB5E17E2EA155497F5A /* SBPCheckoutSheet.swift in Sources */,
 				1079E98AB5FB6250D6A21FBB /* SearchView.swift in Sources */,
 				D7F4EE06EFEDC55263B7BAE9 /* SectionHeader.swift in Sources */,
 				CCC025CEC3C1FF63A3D4F39B /* SessionStore.swift in Sources */,

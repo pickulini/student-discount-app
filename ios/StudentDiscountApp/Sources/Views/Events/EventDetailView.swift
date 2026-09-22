@@ -4,12 +4,14 @@ struct EventDetailView: View {
     @State var event: Offer
     @State private var isUpdatingRSVP = false
     @State private var rsvpError: String?
+    @State private var showingPayment = false
+    @State private var didRefresh = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 OfferImageView(offer: event)
-                    .frame(height: 280)
+                    .frame(height: Theme.Sizing.heroImageHeight)
 
                 VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
                     if let date = event.eventStartAt {
@@ -62,14 +64,21 @@ struct EventDetailView: View {
 
                     HStack(spacing: Theme.Spacing.m) {
                         Button {
-                            Task { await setRSVP("going") }
+                            // "Пойду" на бэкенде — это не простой RSVP, а покупка
+                            // билета: статус "going" выставляется только после
+                            // оплаты заказа (POST /events/{id}/schedule + confirm),
+                            // поэтому показываем то же окно подтверждения оплаты,
+                            // что и для скидок, а не дёргаем /rsvp напрямую.
+                            if event.myAttendeeStatus != "going" {
+                                showingPayment = true
+                            }
                         } label: {
                             Text(event.myAttendeeStatus == "going" ? "Иду ✓" : "Пойду")
                         }
                         .buttonStyle(.routePrimary)
 
                         Button {
-                            Task { await setRSVP("interested") }
+                            Task { await toggleInterested() }
                         } label: {
                             Text(event.myAttendeeStatus == "interested" ? "Интересно ✓" : "Интересно")
                         }
@@ -84,18 +93,57 @@ struct EventDetailView: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Theme.Colors.background, for: .navigationBar)
+        .onAppear {
+            // Карточка события приходит из уже загруженного списка (лента,
+            // афиша) и может быть устаревшей — например, если статус RSVP
+            // или счётчики поменялись при прошлом визите на этот экран, а
+            // список с тех пор не перезагружался. Подтягиваем актуальные
+            // данные с сервера при каждом открытии, а не только один раз.
+            guard !didRefresh else { return }
+            didRefresh = true
+            Task { await refresh() }
+        }
+        .sheet(isPresented: $showingPayment) {
+            PaymentConfirmSheet(
+                title: event.title,
+                price: event.eventTicketPrice,
+                createOrder: {
+                    try await APIClient.shared.post("/api/v1/events/\(event.id)/schedule")
+                }
+            ) { _ in
+                event.myAttendeeStatus = "going"
+                event.attendeesCount = (event.attendeesCount ?? 0) + 1
+            }
+        }
     }
 
-    private func setRSVP(_ status: String) async {
+    private func refresh() async {
+        do {
+            let fresh: Offer = try await APIClient.shared.get("/api/v1/events/\(event.id)")
+            event = fresh
+        } catch {
+            // Тихо игнорируем — экран уже показывает то, что передали из
+            // списка, а актуализация не критична для первого рендера.
+        }
+    }
+
+    /// "Интересно" — обычный RSVP-тумблер (interested/none), в отличие от
+    /// "Пойду". Обновляем счётчик локально сразу же, не дожидаясь ответа
+    /// сервера полностью — а после ответа подтягиваем эти же данные заново,
+    /// чтобы не разъехаться, если RSVP уже стоял.
+    private func toggleInterested() async {
+        let wasInterested = event.myAttendeeStatus == "interested"
         isUpdatingRSVP = true
         rsvpError = nil
         defer { isUpdatingRSVP = false }
         do {
             let _: EmptyResponse = try await APIClient.shared.post(
                 "/api/v1/events/\(event.id)/rsvp",
-                body: RSVPRequest(status: status)
+                body: RSVPRequest(status: wasInterested ? "none" : "interested")
             )
-            event.myAttendeeStatus = status
+            event.myAttendeeStatus = wasInterested ? nil : "interested"
+            let delta = wasInterested ? -1 : 1
+            event.interestedCount = max((event.interestedCount ?? 0) + delta, 0)
         } catch {
             rsvpError = error.localizedDescription
         }

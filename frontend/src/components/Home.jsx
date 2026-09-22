@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import OfferCard from './OfferCard';
 import OfferDetailModal from './OfferDetailModal';
-import { PageTitle } from '../design/UI';
-import { RouteLoadingView, RouteEmptyState } from '../design/DottedPath';
+import { PageTitle, Eyebrow } from '../design/UI';
+import { RouteLoadingView, RouteEmptyState, DottedDivider } from '../design/DottedPath';
 
 const Home = () => {
   const [offers, setOffers] = useState([]);
@@ -64,30 +64,34 @@ const Home = () => {
 
       {tags.length > 0 && (
         <div className="mb-6">
-          <div className="flex flex-wrap gap-2 items-center">
-            <span className="text-sm text-ink-faint mr-1">Фильтр:</span>
-            {tags.map(tag => (
-              <button
-                key={tag.id}
-                onClick={() => toggleTag(tag.slug)}
-                className={`px-3 py-1 rounded-[var(--radius-sm)] text-sm border transition ${
-                  selectedTags.includes(tag.slug)
-                    ? 'bg-accent text-accent-ink border-accent'
-                    : 'bg-surface text-ink-soft border-line hover:border-ink-faint'
-                }`}
-              >
-                #{tag.name}
-              </button>
-            ))}
+          <Eyebrow className="mb-2">Фильтр</Eyebrow>
+          <div className="flex flex-wrap gap-x-4 gap-y-2 items-center">
+            {tags.map(tag => {
+              const active = selectedTags.includes(tag.slug);
+              return (
+                <button
+                  key={tag.id}
+                  onClick={() => toggleTag(tag.slug)}
+                  className={`text-sm pb-0.5 border-b transition ${
+                    active
+                      ? 'text-accent border-accent font-medium'
+                      : 'text-ink-soft border-transparent hover:text-ink'
+                  }`}
+                >
+                  {tag.name}
+                </button>
+              );
+            })}
             {selectedTags.length > 0 && (
               <button
                 onClick={clearFilters}
-                className="px-3 py-1 rounded-[var(--radius-sm)] text-sm text-danger hover:underline"
+                className="text-sm text-ink-faint hover:text-danger transition"
               >
                 Сбросить
               </button>
             )}
           </div>
+          <DottedDivider className="mt-4" />
         </div>
       )}
 

@@ -27,8 +27,10 @@ struct Offer: Codable, Identifiable {
     let startAt: Date?
     let endAt: Date?
     let isEvent: Bool
-    let attendeesCount: Int?
-    let interestedCount: Int?
+    /// var: на экране события обновляем счётчики локально сразу после
+    /// RSVP, не дожидаясь перезагрузки с сервера.
+    var attendeesCount: Int?
+    var interestedCount: Int?
     /// var, а не let: после RSVP на экране деталей события мы обновляем
     /// это поле локально, не дожидаясь перезагрузки списка с сервера.
     var myAttendeeStatus: String?
@@ -69,6 +71,13 @@ struct Offer: Codable, Identifiable {
             return max(basePrice - discountValue, 0)
         }
         return basePrice
+    }
+
+    /// Цена билета на событие — бэкенд считает её иначе, чем скидку на
+    /// обычном предложении (см. `CreateOrder` в order.go): специальная
+    /// цена, если есть, иначе discount_value, не ниже нуля.
+    var eventTicketPrice: Double {
+        max(specialPrice ?? discountValue, 0)
     }
 
     var discountBadge: String {

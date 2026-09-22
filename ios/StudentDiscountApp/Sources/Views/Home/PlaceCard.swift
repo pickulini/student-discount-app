@@ -11,7 +11,7 @@ struct PlaceCard: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             ZStack(alignment: .bottomLeading) {
                 OfferImageView(offer: offer)
-                    .aspectRatio(16.0 / 10.0, contentMode: .fill)
+                    .frame(height: Theme.Sizing.cardImageHeight)
                     .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
 
                 if offer.discountValue > 0 {
@@ -47,9 +47,12 @@ struct EventCard: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             ZStack(alignment: .topLeading) {
                 OfferImageView(offer: offer)
-                    .aspectRatio(16.0 / 10.0, contentMode: .fill)
+                    .frame(height: Theme.Sizing.cardImageHeight)
                     .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
 
+                // Плашка с датой должна одинаково читаться и на светлом, и на
+                // тёмном фото, поэтому фон непрозрачный (не полупрозрачный
+                // скрим поверх фото), а не подобран "под" конкретный снимок.
                 VStack(alignment: .leading, spacing: 0) {
                     Text(dayString)
                         .font(Theme.Typography.metric)
@@ -58,8 +61,9 @@ struct EventCard: View {
                         .font(Theme.Typography.label)
                         .foregroundStyle(Theme.Colors.textPrimary)
                 }
-                .padding(Theme.Spacing.m)
-                .background(.black.opacity(0.35))
+                .padding(.horizontal, Theme.Spacing.m)
+                .padding(.vertical, Theme.Spacing.s)
+                .background(Theme.Colors.background)
                 .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous))
                 .padding(Theme.Spacing.m)
             }

@@ -45,6 +45,7 @@ final class NotificationsViewModel: ObservableObject {
 
 struct NotificationsView: View {
     @StateObject private var viewModel = NotificationsViewModel()
+    @State private var didStartLoading = false
 
     var body: some View {
         Group {
@@ -81,7 +82,11 @@ struct NotificationsView: View {
                     .font(Theme.Typography.caption)
             }
         }
-        .task { await viewModel.load() }
+        .onAppear {
+            guard !didStartLoading else { return }
+            didStartLoading = true
+            Task { await viewModel.load() }
+        }
     }
 }
 

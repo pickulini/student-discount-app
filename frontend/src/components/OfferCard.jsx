@@ -43,43 +43,37 @@ const OfferCard = ({ offer, onClick, subscribed = false }) => {
         </span>
       )}
       <div className="p-4 flex flex-col flex-1">
-        <div className="flex justify-between items-start gap-2">
-          <h3 className="text-lg font-semibold text-ink line-clamp-1">{offer.title}</h3>
-          <span className="bg-danger/10 text-danger text-xs font-semibold px-2 py-0.5 rounded-[var(--radius-xs)] whitespace-nowrap">
-            {discountText}
-          </span>
-        </div>
-
-        <div className="mt-2 flex items-baseline gap-2">
-          {hasDiscount ? (
-            <>
-              <span className="text-2xl font-bold text-ink">
-                {finalPrice.toFixed(0)} ₽
-              </span>
-              <span className="text-sm text-ink-faint line-through">
-                {basePrice.toFixed(0)} ₽
-              </span>
-            </>
-          ) : basePrice > 0 ? (
-            <span className="text-2xl font-bold text-ink">
-              {basePrice.toFixed(0)} ₽
+        {/* Скидка — главный акцентный элемент карточки, не цена (см. ТЗ, раздел 8). */}
+        <div className="flex justify-between items-start gap-3">
+          <h3 className="text-editorial text-base text-ink uppercase line-clamp-1">{offer.title}</h3>
+          {hasDiscount && (
+            <span className="text-editorial text-xl text-accent whitespace-nowrap">
+              {discountText}
             </span>
-          ) : (
-            <span className="text-lg font-semibold text-accent">Бесплатно</span>
           )}
         </div>
 
-        <p className="text-ink-soft text-sm mt-2 line-clamp-2 flex-1">{offer.description}</p>
-
         {offer.tags && offer.tags.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1">
-            {offer.tags.slice(0, 4).map(tag => (
-              <span key={tag.id} className="inline-block bg-surface-2 text-ink-soft text-xs px-2 py-0.5 rounded-[var(--radius-xs)]">
-                #{tag.name}
-              </span>
-            ))}
+          <div className="text-caption text-xs text-ink-faint mt-1">
+            {offer.tags.slice(0, 3).map(t => t.name).join(' · ')}
           </div>
         )}
+
+        <p className="text-ink-soft text-sm mt-2 line-clamp-2 flex-1">{offer.description}</p>
+
+        {/* Цена — вторична, просто справочная информация. */}
+        <div className="mt-2 flex items-baseline gap-2">
+          {hasDiscount ? (
+            <>
+              <span className="text-sm text-ink">{finalPrice.toFixed(0)} ₽</span>
+              <span className="text-xs text-ink-faint line-through">{basePrice.toFixed(0)} ₽</span>
+            </>
+          ) : basePrice > 0 ? (
+            <span className="text-sm text-ink">{basePrice.toFixed(0)} ₽</span>
+          ) : (
+            <span className="text-sm text-accent">Бесплатно</span>
+          )}
+        </div>
 
         {offer.address && (
           <div className="mt-1 flex items-start gap-1 text-xs text-ink-faint line-clamp-2">

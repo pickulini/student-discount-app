@@ -17,7 +17,7 @@ func NewRouter(
     r := chi.NewRouter()
     r.Use(chiMiddleware.Logger)
     r.Use(chiMiddleware.Recoverer)
-    r.Use(middleware.CORS)
+    r.Use(middleware.CORS(""))
 
     authHandler := handlers.NewAuthHandler(authUsecase)
 

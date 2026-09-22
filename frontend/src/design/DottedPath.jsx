@@ -9,12 +9,20 @@ export const DottedDivider = ({ className = '', accent = false, style }) => (
   />
 );
 
+/** Вертикальный пунктирный разделитель — между карточками в ряд/колонку. */
+export const DottedDividerV = ({ className = '', accent = false, style }) => (
+  <div
+    className={`dotted-divider-v ${accent ? 'dotted-divider--accent' : ''} ${className}`}
+    style={style}
+  />
+);
+
 /** Логотип-метафора: точка (студент) — пунктир (путь) — точка (место/событие). */
 export const RouteMark = ({ className = '' }) => (
   <span className={`inline-flex items-center gap-1.5 ${className}`}>
     <span className="w-2 h-2 rounded-full bg-accent" />
     {Array.from({ length: 5 }).map((_, i) => (
-      <span key={i} className="w-[3px] h-[3px] rounded-full bg-ink-faint" />
+      <span key={i} className="w-1 h-1 rounded-full bg-ink-soft" />
     ))}
     <span className="w-2 h-2 rounded-full border border-accent" />
   </span>

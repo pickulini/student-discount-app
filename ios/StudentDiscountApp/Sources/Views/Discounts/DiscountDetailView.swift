@@ -3,15 +3,15 @@ import SwiftUI
 struct DiscountDetailView: View {
     let offer: Offer
 
-    @State private var isCreatingOrder = false
     @State private var orderError: String?
     @State private var createdOrder: Order?
+    @State private var showingPayment = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 OfferImageView(offer: offer)
-                    .frame(height: 280)
+                    .frame(height: Theme.Sizing.heroImageHeight)
 
                 VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
                     VStack(alignment: .leading, spacing: Theme.Spacing.s) {
@@ -90,6 +90,20 @@ struct DiscountDetailView: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Theme.Colors.background, for: .navigationBar)
+        .sheet(isPresented: $showingPayment) {
+            PaymentConfirmSheet(
+                title: offer.title,
+                price: offer.displayPrice,
+                createOrder: {
+                    try await APIClient.shared.post(
+                        "/api/v1/orders",
+                        body: CreateOrderRequest(offerID: offer.id, bonusPoints: 0)
+                    )
+                }
+            ) { order in
+                createdOrder = order
+            }
+        }
     }
 
     @ViewBuilder
@@ -107,31 +121,11 @@ struct DiscountDetailView: View {
             .padding(.vertical, Theme.Spacing.m)
         } else {
             Button {
-                Task { await createOrder() }
+                showingPayment = true
             } label: {
-                if isCreatingOrder {
-                    RouteLoadingIndicator()
-                } else {
-                    Text(offer.displayPrice > 0 ? "Купить за \(Int(offer.displayPrice)) ₽" : "Получить скидку")
-                }
+                Text(offer.displayPrice > 0 ? "Купить за \(Int(offer.displayPrice)) ₽" : "Получить скидку")
             }
             .buttonStyle(.routePrimary)
-            .disabled(isCreatingOrder)
-        }
-    }
-
-    private func createOrder() async {
-        isCreatingOrder = true
-        orderError = nil
-        defer { isCreatingOrder = false }
-        do {
-            let order: Order = try await APIClient.shared.post(
-                "/api/v1/orders",
-                body: CreateOrderRequest(offerID: offer.id, bonusPoints: 0)
-            )
-            createdOrder = order
-        } catch {
-            orderError = error.localizedDescription
         }
     }
 }
