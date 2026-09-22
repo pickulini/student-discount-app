@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import OrderPaymentModal from './OrderPaymentModal';
+import { Card, Button, Input, PageTitle } from '../design/UI';
+import { RouteLoadingView } from '../design/DottedPath';
+
+const statusColor = (status) =>
+  status === 'paid' ? 'bg-accent/10 text-accent' :
+  status === 'completed' ? 'bg-surface-2 text-ink' :
+  status === 'cancelled' ? 'bg-danger/10 text-danger' :
+  status === 'refunded' ? 'bg-surface-2 text-ink-faint' : 'bg-surface-2 text-ink-soft';
 
 const Order = () => {
   const [offers, setOffers] = useState([]);
@@ -57,16 +65,16 @@ const Order = () => {
   };
 
   if (loading) {
-    return <div className="text-center py-8">Загрузка...</div>;
+    return <RouteLoadingView label="Загрузка..." />;
   }
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="bg-white p-6 rounded shadow mb-6">
-        <h2 className="text-2xl font-bold mb-4">Оформить заказ</h2>
-        <form onSubmit={handleSubmit}>
+      <Card className="p-6 mb-6">
+        <PageTitle className="mb-4">Оформить заказ</PageTitle>
+        <form onSubmit={handleSubmit} className="space-y-3">
           <select
-            className="w-full p-2 border rounded mb-2"
+            className="w-full bg-surface border border-line focus:border-accent outline-none rounded-[var(--radius-sm)] px-3 py-2.5 text-ink transition"
             value={selectedOffer}
             onChange={e => setSelectedOffer(e.target.value)}
             required
@@ -76,73 +84,66 @@ const Order = () => {
               <option key={o.id} value={o.id}>{o.title}</option>
             ))}
           </select>
-          <input
+          <Input
             type="number"
             placeholder="Бонусные баллы (0-200)"
-            className="w-full p-2 border rounded mb-2"
             value={bonusPoints}
             onChange={e => setBonusPoints(Number(e.target.value))}
             min="0"
           />
-          <button type="submit" className="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600">
+          <Button type="submit" className="w-full">
             Создать и оплатить
-          </button>
+          </Button>
         </form>
         {error && (
-          <div className="mt-3 text-red-500 text-sm">
+          <div className="mt-3 text-danger text-sm">
             {error}
             {error.includes('кошелёк') && (
-              <a href="/wallet" className="ml-2 underline text-blue-600">Перейти в кошелёк</a>
+              <a href="/wallet" className="ml-2 underline text-accent">Перейти в кошелёк</a>
             )}
           </div>
         )}
-      </div>
+      </Card>
 
-      <div className="bg-white p-6 rounded shadow">
-        <h2 className="text-2xl font-bold mb-4">Мои заказы</h2>
+      <Card className="p-6">
+        <PageTitle className="mb-4">Мои заказы</PageTitle>
         {orders.length === 0 ? (
-          <p className="text-gray-500">Нет заказов</p>
+          <p className="text-ink-soft">Нет заказов</p>
         ) : (
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="p-2 text-left">ID</th>
-                <th className="p-2 text-left">Сумма</th>
-                <th className="p-2 text-left">Статус</th>
-                <th className="p-2 text-left">Действие</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map(o => (
-                <tr key={o.id} className="border-b">
-                  <td className="p-2">{o.id}</td>
-                  <td className="p-2">{o.total_amount} ₽</td>
-                  <td className="p-2">
-                    <span className={`px-2 py-1 rounded text-white text-xs ${
-                      o.status === 'paid' ? 'bg-green-500' :
-                      o.status === 'completed' ? 'bg-blue-500' :
-                      o.status === 'cancelled' ? 'bg-red-500' :
-                      o.status === 'refunded' ? 'bg-gray-500' : 'bg-yellow-500'
-                    }`}>
-                      {o.status}
-                    </span>
-                  </td>
-                  <td className="p-2">
-                    {o.status === 'created' && (
-                      <button
-                        onClick={() => setPaymentOrder(o)}
-                        className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-                      >
-                        Оплатить
-                      </button>
-                    )}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-line text-ink-soft">
+                  <th className="p-2 text-left font-medium">ID</th>
+                  <th className="p-2 text-left font-medium">Сумма</th>
+                  <th className="p-2 text-left font-medium">Статус</th>
+                  <th className="p-2 text-left font-medium">Действие</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {orders.map(o => (
+                  <tr key={o.id} className="border-b border-line last:border-0">
+                    <td className="p-2 text-ink">{o.id}</td>
+                    <td className="p-2 text-ink">{o.total_amount} ₽</td>
+                    <td className="p-2">
+                      <span className={`px-2 py-1 rounded-[var(--radius-xs)] text-xs font-medium ${statusColor(o.status)}`}>
+                        {o.status}
+                      </span>
+                    </td>
+                    <td className="p-2">
+                      {o.status === 'created' && (
+                        <Button onClick={() => setPaymentOrder(o)} className="px-3 py-1 text-xs">
+                          Оплатить
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-      </div>
+      </Card>
 
       {paymentOrder && (
         <OrderPaymentModal
@@ -156,4 +157,3 @@ const Order = () => {
 };
 
 export default Order;
-

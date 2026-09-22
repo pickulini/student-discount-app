@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import ImageUpload from './ImageUpload';
 import { useAuth } from '../context/AuthContext';
+import { Card, Button, Input, Label } from '../design/UI';
+import { RouteLoadingView } from '../design/DottedPath';
 
 const SettingsProfile = () => {
   const { fetchUser } = useAuth();
@@ -48,14 +50,14 @@ const SettingsProfile = () => {
     }
   };
 
-  if (loading) return <div>Загрузка...</div>;
+  if (loading) return <RouteLoadingView label="Загрузка..." />;
 
   return (
-    <div className="bg-white rounded-2xl shadow p-6">
-      <h2 className="text-xl font-bold mb-4">Профиль</h2>
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold text-ink mb-4">Профиль</h2>
 
-      {error && <div className="bg-red-50 text-red-700 p-3 rounded mb-3 text-sm">{error}</div>}
-      {success && <div className="bg-green-50 text-green-700 p-3 rounded mb-3 text-sm">{success}</div>}
+      {error && <div className="bg-danger/10 text-danger p-3 rounded-[var(--radius-sm)] mb-3 text-sm">{error}</div>}
+      {success && <div className="bg-accent/10 text-accent p-3 rounded-[var(--radius-sm)] mb-3 text-sm">{success}</div>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <ImageUpload
@@ -65,45 +67,39 @@ const SettingsProfile = () => {
         />
 
         <div>
-          <label className="block text-sm mb-1">Никнейм</label>
-          <input
+          <Label className="mb-1">Никнейм</Label>
+          <Input
             type="text"
             value={form.nickname}
             onChange={(e) => setForm({ ...form, nickname: e.target.value })}
-            className="w-full border p-2 rounded"
             placeholder="Артём"
             maxLength={50}
           />
         </div>
 
         <div>
-          <label className="block text-sm mb-1">Username (@тег)</label>
-          <div className="flex items-center">
-            <span className="text-gray-500 mr-1">@</span>
-            <input
+          <Label className="mb-1">Username (@тег)</Label>
+          <div className="flex items-center gap-1">
+            <span className="text-ink-faint">@</span>
+            <Input
               type="text"
               value={form.username}
               onChange={(e) => setForm({ ...form, username: e.target.value.toLowerCase() })}
-              className="w-full border p-2 rounded"
               placeholder="artem_2005"
               pattern="[a-z0-9_]{3,30}"
               title="3-30 символов: латиница, цифры, _"
             />
           </div>
-          <p className="text-xs text-gray-500 mt-1">3-30 символов: латиница, цифры, _</p>
+          <p className="text-xs text-ink-faint mt-1">3-30 символов: латиница, цифры, _</p>
         </div>
 
         <div className="flex gap-2 pt-2">
-          <button
-            type="submit"
-            disabled={saving}
-            className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-          >
+          <Button type="submit" disabled={saving} className="px-6">
             {saving ? 'Сохранение...' : 'Сохранить'}
-          </button>
+          </Button>
         </div>
       </form>
-    </div>
+    </Card>
   );
 };
 

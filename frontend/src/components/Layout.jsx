@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from './NotificationBell';
+import { RouteMark } from '../design/DottedPath';
 
 // === Иконки ===
 const CalendarIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
@@ -25,7 +26,6 @@ const Layout = () => {
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef(null);
 
-  // Закрытие profile dropdown по клику вне
   useEffect(() => {
     const handleClick = (e) => {
       if (profileRef.current && !profileRef.current.contains(e.target)) {
@@ -48,13 +48,11 @@ const Layout = () => {
     setProfileOpen(false);
   };
 
-  // Верхнее меню — только самое нужное
   const topLinks = [
     { to: '/events', label: 'Ивенты', icon: CalendarIcon },
     { to: '/order', label: 'Заказы', icon: OrderIcon },
   ];
 
-  // Всё остальное — в dropdown профиля
   const dropdownLinks = [
     { to: '/friends', label: 'Друзья', icon: FriendsIcon },
     { to: '/subscriptions', label: 'Подписки', icon: StarIcon },
@@ -69,23 +67,23 @@ const Layout = () => {
   const publicProfileUrl = user?.username ? `/@${user.username}` : '/profile';
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-20">
-        <div className="container mx-auto px-3 py-2 flex items-center justify-between gap-2">
-          {/* Logo */}
-          <Link to="/" className="text-xl font-bold text-blue-600 flex items-center gap-1 flex-shrink-0">
-            <span>🎓</span>
-            <span className="hidden sm:inline">Student Discount</span>
+    <div className="min-h-screen bg-bg flex flex-col text-ink">
+      <nav className="bg-bg/95 backdrop-blur border-b border-line sticky top-0 z-20">
+        <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-2">
+          <Link to="/" className="flex items-center gap-2.5 flex-shrink-0 group">
+            <RouteMark />
+            <span className="hidden sm:inline text-sm font-semibold tracking-wide text-ink group-hover:text-accent transition">
+              Student Discount
+            </span>
           </Link>
 
-          {/* Central menu (desktop) */}
           {user && (
-            <div className="hidden md:flex items-center gap-1 text-sm flex-1 ml-4">
+            <div className="hidden md:flex items-center gap-1 text-sm flex-1 ml-6">
               {topLinks.map((link) => (
                 <Link
                   key={link.to}
                   to={link.to}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-blue-50 text-gray-700 hover:text-blue-600 transition"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-xs)] hover:bg-surface-2 text-ink-soft hover:text-ink transition"
                 >
                   <link.icon />
                   <span>{link.label}</span>
@@ -94,31 +92,29 @@ const Layout = () => {
             </div>
           )}
 
-          {/* Right side */}
           <div className="flex items-center gap-2">
             {user ? (
               <>
                 <NotificationBell />
 
-                {/* Profile dropdown (desktop) */}
                 <div className="relative hidden md:block" ref={profileRef}>
                   <button
                     onClick={() => setProfileOpen(!profileOpen)}
-                    className="flex items-center gap-2 rounded-full hover:bg-gray-100 transition p-0.5 pr-2"
+                    className="flex items-center gap-2 rounded-full hover:bg-surface-2 transition p-0.5 pr-2"
                   >
                     {avatarUrl ? (
                       <img
                         src={avatarUrl}
                         alt=""
-                        className="w-9 h-9 rounded-full object-cover border border-gray-200"
+                        className="w-9 h-9 rounded-full object-cover border border-line"
                       />
                     ) : (
-                      <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-sm">
+                      <div className="w-9 h-9 rounded-full bg-surface-2 border border-line flex items-center justify-center text-accent font-semibold text-sm">
                         {displayName[0]?.toUpperCase() || '?'}
                       </div>
                     )}
                     <svg
-                      className={`w-3 h-3 text-gray-400 transition-transform ${profileOpen ? 'rotate-180' : ''}`}
+                      className={`w-3 h-3 text-ink-faint transition-transform ${profileOpen ? 'rotate-180' : ''}`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -128,77 +124,72 @@ const Layout = () => {
                   </button>
 
                   {profileOpen && (
-                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border z-50 overflow-hidden">
-                      {/* Header */}
-                      <div className="px-4 py-3 border-b bg-gray-50">
-                        <div className="font-semibold text-sm truncate">{displayName}</div>
+                    <div className="absolute right-0 mt-2 w-64 bg-surface rounded-[var(--radius-md)] shadow-2xl border border-line z-50 overflow-hidden">
+                      <div className="px-4 py-3 border-b border-line bg-surface-2">
+                        <div className="text-sm text-ink truncate">{displayName}</div>
                         {user.username && (
-                          <div className="text-xs text-blue-600">@{user.username}</div>
+                          <div className="text-xs text-accent">@{user.username}</div>
                         )}
-                        <div className="text-xs text-gray-500 truncate">{user.email}</div>
+                        <div className="text-xs text-ink-soft truncate">{user.email}</div>
                       </div>
 
-                      {/* Мой профиль */}
                       <div className="py-1">
                         <Link
                           to={publicProfileUrl}
                           onClick={closeAll}
-                          className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                          className="flex items-center gap-2 px-4 py-2 text-sm text-ink-soft hover:text-ink hover:bg-surface-2"
                         >
                           <UserIcon /> Мой профиль
                         </Link>
                         <Link
                           to="/settings"
                           onClick={closeAll}
-                          className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                          className="flex items-center gap-2 px-4 py-2 text-sm text-ink-soft hover:text-ink hover:bg-surface-2"
                         >
                           <GearIcon /> Настройки
                         </Link>
                       </div>
 
-                      {/* Основные ссылки */}
-                      <div className="py-1 border-t">
+                      <div className="py-1 border-t border-line">
                         {dropdownLinks.map((link) => (
                           <Link
                             key={link.to}
                             to={link.to}
                             onClick={closeAll}
-                            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                            className="flex items-center gap-2 px-4 py-2 text-sm text-ink-soft hover:text-ink hover:bg-surface-2"
                           >
                             <link.icon /> {link.label}
                           </Link>
                         ))}
                       </div>
 
-                      {/* Роли */}
                       {(user.role === 'merchant' || user.role === 'admin') && (
-                        <div className="py-1 border-t">
+                        <div className="py-1 border-t border-line">
                           {user.role === 'merchant' && (
                             <Link
                               to="/merchant"
                               onClick={closeAll}
-                              className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                              className="flex items-center gap-2 px-4 py-2 text-sm text-ink-soft hover:text-ink hover:bg-surface-2"
                             >
-                              <span>🏢</span> Партнёрский кабинет
+                              <span className="w-1.5 h-1.5 rounded-full bg-accent" /> Партнёрский кабинет
                             </Link>
                           )}
                           {user.role === 'admin' && (
                             <Link
                               to="/admin"
                               onClick={closeAll}
-                              className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 font-semibold hover:bg-red-50"
+                              className="flex items-center gap-2 px-4 py-2 text-sm text-accent font-medium hover:bg-surface-2"
                             >
-                              <span>⚙️</span> Админка
+                              <span className="w-1.5 h-1.5 rounded-full bg-accent" /> Админка
                             </Link>
                           )}
                         </div>
                       )}
 
-                      {/* Logout */}
-                      <div className="border-t py-1">
+                      <div className="border-t border-line py-1">
                         <button
                           onClick={handleLogout}
-                          className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-500 hover:bg-red-50"
+                          className="w-full flex items-center gap-2 px-4 py-2 text-sm text-danger hover:bg-surface-2"
                         >
                           <LogoutIcon /> Выйти
                         </button>
@@ -207,20 +198,19 @@ const Layout = () => {
                   )}
                 </div>
 
-                {/* Mobile burger */}
                 <button
                   onClick={() => setMenuOpen(!menuOpen)}
-                  className="md:hidden text-gray-600 hover:text-blue-600 p-1"
+                  className="md:hidden text-ink-soft hover:text-ink p-1"
                 >
                   {menuOpen ? <CloseIcon /> : <MenuIcon />}
                 </button>
               </>
             ) : (
               <>
-                <Link to="/login" className="px-3 py-1.5 rounded-lg hover:bg-blue-50 text-gray-700 text-sm transition">
+                <Link to="/login" className="px-3 py-1.5 rounded-[var(--radius-xs)] hover:bg-surface-2 text-ink-soft hover:text-ink text-sm transition">
                   Вход
                 </Link>
-                <Link to="/register" className="bg-blue-600 text-white px-4 py-1.5 rounded-lg hover:bg-blue-700 text-sm transition">
+                <Link to="/register" className="bg-accent text-accent-ink px-4 py-1.5 rounded-[var(--radius-xs)] hover:bg-accent/90 text-sm font-medium transition">
                   Регистрация
                 </Link>
               </>
@@ -228,79 +218,74 @@ const Layout = () => {
           </div>
         </div>
 
-        {/* Mobile drawer */}
         {menuOpen && user && (
-          <div className="md:hidden bg-white border-t border-gray-100 shadow-lg max-h-[80vh] overflow-y-auto">
+          <div className="md:hidden bg-bg border-t border-line shadow-2xl max-h-[80vh] overflow-y-auto">
             <div className="p-3 flex flex-col gap-1 text-sm">
-              {/* Header */}
-              <div className="flex items-center gap-3 px-2 py-3 border-b mb-2">
+              <div className="flex items-center gap-3 px-2 py-3 border-b border-line mb-2">
                 {avatarUrl ? (
                   <img src={avatarUrl} alt="" className="w-12 h-12 rounded-full object-cover" />
                 ) : (
-                  <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
+                  <div className="w-12 h-12 rounded-full bg-surface-2 border border-line flex items-center justify-center text-accent font-semibold">
                     {displayName[0]?.toUpperCase() || '?'}
                   </div>
                 )}
                 <div className="min-w-0">
-                  <div className="font-semibold truncate">{displayName}</div>
-                  {user.username && <div className="text-xs text-blue-600">@{user.username}</div>}
+                  <div className="text-ink truncate">{displayName}</div>
+                  {user.username && <div className="text-xs text-accent">@{user.username}</div>}
                 </div>
               </div>
 
-              {/* Top */}
               {topLinks.map((link) => (
                 <Link
                   key={link.to}
                   to={link.to}
                   onClick={closeAll}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 text-gray-700"
+                  className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-xs)] hover:bg-surface-2 text-ink-soft"
                 >
                   <link.icon /> {link.label}
                 </Link>
               ))}
 
-              <div className="border-t my-2" />
+              <div className="border-t border-line my-2" />
 
-              {/* Profile */}
-              <Link to={publicProfileUrl} onClick={closeAll} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 text-gray-700">
+              <Link to={publicProfileUrl} onClick={closeAll} className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-xs)] hover:bg-surface-2 text-ink-soft">
                 <UserIcon /> Мой профиль
               </Link>
-              <Link to="/settings" onClick={closeAll} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 text-gray-700">
+              <Link to="/settings" onClick={closeAll} className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-xs)] hover:bg-surface-2 text-ink-soft">
                 <GearIcon /> Настройки
               </Link>
 
-              <div className="border-t my-2" />
+              <div className="border-t border-line my-2" />
 
-              {/* Dropdown links */}
               {dropdownLinks.map((link) => (
                 <Link
                   key={link.to}
                   to={link.to}
                   onClick={closeAll}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 text-gray-700"
+                  className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-xs)] hover:bg-surface-2 text-ink-soft"
                 >
                   <link.icon /> {link.label}
                 </Link>
               ))}
 
-              {(user.role === 'merchant' || user.role === 'admin') && <div className="border-t my-2" />}
+              {(user.role === 'merchant' || user.role === 'admin') && <div className="border-t border-line my-2" />}
 
               {user.role === 'merchant' && (
-                <Link to="/merchant" onClick={closeAll} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 text-gray-700">
-                  <span>🏢</span> Партнёрский кабинет
+                <Link to="/merchant" onClick={closeAll} className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-xs)] hover:bg-surface-2 text-ink-soft">
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent" /> Партнёрский кабинет
                 </Link>
               )}
               {user.role === 'admin' && (
-                <Link to="/admin" onClick={closeAll} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-red-50 text-red-600 font-semibold">
-                  <span>⚙️</span> Админка
+                <Link to="/admin" onClick={closeAll} className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-xs)] hover:bg-surface-2 text-accent font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent" /> Админка
                 </Link>
               )}
 
-              <div className="border-t my-2" />
+              <div className="border-t border-line my-2" />
 
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-red-50 text-red-500 w-full text-left"
+                className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-xs)] hover:bg-surface-2 text-danger w-full text-left"
               >
                 <LogoutIcon /> Выйти
               </button>
@@ -313,8 +298,8 @@ const Layout = () => {
         <Outlet />
       </main>
 
-      <footer className="bg-white border-t border-gray-200 py-3 text-center text-gray-500 text-xs">
-        © 2026 Student Discount App
+      <footer className="border-t border-line py-4 text-center text-ink-faint text-xs">
+        © 2026 Student Discount
       </footer>
     </div>
   );

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
+import { Card, Button, Input, PageTitle } from '../design/UI';
 
 const Wallet = () => {
   const [balance, setBalance] = useState(0);
@@ -37,33 +38,35 @@ const Wallet = () => {
     fetchWallet();
   }, []);
 
-  if (error) return <div className="text-red-500">{error}</div>;
+  if (error) return <div className="text-danger text-center py-8">{error}</div>;
 
   return (
-    <div className="max-w-md mx-auto bg-white p-6 rounded shadow">
-      <h2 className="text-2xl font-bold mb-4">Кошелёк</h2>
-      <div className="mb-4">
-        <p><strong>Денежный баланс:</strong> {balance} ₽</p>
-        <p><strong>Бонусные баллы:</strong> {bonus}</p>
+    <Card className="max-w-md mx-auto p-6">
+      <PageTitle className="mb-4">Кошелёк</PageTitle>
+      <div className="grid grid-cols-2 gap-3 mb-6">
+        <div className="bg-surface-2 border border-line p-3 rounded-[var(--radius-sm)] text-center">
+          <div className="text-2xl font-bold text-ink">{balance} ₽</div>
+          <div className="text-xs text-ink-soft">Денежный баланс</div>
+        </div>
+        <div className="bg-surface-2 border border-line p-3 rounded-[var(--radius-sm)] text-center">
+          <div className="text-2xl font-bold text-accent">{bonus}</div>
+          <div className="text-xs text-ink-soft">Бонусные баллы</div>
+        </div>
       </div>
       <div className="flex gap-2">
-        <input
+        <Input
           type="number"
           value={amount}
           onChange={e => setAmount(Number(e.target.value))}
-          className="border p-2 rounded w-24"
+          className="w-24"
           min="1"
         />
-        <button
-          onClick={handleDeposit}
-          disabled={loading}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
-        >
+        <Button onClick={handleDeposit} disabled={loading}>
           {loading ? 'Обработка...' : 'Пополнить'}
-        </button>
+        </Button>
       </div>
-      <p className="text-xs text-gray-500 mt-2">* Пополнение через СБП (эмуляция)</p>
-    </div>
+      <p className="text-xs text-ink-faint mt-3">* Пополнение через СБП (эмуляция)</p>
+    </Card>
   );
 };
 

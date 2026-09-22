@@ -47,7 +47,7 @@ export default function SubscribeButton({ companyId, initialSubscribed = false, 
         disabled={loading}
         title={subscribed ? 'Отписаться' : 'Подписаться на компанию'}
         className={`text-lg leading-none transition ${
-          subscribed ? 'text-yellow-500' : 'text-gray-300 hover:text-yellow-400'
+          subscribed ? 'text-accent' : 'text-ink-faint hover:text-accent'
         } ${loading ? 'opacity-50' : ''}`}
       >
         {subscribed ? '★' : '☆'}
@@ -59,10 +59,10 @@ export default function SubscribeButton({ companyId, initialSubscribed = false, 
     <button
       onClick={toggle}
       disabled={loading}
-      className={`px-3 py-1 rounded text-sm font-medium transition ${
+      className={`px-3 py-1 rounded-[var(--radius-sm)] text-sm font-medium transition ${
         subscribed
-          ? 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
-          : 'bg-blue-600 text-white hover:bg-blue-700'
+          ? 'bg-surface-2 text-ink-soft border border-line hover:border-ink-faint'
+          : 'bg-accent text-accent-ink hover:bg-accent/90'
       } ${loading ? 'opacity-50 cursor-wait' : ''}`}
     >
       {loading ? '...' : subscribed ? '★ Вы подписаны' : '☆ Подписаться'}

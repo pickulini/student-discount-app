@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
+import { Card, Button, Input, Label } from '../design/UI';
 
 const SettingsSecurity = () => {
   const [oldPassword, setOldPassword] = useState('');
@@ -82,105 +83,92 @@ const SettingsSecurity = () => {
   return (
     <div className="space-y-4">
       {/* Смена пароля */}
-      <div className="bg-white rounded-2xl shadow p-6">
-        <h2 className="text-xl font-bold mb-1">Смена пароля</h2>
-        <p className="text-sm text-gray-500 mb-4">
+      <Card className="p-6">
+        <h2 className="text-xl font-semibold text-ink mb-1">Смена пароля</h2>
+        <p className="text-sm text-ink-soft mb-4">
           После смены пароля все активные сессии будут отозваны
         </p>
 
-        {error && <div className="bg-red-50 text-red-700 p-3 rounded mb-3 text-sm">{error}</div>}
-        {success && <div className="bg-green-50 text-green-700 p-3 rounded mb-3 text-sm">{success}</div>}
+        {error && <div className="bg-danger/10 text-danger p-3 rounded-[var(--radius-sm)] mb-3 text-sm">{error}</div>}
+        {success && <div className="bg-accent/10 text-accent p-3 rounded-[var(--radius-sm)] mb-3 text-sm">{success}</div>}
 
         <form onSubmit={handleChangePassword} className="space-y-3">
           <div>
-            <label className="block text-sm mb-1">Текущий пароль</label>
-            <input
+            <Label className="mb-1">Текущий пароль</Label>
+            <Input
               type="password"
               value={oldPassword}
               onChange={(e) => setOldPassword(e.target.value)}
-              className="w-full border p-2 rounded"
               required
             />
           </div>
           <div>
-            <label className="block text-sm mb-1">Новый пароль</label>
-            <input
+            <Label className="mb-1">Новый пароль</Label>
+            <Input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full border p-2 rounded"
               minLength={8}
               required
             />
           </div>
           <div>
-            <label className="block text-sm mb-1">Повторите новый пароль</label>
-            <input
+            <Label className="mb-1">Повторите новый пароль</Label>
+            <Input
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full border p-2 rounded"
               required
             />
           </div>
-          <button
-            type="submit"
-            disabled={changing}
-            className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-          >
+          <Button type="submit" disabled={changing} className="px-6">
             {changing ? 'Сохранение...' : 'Изменить пароль'}
-          </button>
+          </Button>
         </form>
-      </div>
+      </Card>
 
       {/* Сессии */}
-      <div className="bg-white rounded-2xl shadow p-6">
+      <Card className="p-6">
         <div className="flex justify-between items-center mb-4">
           <div>
-            <h2 className="text-xl font-bold">Активные сессии</h2>
-            <p className="text-sm text-gray-500">Устройства, где вы вошли</p>
+            <h2 className="text-xl font-semibold text-ink">Активные сессии</h2>
+            <p className="text-sm text-ink-soft">Устройства, где вы вошли</p>
           </div>
           {sessions.length > 1 && (
-            <button
-              onClick={revokeAll}
-              className="text-sm text-red-500 hover:underline"
-            >
+            <button onClick={revokeAll} className="text-sm text-danger hover:underline">
               Отозвать все
             </button>
           )}
         </div>
 
         {sessionsLoading ? (
-          <div className="text-center py-4 text-gray-500">Загрузка...</div>
+          <div className="text-center py-4 text-ink-soft">Загрузка...</div>
         ) : sessions.length === 0 ? (
-          <div className="text-center py-4 text-gray-500 text-sm">Нет активных сессий</div>
+          <div className="text-center py-4 text-ink-soft text-sm">Нет активных сессий</div>
         ) : (
           <div className="space-y-2">
             {sessions.map((s) => (
-              <div key={s.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+              <div key={s.id} className="flex items-center gap-3 p-3 bg-surface-2 rounded-[var(--radius-sm)]">
                 <div className="text-2xl">
                   {/mobile|android|iphone/i.test(s.user_agent || '') ? '📱' : '💻'}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">
+                  <div className="text-sm font-medium text-ink truncate">
                     {s.device_name || 'Неизвестное устройство'}
                   </div>
-                  <div className="text-xs text-gray-500 truncate">{s.ip || '—'}</div>
-                  <div className="text-xs text-gray-400">
+                  <div className="text-xs text-ink-faint truncate">{s.ip || '—'}</div>
+                  <div className="text-xs text-ink-faint">
                     Последняя активность: {formatDate(s.last_used_at)}
                   </div>
                 </div>
-                <button
-                  onClick={() => revokeSession(s.id)}
-                  className="text-red-500 hover:text-red-700 text-sm"
-                >
+                <button onClick={() => revokeSession(s.id)} className="text-danger hover:underline text-sm">
                   Отозвать
                 </button>
               </div>
             ))}
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 };

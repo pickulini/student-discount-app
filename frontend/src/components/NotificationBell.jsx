@@ -52,7 +52,6 @@ const NotificationBell = () => {
 
   // Оптимистично убираем из UI + шлём DELETE с keepalive (не отменяется при навигации)
   const handleClick = async (n) => {
-    // Оптимистично убираем из UI
     setItems((prev) => prev.filter((x) => x.id !== n.id));
     setOpen(false);
 
@@ -69,17 +68,14 @@ const NotificationBell = () => {
       console.error('DELETE error:', err);
     }
 
-    // Обновляем счётчик уже после удаления
     refreshCount();
-
-    // Затем навигация
     navigate(n.link || '/notifications');
   };
 
   const markAllRead = async () => {
     try {
       await api.post('/notifications/read-all');
-      setItems([]); // в bell показываем только непрочитанные — очищаем
+      setItems([]);
       refreshCount();
     } catch {}
   };
@@ -93,7 +89,7 @@ const NotificationBell = () => {
   const renderItem = (n, compact = false) => (
     <button
       onClick={() => handleClick(n)}
-      className={`w-full text-left block hover:bg-gray-50 ${n.read_at ? '' : 'bg-blue-50'} ${compact ? 'p-2' : 'p-3'}`}
+      className={`w-full text-left block hover:bg-surface-2 ${n.read_at ? '' : 'bg-surface-2/60'} ${compact ? 'p-2' : 'p-3'}`}
     >
       <div className="flex gap-2">
         {n.actor_avatar ? (
@@ -103,15 +99,15 @@ const NotificationBell = () => {
             className={`${compact ? 'w-7 h-7' : 'w-8 h-8'} rounded-full object-cover flex-shrink-0`}
           />
         ) : (
-          <div className={`${compact ? 'w-7 h-7' : 'w-8 h-8'} rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs flex-shrink-0`}>
-            🔔
+          <div className={`${compact ? 'w-7 h-7' : 'w-8 h-8'} rounded-full bg-surface-2 flex items-center justify-center text-accent text-xs flex-shrink-0`}>
+            ●
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <div className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-gray-800 line-clamp-2`}>
+          <div className={`${compact ? 'text-xs' : 'text-sm'} text-ink line-clamp-2`}>
             {n.title}
           </div>
-          <div className="text-xs text-gray-400 mt-0.5">{timeAgo(n.created_at)}</div>
+          <div className="text-xs text-ink-faint mt-0.5">{timeAgo(n.created_at)}</div>
         </div>
       </div>
     </button>
@@ -121,7 +117,7 @@ const NotificationBell = () => {
     <div className="relative" ref={wrapperRef}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="relative p-2 rounded hover:bg-blue-50 text-gray-700"
+        className="relative p-2 rounded-[var(--radius-xs)] hover:bg-surface-2 text-ink-soft hover:text-ink transition"
         title="Уведомления"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -129,18 +125,18 @@ const NotificationBell = () => {
             d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
         </svg>
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+          <span className="absolute -top-1 -right-1 bg-accent text-accent-ink text-[10px] font-semibold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-1">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border z-50 max-h-[500px] flex flex-col">
-          <div className="flex justify-between items-center p-3 border-b">
-            <span className="font-semibold text-sm">Уведомления</span>
+        <div className="absolute right-0 mt-2 w-80 bg-surface border border-line rounded-[var(--radius-md)] shadow-2xl z-50 max-h-[500px] flex flex-col">
+          <div className="flex justify-between items-center p-3 border-b border-line">
+            <span className="text-sm text-ink font-medium">Уведомления</span>
             {unreadCount > 0 && (
-              <button onClick={markAllRead} className="text-xs text-red-500 hover:underline">
+              <button onClick={markAllRead} className="text-xs text-ink-soft hover:text-accent transition">
                 Удалить все
               </button>
             )}
@@ -148,13 +144,13 @@ const NotificationBell = () => {
 
           <div className="overflow-y-auto flex-1">
             {loading ? (
-              <div className="p-4 text-center text-gray-500 text-sm">Загрузка...</div>
+              <div className="p-4 text-center text-ink-soft text-sm">Загрузка...</div>
             ) : items.length === 0 ? (
-              <div className="p-6 text-center text-gray-500 text-sm">Нет новых уведомлений</div>
+              <div className="p-6 text-center text-ink-soft text-sm">Нет новых уведомлений</div>
             ) : !shouldGroup ? (
               <ul>
                 {items.map((n) => (
-                  <li key={n.id} className="border-b last:border-0">
+                  <li key={n.id} className="border-b border-line last:border-0">
                     {renderItem(n)}
                   </li>
                 ))}
@@ -167,30 +163,30 @@ const NotificationBell = () => {
                   const unreadInGroup = list.filter((n) => !n.read_at).length;
                   const isExpanded = expandedGroup === gk;
                   return (
-                    <div key={gk} className="border-b last:border-0">
+                    <div key={gk} className="border-b border-line last:border-0">
                       <button
                         onClick={() => setExpandedGroup(isExpanded ? null : gk)}
-                        className="w-full flex items-center gap-2 p-3 hover:bg-gray-50 text-left"
+                        className="w-full flex items-center gap-2 p-3 hover:bg-surface-2 text-left"
                       >
                         <span className="text-lg">{g.icon}</span>
-                        <span className="flex-1 text-sm font-medium text-gray-800">{g.label}</span>
-                        <span className="text-xs text-gray-500">{list.length}</span>
+                        <span className="flex-1 text-sm text-ink">{g.label}</span>
+                        <span className="text-xs text-ink-faint">{list.length}</span>
                         {unreadInGroup > 0 && (
-                          <span className="ml-1 bg-red-500 text-white text-xs rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                          <span className="ml-1 bg-accent text-accent-ink text-[10px] font-semibold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-1">
                             {unreadInGroup}
                           </span>
                         )}
                         <svg
-                          className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                          className={`w-4 h-4 text-ink-faint transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                           fill="none" stroke="currentColor" viewBox="0 0 24 24"
                         >
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                         </svg>
                       </button>
                       {isExpanded && (
-                        <div className="bg-gray-50">
+                        <div className="bg-bg/40">
                           {list.map((n) => (
-                            <div key={n.id} className="border-t">
+                            <div key={n.id} className="border-t border-line">
                               {renderItem(n, true)}
                             </div>
                           ))}
@@ -205,7 +201,7 @@ const NotificationBell = () => {
 
           <button
             onClick={() => { setOpen(false); navigate('/notifications'); }}
-            className="block w-full p-3 text-center text-sm text-blue-600 hover:bg-blue-50 border-t"
+            className="block w-full p-3 text-center text-sm text-accent hover:bg-surface-2 border-t border-line transition"
           >
             Все уведомления
           </button>

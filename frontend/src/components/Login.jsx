@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { Button, Input, Card, ErrorText } from '../design/UI';
+import { RouteMark, DottedDivider } from '../design/DottedPath';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -28,34 +30,45 @@ const Login = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-white p-6 rounded shadow">
-      <h2 className="text-2xl font-bold mb-4">Вход</h2>
-      {error && <div className="text-red-500 mb-2">{error}</div>}
-      <form onSubmit={handleSubmit}>
-        <input
-          type="email"
-          placeholder="Email"
-          className="w-full p-2 border rounded mb-2"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Пароль"
-          className="w-full p-2 border rounded mb-2"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          required
-        />
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 disabled:opacity-50"
-        >
-          {loading ? 'Вход...' : 'Войти'}
-        </button>
-      </form>
+    <div className="min-h-[calc(100vh-64px)] flex items-center justify-center px-4 py-16">
+      <div className="w-full max-w-sm">
+        <div className="flex flex-col items-center gap-4 mb-8">
+          <RouteMark />
+          <h2 className="text-xl font-semibold text-ink">Вход</h2>
+        </div>
+
+        <Card className="p-6">
+          <ErrorText>{error}</ErrorText>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            <Input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <Input
+              type="password"
+              placeholder="Пароль"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <Button type="submit" disabled={loading} className="w-full mt-2">
+              {loading ? 'Вход...' : 'Войти'}
+            </Button>
+          </form>
+        </Card>
+
+        <DottedDivider className="my-6" />
+
+        <div className="text-center text-sm text-ink-soft">
+          Нет аккаунта?{' '}
+          <Link to="/register" className="text-accent hover:underline">
+            Зарегистрироваться
+          </Link>
+        </div>
+      </div>
     </div>
   );
 };

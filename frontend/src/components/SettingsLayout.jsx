@@ -17,7 +17,7 @@ const SettingsLayout = () => {
   const location = useLocation();
 
   if (!user) {
-    return <div className="text-center py-8">Требуется авторизация</div>;
+    return <div className="text-center py-8 text-ink-soft">Требуется авторизация</div>;
   }
 
   const isActive = (item) => {
@@ -30,7 +30,7 @@ const SettingsLayout = () => {
       <div className="flex flex-col md:flex-row gap-6">
         {/* Sidebar / top-tabs */}
         <aside className="md:w-64 flex-shrink-0">
-          <h1 className="text-2xl font-bold mb-4">Настройки</h1>
+          <h1 className="text-2xl font-semibold text-ink mb-4">Настройки</h1>
           <nav className="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible">
             {NAV.map((item) => {
               const active = isActive(item);
@@ -38,10 +38,10 @@ const SettingsLayout = () => {
                 <Link
                   key={item.to}
                   to={item.to}
-                  className={`flex items-center gap-2 px-3 py-2 rounded whitespace-nowrap transition ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-[var(--radius-sm)] whitespace-nowrap transition ${
                     active
-                      ? 'bg-blue-50 text-blue-600 font-semibold'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-surface-2 text-accent font-semibold'
+                      : 'text-ink-soft hover:bg-surface-2 hover:text-ink'
                   }`}
                 >
                   <span>{item.icon}</span>

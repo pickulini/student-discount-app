@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
+import { Card, Button } from '../design/UI';
+import { RouteLoadingView } from '../design/DottedPath';
 
 const ROWS = [
   { key: 'enabled', label: 'Все уведомления', hint: 'Главный выключатель' },
@@ -43,15 +45,15 @@ const SettingsNotifications = () => {
     }
   };
 
-  if (loading) return <div>Загрузка...</div>;
+  if (loading) return <RouteLoadingView label="Загрузка..." />;
 
   return (
-    <div className="bg-white rounded-2xl shadow p-6">
-      <h2 className="text-xl font-bold mb-1">Уведомления</h2>
-      <p className="text-sm text-gray-500 mb-4">Выберите, что вам присылать</p>
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold text-ink mb-1">Уведомления</h2>
+      <p className="text-sm text-ink-soft mb-4">Выберите, что вам присылать</p>
 
-      {error && <div className="bg-red-50 text-red-700 p-3 rounded mb-3 text-sm">{error}</div>}
-      {success && <div className="bg-green-50 text-green-700 p-3 rounded mb-3 text-sm">{success}</div>}
+      {error && <div className="bg-danger/10 text-danger p-3 rounded-[var(--radius-sm)] mb-3 text-sm">{error}</div>}
+      {success && <div className="bg-accent/10 text-accent p-3 rounded-[var(--radius-sm)] mb-3 text-sm">{success}</div>}
 
       <div className="space-y-1">
         {ROWS.map(({ key, label, hint }) => {
@@ -59,32 +61,28 @@ const SettingsNotifications = () => {
           return (
             <label
               key={key}
-              className={`flex items-center justify-between gap-3 py-3 border-b last:border-0 ${disabled ? 'opacity-50' : 'cursor-pointer'}`}
+              className={`flex items-center justify-between gap-3 py-3 border-b border-line last:border-0 ${disabled ? 'opacity-50' : 'cursor-pointer'}`}
             >
               <div>
-                <div className="text-sm font-medium text-gray-800">{label}</div>
-                <div className="text-xs text-gray-500">{hint}</div>
+                <div className="text-sm font-medium text-ink">{label}</div>
+                <div className="text-xs text-ink-faint">{hint}</div>
               </div>
               <input
                 type="checkbox"
                 checked={!!settings[key]}
                 disabled={disabled}
                 onChange={(e) => setSettings({ ...settings, [key]: e.target.checked })}
-                className="w-5 h-5"
+                className="w-5 h-5 accent-[var(--color-accent)]"
               />
             </label>
           );
         })}
       </div>
 
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className="mt-5 bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-      >
+      <Button onClick={handleSave} disabled={saving} className="mt-5 px-6">
         {saving ? 'Сохранение...' : 'Сохранить'}
-      </button>
-    </div>
+      </Button>
+    </Card>
   );
 };
 

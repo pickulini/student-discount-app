@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
+import { Button } from '../design/UI';
 
 const FIELDS = [
   { key: 'avatar_visibility', label: 'Аватар', hint: 'Фотография профиля' },
@@ -59,34 +60,34 @@ const PrivacySettings = () => {
     }
   };
 
-  if (loading) return <div className="text-center py-8">Загрузка...</div>;
+  if (loading) return <div className="text-center py-8 text-ink-soft">Загрузка...</div>;
 
   return (
     <div>
       <div className="mb-4">
-        <h3 className="text-lg font-semibold mb-1">Приватность</h3>
-        <p className="text-sm text-gray-500">
+        <h3 className="text-lg font-semibold text-ink mb-1">Приватность</h3>
+        <p className="text-sm text-ink-soft">
           Управляйте, кто видит каждую часть вашего профиля.
         </p>
       </div>
 
-      {error && <div className="bg-red-50 text-red-700 p-3 rounded mb-3 text-sm">{error}</div>}
-      {success && <div className="bg-green-50 text-green-700 p-3 rounded mb-3 text-sm">{success}</div>}
+      {error && <div className="bg-danger/10 text-danger p-3 rounded-[var(--radius-sm)] mb-3 text-sm">{error}</div>}
+      {success && <div className="bg-accent/10 text-accent p-3 rounded-[var(--radius-sm)] mb-3 text-sm">{success}</div>}
 
       <div className="space-y-2">
         {FIELDS.map(({ key, label, hint }) => (
           <div
             key={key}
-            className="flex items-center justify-between gap-3 border-b py-3 last:border-0"
+            className="flex items-center justify-between gap-3 border-b border-line py-3 last:border-0"
           >
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium text-gray-800">{label}</div>
-              {hint && <div className="text-xs text-gray-500">{hint}</div>}
+              <div className="text-sm font-medium text-ink">{label}</div>
+              {hint && <div className="text-xs text-ink-faint">{hint}</div>}
             </div>
             <select
               value={settings[key] || 'public'}
               onChange={(e) => handleChange(key, e.target.value)}
-              className="border rounded px-2 py-1 text-sm bg-white"
+              className="border border-line bg-surface rounded-[var(--radius-sm)] px-2 py-1 text-sm text-ink"
             >
               {OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -97,13 +98,9 @@ const PrivacySettings = () => {
       </div>
 
       <div className="mt-6">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-        >
+        <Button onClick={handleSave} disabled={saving} className="w-full">
           {saving ? 'Сохранение...' : 'Сохранить настройки приватности'}
-        </button>
+        </Button>
       </div>
     </div>
   );

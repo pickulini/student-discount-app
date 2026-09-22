@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api/client';
 import UserLink from './UserLink';
+import { Button, Input } from '../design/UI';
+import { RouteLoadingView } from '../design/DottedPath';
 
 const Avatar = ({ user }) => {
   const letter = (user.nickname || user.full_name || '?')[0].toUpperCase();
@@ -8,37 +10,38 @@ const Avatar = ({ user }) => {
     return <img src={user.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />;
   }
   return (
-    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+    <div className="w-10 h-10 rounded-full bg-surface-2 border border-line flex items-center justify-center text-accent font-bold">
       {letter}
     </div>
   );
 };
 
-const Card = ({ user, actionLabel, onAction, actionClass = 'bg-blue-600 hover:bg-blue-700' }) => (
-  <div className="flex items-center gap-3 border-b py-2">
+const Row = ({ user, actionLabel, onAction, danger = false }) => (
+  <div className="flex items-center gap-3 border-b border-line py-2">
     <Avatar user={user} />
     <div className="flex-1 min-w-0">
       <div className="font-semibold truncate">
         <UserLink
           username={user.username}
           label={user.nickname || user.full_name}
-          className="text-gray-800 hover:text-blue-600"
+          className="text-ink hover:text-accent"
         />
       </div>
       {user.username && (
-        <div className="text-xs text-gray-500 truncate">
+        <div className="text-xs text-ink-faint truncate">
           <UserLink username={user.username} />
         </div>
       )}
-      {user.university && <div className="text-xs text-gray-400 truncate">{user.university}</div>}
+      {user.university && <div className="text-xs text-ink-faint truncate">{user.university}</div>}
     </div>
     {actionLabel && (
-      <button
+      <Button
         onClick={() => onAction(user)}
-        className={`px-3 py-1 rounded text-white text-sm ${actionClass}`}
+        variant={danger ? 'ghost' : 'primary'}
+        className="px-3 py-1 text-sm"
       >
         {actionLabel}
-      </button>
+      </Button>
     )}
   </div>
 );
@@ -144,15 +147,15 @@ const Friends = () => {
 
   return (
     <div className="max-w-2xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Друзья</h1>
+      <h1 className="text-2xl font-semibold text-ink mb-4">Друзья</h1>
 
-      <div className="flex gap-2 mb-4 border-b overflow-x-auto">
+      <div className="flex gap-1 mb-4 border-b border-line overflow-x-auto">
         {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`px-3 py-2 text-sm whitespace-nowrap ${
-              tab === t.id ? 'border-b-2 border-blue-600 text-blue-600 font-semibold' : 'text-gray-600'
+            className={`px-3 py-2 text-sm whitespace-nowrap transition ${
+              tab === t.id ? 'border-b-2 border-accent text-accent font-semibold' : 'text-ink-soft hover:text-ink'
             }`}
           >
             {t.label}
@@ -160,36 +163,34 @@ const Friends = () => {
         ))}
       </div>
 
-      {error && <div className="text-red-600 mb-3">{error}</div>}
+      {error && <div className="text-danger mb-3">{error}</div>}
 
       {tab === 'search' && (
         <form onSubmit={handleSearch} className="flex gap-2 mb-4">
-          <input
+          <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="@username или никнейм"
-            className="flex-1 border rounded px-3 py-2"
+            className="flex-1 border rounded-[var(--radius-sm)] px-3 py-2"
           />
-          <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-            Найти
-          </button>
+          <Button type="submit">Найти</Button>
         </form>
       )}
 
       {loading ? (
-        <div className="text-gray-500">Загрузка…</div>
+        <RouteLoadingView label="Загрузка…" />
       ) : (
         <>
           {tab === 'friends' &&
             (friends.length === 0 ? (
-              <div className="text-gray-500">Пока нет друзей</div>
+              <div className="text-ink-soft">Пока нет друзей</div>
             ) : (
               friends.map((u) => (
-                <Card
+                <Row
                   key={u.id}
                   user={u}
                   actionLabel="Удалить"
-                  actionClass="bg-gray-500 hover:bg-gray-600"
+                  danger
                   onAction={() => removeFriend(u.id)}
                 />
               ))
@@ -197,58 +198,49 @@ const Friends = () => {
 
           {tab === 'incoming' &&
             (incoming.length === 0 ? (
-              <div className="text-gray-500">Входящих заявок нет</div>
+              <div className="text-ink-soft">Входящих заявок нет</div>
             ) : (
               incoming.map((u) => (
-                <div key={u.friendship_id || u.id} className="flex items-center gap-3 border-b py-2">
+                <div key={u.friendship_id || u.id} className="flex items-center gap-3 border-b border-line py-2">
                   <Avatar user={u} />
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold truncate">{u.nickname || u.full_name}</div>
-                    {u.username && <div className="text-xs text-gray-500">@{u.username}</div>}
+                    <div className="font-semibold text-ink truncate">{u.nickname || u.full_name}</div>
+                    {u.username && <div className="text-xs text-ink-faint">@{u.username}</div>}
                   </div>
-                  <button
-                    onClick={() => acceptRequest(u.friendship_id)}
-                    className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm"
-                  >
+                  <Button onClick={() => acceptRequest(u.friendship_id)} className="px-3 py-1 text-sm">
                     Принять
-                  </button>
-                  <button
-                    onClick={() => rejectRequest(u.friendship_id)}
-                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm"
-                  >
+                  </Button>
+                  <Button variant="danger" onClick={() => rejectRequest(u.friendship_id)} className="px-3 py-1 text-sm border border-danger/30">
                     Отклонить
-                  </button>
+                  </Button>
                 </div>
               ))
             ))}
 
           {tab === 'outgoing' &&
             (outgoing.length === 0 ? (
-              <div className="text-gray-500">Исходящих заявок нет</div>
+              <div className="text-ink-soft">Исходящих заявок нет</div>
             ) : (
               outgoing.map((u) => (
-                <div key={u.friendship_id || u.id} className="flex items-center gap-3 border-b py-2">
+                <div key={u.friendship_id || u.id} className="flex items-center gap-3 border-b border-line py-2">
                   <Avatar user={u} />
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold truncate">{u.nickname || u.full_name}</div>
-                    {u.username && <div className="text-xs text-gray-500">@{u.username}</div>}
+                    <div className="font-semibold text-ink truncate">{u.nickname || u.full_name}</div>
+                    {u.username && <div className="text-xs text-ink-faint">@{u.username}</div>}
                   </div>
-                  <button
-                    onClick={() => cancelRequest(u.friendship_id)}
-                    className="px-3 py-1 bg-gray-500 hover:bg-gray-600 text-white rounded text-sm"
-                  >
+                  <Button variant="ghost" onClick={() => cancelRequest(u.friendship_id)} className="px-3 py-1 text-sm">
                     Отменить
-                  </button>
+                  </Button>
                 </div>
               ))
             ))}
 
           {tab === 'search' &&
             (searchResults.length === 0 ? (
-              <div className="text-gray-500">Ничего не найдено</div>
+              <div className="text-ink-soft">Ничего не найдено</div>
             ) : (
               searchResults.map((u) => (
-                <Card
+                <Row
                   key={u.id}
                   user={u}
                   actionLabel="Добавить"

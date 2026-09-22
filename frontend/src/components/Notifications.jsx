@@ -7,6 +7,8 @@ import {
   groupNotifications,
   timeAgo,
 } from '../utils/notificationGroups';
+import { RouteLoadingView, RouteEmptyState } from '../design/DottedPath';
+import { Card, Button } from '../design/UI';
 
 const Notifications = () => {
   const navigate = useNavigate();
@@ -89,22 +91,22 @@ const Notifications = () => {
   return (
     <div className="max-w-3xl mx-auto">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Уведомления</h1>
+        <h1 className="text-2xl font-semibold text-ink">Уведомления</h1>
         {items.length > 0 && (
-          <button onClick={deleteAll} className="text-sm text-blue-600 hover:underline">
+          <button onClick={deleteAll} className="text-sm text-accent hover:underline">
             Прочитать все
           </button>
         )}
       </div>
 
-      <div className="flex gap-1 mb-4 border-b overflow-x-auto">
+      <div className="flex gap-1 mb-4 border-b border-line overflow-x-auto">
         <button
           onClick={() => setTab('all')}
-          className={`px-3 py-2 text-sm whitespace-nowrap ${
-            tab === 'all' ? 'border-b-2 border-blue-600 text-blue-600 font-semibold' : 'text-gray-600 hover:text-gray-800'
+          className={`px-3 py-2 text-sm whitespace-nowrap transition ${
+            tab === 'all' ? 'border-b-2 border-accent text-accent font-semibold' : 'text-ink-soft hover:text-ink'
           }`}
         >
-          Все {tabCounts.all > 0 && <span className="text-xs text-gray-400">({tabCounts.all})</span>}
+          Все {tabCounts.all > 0 && <span className="text-xs text-ink-faint">({tabCounts.all})</span>}
         </button>
         {GROUP_ORDER.map((gk) => {
           const g = NOTIFICATION_GROUPS[gk];
@@ -115,61 +117,57 @@ const Notifications = () => {
             <button
               key={gk}
               onClick={() => setTab(gk)}
-              className={`px-3 py-2 text-sm whitespace-nowrap ${
-                tab === gk ? 'border-b-2 border-blue-600 text-blue-600 font-semibold' : 'text-gray-600 hover:text-gray-800'
+              className={`px-3 py-2 text-sm whitespace-nowrap transition ${
+                tab === gk ? 'border-b-2 border-accent text-accent font-semibold' : 'text-ink-soft hover:text-ink'
               }`}
             >
-              {g.icon} {g.shortLabel} <span className="text-xs text-gray-400">({cnt})</span>
+              {g.icon} {g.shortLabel} <span className="text-xs text-ink-faint">({cnt})</span>
             </button>
           );
         })}
       </div>
 
       {loading && items.length === 0 ? (
-        <div className="text-center py-8">Загрузка...</div>
+        <RouteLoadingView label="Загрузка..." />
       ) : visibleItems.length === 0 ? (
-        <div className="bg-white rounded shadow p-8 text-center text-gray-500">
+        <Card className="p-8 text-center text-ink-soft">
           {tab === 'all' ? 'Уведомлений нет' : 'В этой категории нет уведомлений'}
-        </div>
+        </Card>
       ) : (
         <>
-          <div className="bg-white rounded shadow divide-y">
+          <Card className="divide-y divide-line overflow-hidden">
             {visibleItems.map((n) => (
               <button
                 key={n.id}
                 onClick={() => handleClickItem(n)}
-                className={`w-full text-left block p-4 hover:bg-gray-50 ${n.read_at ? '' : 'bg-blue-50'}`}
+                className={`w-full text-left block p-4 hover:bg-surface-2 transition ${n.read_at ? '' : 'bg-surface-2/60'}`}
               >
                 <div className="flex gap-3">
                   {n.actor_avatar ? (
                     <img src={n.actor_avatar} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-surface-2 border border-line flex items-center justify-center text-accent flex-shrink-0">
                       🔔
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-gray-800">{n.title}</div>
-                    {n.body && <div className="text-sm text-gray-600 mt-0.5">{n.body}</div>}
-                    <div className="text-xs text-gray-400 mt-1">
+                    <div className="font-medium text-ink">{n.title}</div>
+                    {n.body && <div className="text-sm text-ink-soft mt-0.5">{n.body}</div>}
+                    <div className="text-xs text-ink-faint mt-1">
                       {timeAgo(n.created_at)}
-                      {!n.read_at && <span className="ml-2 text-blue-600">• новое</span>}
+                      {!n.read_at && <span className="ml-2 text-accent">• новое</span>}
                     </div>
                   </div>
                 </div>
               </button>
             ))}
-          </div>
+          </Card>
 
           {hasMore && tab === 'all' && (
             <div className="text-center mt-4">
-              <button
-                onClick={loadMore}
-                disabled={loading}
-                className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200 text-sm disabled:opacity-50"
-              >
+              <Button variant="ghost" onClick={loadMore} disabled={loading} className="text-sm">
                 {loading ? 'Загрузка...' : 'Показать ещё'}
-              </button>
+              </Button>
             </div>
           )}
         </>

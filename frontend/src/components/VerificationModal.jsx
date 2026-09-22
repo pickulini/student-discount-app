@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import ImageUpload from './ImageUpload';
+import { Button, Input, Label } from '../design/UI';
 
 const VerificationModal = ({ onClose, onSuccess }) => {
   const [universities, setUniversities] = useState([]);
@@ -58,34 +59,34 @@ const VerificationModal = ({ onClose, onSuccess }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+        className="bg-surface border border-line rounded-[var(--radius-lg)] max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6">
           <div className="flex justify-between items-start mb-4">
             <div>
-              <h2 className="text-2xl font-bold">Верификация студента</h2>
-              <p className="text-sm text-gray-500 mt-1">
+              <h2 className="text-2xl font-bold text-ink">Верификация студента</h2>
+              <p className="text-sm text-ink-soft mt-1">
                 Заполните данные и приложите фото. Админ проверит в течение 1-2 дней.
               </p>
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">
+            <button onClick={onClose} className="text-ink-faint hover:text-ink text-2xl leading-none">
               ✕
             </button>
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 rounded p-3 mb-4 text-sm">
+            <div className="bg-danger/10 border border-danger/30 text-danger rounded-[var(--radius-sm)] p-3 mb-4 text-sm">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm mb-1">Университет *</label>
-              <input
+              <Label className="mb-1">Университет *</Label>
+              <Input
                 type="text"
                 list="universities-list"
                 value={universityName}
@@ -99,7 +100,6 @@ const VerificationModal = ({ onClose, onSuccess }) => {
                   );
                   setUniversityId(match ? String(match.id) : '');
                 }}
-                className="w-full border p-2 rounded"
                 placeholder="Начните вводить название — появятся подсказки"
                 required
               />
@@ -111,33 +111,32 @@ const VerificationModal = ({ onClose, onSuccess }) => {
                 ))}
               </datalist>
               {universityName && !universityId && (
-                <p className="text-xs text-blue-600 mt-1">
+                <p className="text-xs text-accent mt-1">
                   Новый вуз — будет создан после проверки админом
                 </p>
               )}
               {universityId && (
-                <p className="text-xs text-green-600 mt-1">
+                <p className="text-xs text-accent mt-1">
                   Из списка: {universities.find((u) => String(u.id) === String(universityId))?.name}
                 </p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm mb-1">Номер студенческого *</label>
-              <input
+              <Label className="mb-1">Номер студенческого *</Label>
+              <Input
                 type="text"
                 value={studentIdentifier}
                 onChange={(e) => setStudentIdentifier(e.target.value)}
-                className="w-full border p-2 rounded"
                 placeholder="Например: 12345/2024"
                 maxLength={50}
                 required
               />
             </div>
 
-            <div className="border-t pt-4">
-              <h3 className="font-semibold text-sm mb-2">1. Фото студенческого билета</h3>
-              <p className="text-xs text-gray-500 mb-2">
+            <div className="border-t border-line pt-4">
+              <h3 className="font-semibold text-sm text-ink mb-2">1. Фото студенческого билета</h3>
+              <p className="text-xs text-ink-faint mb-2">
                 Разворот с фотографией и номером. Убедитесь, что все данные читаемы.
               </p>
               <ImageUpload
@@ -147,9 +146,9 @@ const VerificationModal = ({ onClose, onSuccess }) => {
               />
             </div>
 
-            <div className="border-t pt-4">
-              <h3 className="font-semibold text-sm mb-2">2. Селфи со студенческим в руках</h3>
-              <p className="text-xs text-gray-500 mb-2">
+            <div className="border-t border-line pt-4">
+              <h3 className="font-semibold text-sm text-ink mb-2">2. Селфи со студенческим в руках</h3>
+              <p className="text-xs text-ink-faint mb-2">
                 Сфотографируйте себя, держа открытый студенческий рядом с лицом.
               </p>
               <ImageUpload
@@ -160,20 +159,12 @@ const VerificationModal = ({ onClose, onSuccess }) => {
             </div>
 
             <div className="flex gap-2 pt-2">
-              <button
-                type="submit"
-                disabled={saving}
-                className="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-              >
+              <Button type="submit" disabled={saving} className="flex-1">
                 {saving ? 'Отправка...' : 'Отправить на проверку'}
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-              >
+              </Button>
+              <Button type="button" variant="ghost" onClick={onClose} className="px-4">
                 Отмена
-              </button>
+              </Button>
             </div>
           </form>
         </div>

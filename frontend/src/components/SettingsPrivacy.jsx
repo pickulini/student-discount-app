@@ -1,10 +1,11 @@
 import React from 'react';
 import PrivacySettings from './PrivacySettings';
+import { Card } from '../design/UI';
 
 const SettingsPrivacy = () => (
-  <div className="bg-white rounded-2xl shadow p-6">
+  <Card className="p-6">
     <PrivacySettings />
-  </div>
+  </Card>
 );
 
 export default SettingsPrivacy;

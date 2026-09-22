@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { formatRecurrence } from '../utils/recurrence';
 import { useAuth } from '../context/AuthContext';
+import { Button, ErrorText, Badge } from '../design/UI';
 
 const EventDetailModal = ({ event: initialEvent, onClose, onAttendeeChange }) => {
   const navigate = useNavigate();
@@ -92,42 +93,42 @@ const EventDetailModal = ({ event: initialEvent, onClose, onAttendeeChange }) =>
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={onClose}>
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" onClick={onClose}>
+      <div className="bg-surface border border-line rounded-[var(--radius-lg)] max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="p-6">
           <div className="flex justify-between items-start">
-            <h2 className="text-2xl font-bold text-gray-800">{event.title}</h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">✕</button>
+            <h2 className="text-2xl font-bold text-ink">{event.title}</h2>
+            <button onClick={onClose} className="text-ink-faint hover:text-ink text-2xl leading-none">✕</button>
           </div>
 
           <div className="mt-2 flex flex-wrap gap-2 items-center">
-            <span className={`text-sm font-medium px-3 py-1 rounded-full ${
-              isPaid ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+            <span className={`text-sm font-medium px-3 py-1 rounded-[var(--radius-xs)] ${
+              isPaid ? 'bg-accent/10 text-accent' : 'bg-surface-2 text-ink-soft'
             }`}>
               {isPaid ? `${event.special_price} ₽` : 'Бесплатно'}
             </span>
             {isGoing && (
-              <span className="bg-green-100 text-green-800 text-sm font-medium px-3 py-1 rounded-full">
+              <span className="bg-accent/10 text-accent text-sm font-medium px-3 py-1 rounded-[var(--radius-xs)]">
                 ✓ Вы идёте
               </span>
             )}
             {event.my_attendee_status === 'interested' && (
-              <span className="bg-yellow-100 text-yellow-800 text-sm font-medium px-3 py-1 rounded-full">
+              <span className="bg-surface-2 text-ink-soft text-sm font-medium px-3 py-1 rounded-[var(--radius-xs)]">
                 ⭐ Вы интересуетесь
               </span>
             )}
             {event.attendees_count > 0 && (
-              <span className="bg-gray-100 text-gray-700 text-sm font-medium px-3 py-1 rounded-full">
+              <span className="bg-surface-2 text-ink-soft text-sm font-medium px-3 py-1 rounded-[var(--radius-xs)]">
                 {event.attendees_count} идут
               </span>
             )}
             {event.interested_count > 0 && (
-              <span className="bg-yellow-50 text-yellow-800 text-sm font-medium px-3 py-1 rounded-full">
+              <span className="bg-surface-2 text-ink-soft text-sm font-medium px-3 py-1 rounded-[var(--radius-xs)]">
                 ⭐ {event.interested_count} интересуются
               </span>
             )}
             {event.recurrence_rule && (
-              <span className="bg-purple-100 text-purple-800 text-sm font-medium px-3 py-1 rounded-full">
+              <span className="bg-surface-2 text-ink-soft text-sm font-medium px-3 py-1 rounded-[var(--radius-xs)]">
                 🔄 {formatRecurrence(event.recurrence_rule, event.recurrence_until)}
               </span>
             )}
@@ -135,77 +136,63 @@ const EventDetailModal = ({ event: initialEvent, onClose, onAttendeeChange }) =>
 
           {event.image_url && (
             <div
-              className="mt-4 w-full h-56 bg-cover bg-center rounded-lg bg-gray-100"
+              className="mt-4 w-full h-56 bg-cover bg-center rounded-[var(--radius-md)] bg-surface-2"
               style={{ backgroundImage: `url('${event.image_url}')` }}
             />
           )}
 
           {event.description && (
-            <p className="mt-4 text-gray-700 whitespace-pre-line">{event.description}</p>
+            <p className="mt-4 text-ink-soft whitespace-pre-line">{event.description}</p>
           )}
 
-          <div className="mt-6 border-t pt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div className="mt-6 border-t border-line pt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="font-semibold text-gray-600">Начало</p>
-              <p className="text-gray-800">
+              <p className="font-semibold text-ink-soft">Начало</p>
+              <p className="text-ink">
                 {startDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
                 {' в '}
                 {startDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
               </p>
             </div>
             <div>
-              <p className="font-semibold text-gray-600">Окончание</p>
-              <p className="text-gray-800">
+              <p className="font-semibold text-ink-soft">Окончание</p>
+              <p className="text-ink">
                 {endDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
               </p>
             </div>
             {event.address && (
               <div className="md:col-span-2">
-                <p className="font-semibold text-gray-600">Место</p>
-                <p className="text-gray-800">{event.address}</p>
+                <p className="font-semibold text-ink-soft">Место</p>
+                <p className="text-ink">{event.address}</p>
               </div>
             )}
           </div>
 
-          {error && <div className="mt-4 text-red-500 text-sm">{error}</div>}
+          <ErrorText>{error}</ErrorText>
 
           <div className="mt-6 flex gap-3">
             {isGoing ? (
-              <button
-                onClick={handleCancel}
-                disabled={loading}
-                className="flex-1 border border-red-300 text-red-600 py-2 rounded-lg hover:bg-red-50 transition disabled:opacity-50"
-              >
+              <Button variant="danger" onClick={handleCancel} disabled={loading} className="flex-1 border border-danger/40">
                 {loading ? '...' : 'Отменить участие'}
-              </button>
+              </Button>
             ) : (
               <>
-                <button
-                  onClick={handleSchedule}
-                  disabled={loading}
-                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-                >
+                <Button onClick={handleSchedule} disabled={loading} className="flex-1">
                   {loading ? '...' : isPaid ? 'Запланировать' : 'Пойду'}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
                   onClick={handleInterested}
                   disabled={loading}
-                  className={`flex-1 border py-2 rounded-lg transition disabled:opacity-50 ${
-                    event.my_attendee_status === 'interested'
-                      ? 'border-yellow-400 bg-yellow-50 text-yellow-800'
-                      : 'border-yellow-400 text-yellow-700 hover:bg-yellow-50'
-                  }`}
+                  className={`flex-1 ${event.my_attendee_status === 'interested' ? 'border-accent text-accent' : ''}`}
                 >
                   {loading ? '...' : event.my_attendee_status === 'interested' ? '⭐ Уже интересуюсь' : '⭐ Может быть'}
-                </button>
+                </Button>
               </>
             )}
-            <button
-              onClick={onClose}
-              className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-50 transition"
-            >
+            <Button variant="ghost" onClick={onClose} className="flex-1">
               Закрыть
-            </button>
+            </Button>
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import api from '../api/client';
+import { Label } from '../design/UI';
 
 const ImageUpload = ({ value, onChange, uploadEndpoint = '/merchant/upload' }) => {
   const [uploading, setUploading] = useState(false);
@@ -34,24 +35,24 @@ const ImageUpload = ({ value, onChange, uploadEndpoint = '/merchant/upload' }) =
 
   return (
     <div>
-      <label className="block text-sm mb-1">Фото (фон карточки / аватар)</label>
+      <Label className="mb-1">Фото (фон карточки / аватар)</Label>
       {imageSrc ? (
         <div className="relative inline-block">
           <img
             src={imageSrc}
             alt="Обложка"
-            className="w-48 h-32 object-cover rounded border"
+            className="w-48 h-32 object-cover rounded-[var(--radius-sm)] border border-line"
           />
           <button
             type="button"
             onClick={() => onChange('')}
-            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 text-xs"
+            className="absolute -top-2 -right-2 bg-danger text-white rounded-full w-6 h-6 text-xs"
           >
             ✕
           </button>
         </div>
       ) : (
-        <label className="flex items-center justify-center w-48 h-32 border-2 border-dashed border-gray-300 rounded cursor-pointer hover:border-blue-400">
+        <label className="flex items-center justify-center w-48 h-32 border-2 border-dashed border-line rounded-[var(--radius-sm)] cursor-pointer hover:border-accent transition">
           <input
             type="file"
             accept="image/*"
@@ -59,12 +60,12 @@ const ImageUpload = ({ value, onChange, uploadEndpoint = '/merchant/upload' }) =
             className="hidden"
             disabled={uploading}
           />
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-ink-soft">
             {uploading ? 'Загрузка...' : '📷 Загрузить'}
           </span>
         </label>
       )}
-      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+      {error && <p className="text-danger text-xs mt-1">{error}</p>}
     </div>
   );
 };

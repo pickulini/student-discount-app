@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
+import { Card, PageTitle } from '../design/UI';
+import { RouteLoadingView } from '../design/DottedPath';
 
 const Referral = () => {
   const [code, setCode] = useState('');
@@ -22,42 +24,42 @@ const Referral = () => {
     fetchData();
   }, []);
 
-  if (loading) return <div className="text-center py-8">Загрузка...</div>;
+  if (loading) return <RouteLoadingView label="Загрузка..." />;
 
   const referralLink = `${window.location.origin}/register?ref=${code}`;
 
   return (
-    <div className="max-w-md mx-auto bg-white p-6 rounded shadow">
-      <h2 className="text-2xl font-bold mb-4">Реферальная система</h2>
-      <div className="space-y-3">
+    <Card className="max-w-md mx-auto p-6">
+      <PageTitle className="mb-4">Реферальная система</PageTitle>
+      <div className="space-y-4">
         <div>
-          <p className="text-sm text-gray-600">Ваш реферальный код</p>
+          <p className="text-sm text-ink-soft mb-1">Ваш реферальный код</p>
           <div className="flex items-center gap-2">
-            <code className="bg-gray-100 px-3 py-1 rounded font-mono text-lg">{code}</code>
+            <code className="bg-surface-2 px-3 py-1 rounded-[var(--radius-sm)] font-mono text-lg text-ink">{code}</code>
             <button
               onClick={() => { navigator.clipboard.writeText(code); alert('Код скопирован!'); }}
-              className="text-blue-500 hover:text-blue-700 text-sm"
+              className="text-accent hover:underline text-sm"
             >Копировать</button>
           </div>
         </div>
         <div>
-          <p className="text-sm text-gray-600">Реферальная ссылка</p>
+          <p className="text-sm text-ink-soft mb-1">Реферальная ссылка</p>
           <div className="flex items-center gap-2">
-            <code className="bg-gray-100 px-3 py-1 rounded text-sm truncate max-w-xs">{referralLink}</code>
+            <code className="bg-surface-2 px-3 py-1 rounded-[var(--radius-sm)] text-sm text-ink truncate max-w-xs">{referralLink}</code>
             <button
               onClick={() => { navigator.clipboard.writeText(referralLink); alert('Ссылка скопирована!'); }}
-              className="text-blue-500 hover:text-blue-700 text-sm"
+              className="text-accent hover:underline text-sm"
             >Копировать</button>
           </div>
         </div>
-        <div className="border-t pt-3 mt-2">
-          <p><strong>Приглашено:</strong> {stats.total_invites}</p>
-          <p><strong>Активных:</strong> {stats.active}</p>
-          <p><strong>Заработано бонусов:</strong> {stats.bonus_total} баллов</p>
+        <div className="border-t border-line pt-3 mt-2 space-y-1 text-sm">
+          <p className="text-ink"><strong>Приглашено:</strong> {stats.total_invites}</p>
+          <p className="text-ink"><strong>Активных:</strong> {stats.active}</p>
+          <p className="text-ink"><strong>Заработано бонусов:</strong> {stats.bonus_total} баллов</p>
         </div>
-        <p className="text-xs text-gray-500 mt-2">* Бонус начисляется за каждого приглашённого пользователя после регистрации.</p>
+        <p className="text-xs text-ink-faint">* Бонус начисляется за каждого приглашённого пользователя после регистрации.</p>
       </div>
-    </div>
+    </Card>
   );
 };
 
