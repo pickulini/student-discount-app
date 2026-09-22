@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import UserStatsModal from './UserStatsModal';
 import UniversityPickerModal from './UniversityPickerModal';
+import { PageTitle, Button, Caption } from '../design/UI';
+import { RouteLoadingView } from '../design/DottedPath';
 
 const AdminUsers = () => {
   const [users, setUsers] = useState([]);
@@ -25,48 +27,45 @@ const AdminUsers = () => {
       .catch(console.error);
   }, []);
 
-  if (loading) return <div>Загрузка...</div>;
+  if (loading) return <RouteLoadingView label="Загрузка пользователей..." />;
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-4">Пользователи</h2>
+      <PageTitle>Пользователи</PageTitle>
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
+        <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="bg-gray-100">
-              <th className="p-2 text-left">ID</th>
-              <th className="p-2 text-left">Email</th>
-              <th className="p-2 text-left">Имя</th>
-              <th className="p-2 text-left">Статус</th>
-              <th className="p-2 text-left">Вуз</th>
-              <th className="p-2 text-right">Баланс</th>
-              <th className="p-2 text-left">Действия</th>
+            <tr className="border-b border-line">
+              <th className="p-2 text-left text-eyebrow text-ink-faint font-normal">ID</th>
+              <th className="p-2 text-left text-eyebrow text-ink-faint font-normal">Email</th>
+              <th className="p-2 text-left text-eyebrow text-ink-faint font-normal">Имя</th>
+              <th className="p-2 text-left text-eyebrow text-ink-faint font-normal">Статус</th>
+              <th className="p-2 text-left text-eyebrow text-ink-faint font-normal">Вуз</th>
+              <th className="p-2 text-right text-eyebrow text-ink-faint font-normal">Баланс</th>
+              <th className="p-2 text-left text-eyebrow text-ink-faint font-normal">Действия</th>
             </tr>
           </thead>
           <tbody>
             {users.map(user => (
-              <tr key={user.id} className="border-b">
-                <td className="p-2">{user.id}</td>
-                <td className="p-2">{user.email}</td>
-                <td className="p-2">{user.full_name}</td>
-                <td className="p-2">{user.student_status}</td>
+              <tr key={user.id} className="border-b border-line">
+                <td className="p-2 text-ink-faint">{user.id}</td>
+                <td className="p-2 text-ink">{user.email}</td>
+                <td className="p-2 text-ink">{user.full_name}</td>
+                <td className="p-2 text-ink-soft">{user.student_status}</td>
                 <td className="p-2">
                   <button
                     onClick={() => setEditingUniversityUserId(user.id)}
-                    className="text-left hover:text-blue-600 hover:underline"
+                    className="text-left text-ink-soft hover:text-accent transition"
                     title="Изменить вуз"
                   >
-                    {user.university_name || <span className="text-gray-400">—</span>}
+                    {user.university_name || <span className="text-ink-faint">—</span>}
                   </button>
                 </td>
-                <td className="p-2 text-right">{user.balance} ₽</td>
+                <td className="p-2 text-right"><Caption>{user.balance} ₽</Caption></td>
                 <td className="p-2">
-                  <button
-                    onClick={() => setSelectedUserId(user.id)}
-                    className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
-                  >
+                  <Button variant="ghost" onClick={() => setSelectedUserId(user.id)} className="text-xs px-3 py-1">
                     Детали
-                  </button>
+                  </Button>
                 </td>
               </tr>
             ))}

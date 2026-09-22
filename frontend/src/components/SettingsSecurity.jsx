@@ -84,7 +84,7 @@ const SettingsSecurity = () => {
     <div className="space-y-4">
       {/* Смена пароля */}
       <Card className="p-6">
-        <h2 className="text-xl font-semibold text-ink mb-1">Смена пароля</h2>
+        <h2 className="text-editorial text-xl text-ink uppercase mb-1">Смена пароля</h2>
         <p className="text-sm text-ink-soft mb-4">
           После смены пароля все активные сессии будут отозваны
         </p>
@@ -131,7 +131,7 @@ const SettingsSecurity = () => {
       <Card className="p-6">
         <div className="flex justify-between items-center mb-4">
           <div>
-            <h2 className="text-xl font-semibold text-ink">Активные сессии</h2>
+            <h2 className="text-editorial text-xl text-ink uppercase">Активные сессии</h2>
             <p className="text-sm text-ink-soft">Устройства, где вы вошли</p>
           </div>
           {sessions.length > 1 && (
@@ -149,15 +149,15 @@ const SettingsSecurity = () => {
           <div className="space-y-2">
             {sessions.map((s) => (
               <div key={s.id} className="flex items-center gap-3 p-3 bg-surface-2 rounded-[var(--radius-sm)]">
-                <div className="text-2xl">
-                  {/mobile|android|iphone/i.test(s.user_agent || '') ? '📱' : '💻'}
-                </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-ink truncate">
                     {s.device_name || 'Неизвестное устройство'}
                   </div>
-                  <div className="text-xs text-ink-faint truncate">{s.ip || '—'}</div>
-                  <div className="text-xs text-ink-faint">
+                  <div className="text-eyebrow text-ink-faint mt-0.5">
+                    {/mobile|android|iphone/i.test(s.user_agent || '') ? 'Мобильное' : 'Десктоп'}
+                  </div>
+                  <div className="text-xs text-ink-faint truncate mt-1">{s.ip || '—'}</div>
+                  <div className="text-caption text-xs text-ink-faint">
                     Последняя активность: {formatDate(s.last_used_at)}
                   </div>
                 </div>

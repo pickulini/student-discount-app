@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import OrderPaymentModal from './OrderPaymentModal';
-import { Card, Button, Input, PageTitle } from '../design/UI';
+import { Card, Button, Input, PageTitle, Eyebrow } from '../design/UI';
 import { RouteLoadingView } from '../design/DottedPath';
 
 const statusColor = (status) =>
@@ -114,17 +114,17 @@ const Order = () => {
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className="border-b border-line text-ink-soft">
-                  <th className="p-2 text-left font-medium">ID</th>
-                  <th className="p-2 text-left font-medium">Сумма</th>
-                  <th className="p-2 text-left font-medium">Статус</th>
-                  <th className="p-2 text-left font-medium">Действие</th>
+                  <th className="p-2 text-left text-eyebrow">ID</th>
+                  <th className="p-2 text-left text-eyebrow">Сумма</th>
+                  <th className="p-2 text-left text-eyebrow">Статус</th>
+                  <th className="p-2 text-left text-eyebrow">Действие</th>
                 </tr>
               </thead>
               <tbody>
                 {orders.map(o => (
                   <tr key={o.id} className="border-b border-line last:border-0">
-                    <td className="p-2 text-ink">{o.id}</td>
-                    <td className="p-2 text-ink">{o.total_amount} ₽</td>
+                    <td className="p-2 text-caption text-ink">{o.id}</td>
+                    <td className="p-2 text-caption text-ink">{o.total_amount} ₽</td>
                     <td className="p-2">
                       <span className={`px-2 py-1 rounded-[var(--radius-xs)] text-xs font-medium ${statusColor(o.status)}`}>
                         {o.status}

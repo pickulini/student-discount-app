@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
-import { Card, Button, Input, Textarea } from '../design/UI';
+import { Card, Button, Input, Textarea, Eyebrow } from '../design/UI';
 import { RouteLoadingView } from '../design/DottedPath';
 
 const Support = () => {
@@ -95,13 +95,13 @@ const Support = () => {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-semibold text-ink">Поддержка</h2>
+        <h2 className="text-editorial text-2xl text-ink uppercase">Поддержка</h2>
         <Button onClick={() => setShowCreate(true)}>Создать обращение</Button>
       </div>
 
       {showCreate && (
         <Card className="p-4 mb-4">
-          <h3 className="text-lg font-semibold text-ink mb-2">Новое обращение</h3>
+          <Eyebrow className="mb-2">Новое обращение</Eyebrow>
           <form onSubmit={handleCreateTicket} className="space-y-2">
             <Input
               type="text"
@@ -127,7 +127,7 @@ const Support = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="md:col-span-1 p-3">
-          <h4 className="font-semibold text-ink mb-2">Ваши обращения</h4>
+          <Eyebrow className="mb-2">Ваши обращения</Eyebrow>
           {tickets.length === 0 ? (
             <p className="text-ink-soft text-sm">Нет обращений</p>
           ) : (

@@ -67,7 +67,7 @@ const VerificationModal = ({ onClose, onSuccess }) => {
         <div className="p-6">
           <div className="flex justify-between items-start mb-4">
             <div>
-              <h2 className="text-2xl font-bold text-ink">Верификация студента</h2>
+              <h2 className="text-editorial text-2xl text-ink uppercase">Верификация студента</h2>
               <p className="text-sm text-ink-soft mt-1">
                 Заполните данные и приложите фото. Админ проверит в течение 1-2 дней.
               </p>

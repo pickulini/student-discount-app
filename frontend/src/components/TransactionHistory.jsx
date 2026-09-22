@@ -29,11 +29,11 @@ const TransactionHistory = () => {
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-line text-ink-soft">
-              <th className="p-3 text-left font-medium">Дата</th>
-              <th className="p-3 text-left font-medium">Тип</th>
-              <th className="p-3 text-left font-medium">Описание</th>
-              <th className="p-3 text-right font-medium">Сумма</th>
-              <th className="p-3 text-left font-medium">Статус</th>
+              <th className="p-3 text-left text-eyebrow">Дата</th>
+              <th className="p-3 text-left text-eyebrow">Тип</th>
+              <th className="p-3 text-left text-eyebrow">Описание</th>
+              <th className="p-3 text-right text-eyebrow">Сумма</th>
+              <th className="p-3 text-left text-eyebrow">Статус</th>
             </tr>
           </thead>
           <tbody>
@@ -42,10 +42,10 @@ const TransactionHistory = () => {
             ) : (
               transactions.map(tx => (
                 <tr key={tx.id} className="border-b border-line last:border-0 hover:bg-surface-2 transition">
-                  <td className="p-3 text-ink">{new Date(tx.created_at).toLocaleString()}</td>
+                  <td className="p-3 text-caption text-ink">{new Date(tx.created_at).toLocaleString()}</td>
                   <td className="p-3 text-ink">{tx.type}</td>
                   <td className="p-3 text-ink-soft">{tx.description}</td>
-                  <td className={`p-3 text-right font-semibold ${tx.amount >= 0 ? 'text-accent' : 'text-danger'}`}>
+                  <td className={`p-3 text-right text-caption text-editorial ${tx.amount >= 0 ? 'text-accent' : 'text-danger'}`}>
                     {tx.amount >= 0 ? '+' : ''}{tx.amount} ₽
                   </td>
                   <td className="p-3">

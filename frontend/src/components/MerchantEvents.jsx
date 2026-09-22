@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
+import { Card, Button, PageTitle, Badge } from '../design/UI';
+import { RouteLoadingView, RouteEmptyState } from '../design/DottedPath';
 
 const MerchantEvents = () => {
   const [events, setEvents] = useState([]);
@@ -36,21 +38,18 @@ const MerchantEvents = () => {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">Мои ивенты</h2>
-        <Link
-          to="/events/new"
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          + Создать ивент
+        <PageTitle className="mb-0">Мои ивенты</PageTitle>
+        <Link to="/events/new">
+          <Button>+ Создать ивент</Button>
         </Link>
       </div>
 
-      <div className="mb-4 flex gap-2">
-        <label className="text-sm">Фильтр:</label>
+      <div className="mb-4 flex items-center gap-2">
+        <label className="text-sm text-ink-soft">Фильтр:</label>
         <select
           value={filterStatus}
           onChange={e => setFilterStatus(e.target.value)}
-          className="border rounded p-1 text-sm"
+          className="bg-transparent border-b border-line focus:border-accent outline-none py-1.5 text-sm text-ink transition"
         >
           <option value="all">Все</option>
           <option value="draft">Черновики</option>
@@ -61,59 +60,44 @@ const MerchantEvents = () => {
       </div>
 
       {loading ? (
-        <div className="text-center py-8">Загрузка...</div>
+        <RouteLoadingView label="Загрузка..." />
       ) : events.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          У вас пока нет ивентов
-        </div>
+        <RouteEmptyState title="У вас пока нет ивентов" />
       ) : (
-        <div className="overflow-x-auto">
+        <Card className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="bg-gray-100">
-                <th className="p-2 text-left">Дата</th>
-                <th className="p-2 text-left">Название</th>
-                <th className="p-2 text-left">Компания</th>
-                <th className="p-2 text-left">Приватность</th>
-                <th className="p-2 text-left">Статус</th>
-                <th className="p-2 text-left">Действия</th>
+              <tr className="border-b border-line">
+                <th className="p-2 text-left text-eyebrow">Дата</th>
+                <th className="p-2 text-left text-eyebrow">Название</th>
+                <th className="p-2 text-left text-eyebrow">Компания</th>
+                <th className="p-2 text-left text-eyebrow">Приватность</th>
+                <th className="p-2 text-left text-eyebrow">Статус</th>
+                <th className="p-2 text-left text-eyebrow">Действия</th>
               </tr>
             </thead>
             <tbody>
               {events.map(e => (
-                <tr key={e.id} className="border-b">
-                  <td className="p-2 whitespace-nowrap">
+                <tr key={e.id} className="border-b border-line last:border-0">
+                  <td className="p-2 whitespace-nowrap text-caption text-ink">
                     {new Date(e.start_at).toLocaleDateString('ru-RU', {
                       day: 'numeric', month: 'short', year: '2-digit',
                     })}
                   </td>
-                  <td className="p-2 max-w-xs truncate">{e.title}</td>
-                  <td className="p-2">{e.company_id || '—'}</td>
-                  <td className="p-2 text-xs">{e.event_privacy}</td>
+                  <td className="p-2 max-w-xs truncate text-ink">{e.title}</td>
+                  <td className="p-2 text-ink-soft">{e.company_id || '—'}</td>
+                  <td className="p-2 text-xs text-ink-soft">{e.event_privacy}</td>
                   <td className="p-2">
-                    <span className={`px-2 py-1 rounded text-white text-xs ${
-                      e.status === 'published' ? 'bg-green-500' :
-                      e.status === 'pending_review' ? 'bg-yellow-500' :
-                      e.status === 'rejected' ? 'bg-red-500' :
-                      e.status === 'archived' ? 'bg-gray-500' : 'bg-gray-400'
-                    }`}>
-                      {e.status}
-                    </span>
+                    <Badge filled={e.status === 'published'}>{e.status}</Badge>
                   </td>
                   <td className="p-2 space-x-2">
                     {e.status === 'draft' && (
-                      <button
-                        onClick={() => submitForReview(e.id)}
-                        className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600"
-                      >
+                      <Button variant="ghost" onClick={() => submitForReview(e.id)} className="px-2 py-1 text-xs">
                         На модерацию
-                      </button>
+                      </Button>
                     )}
                     {e.status === 'published' && (
-                      <Link
-                        to={`/events`}
-                        className="text-blue-600 hover:underline text-xs"
-                      >
+                      <Link to="/events" className="text-accent hover:underline text-xs">
                         Смотреть
                       </Link>
                     )}
@@ -122,7 +106,7 @@ const MerchantEvents = () => {
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
     </div>
   );

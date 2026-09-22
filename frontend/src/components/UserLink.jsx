@@ -18,7 +18,7 @@ export default function UserLink({
   const text = label || (username ? `@${username}` : '—');
 
   if (!username) {
-    return <span className={`text-gray-500 ${className}`}>{text}</span>;
+    return <span className={`text-ink-faint ${className}`}>{text}</span>;
   }
 
   const display = label ? label : (showAt ? `@${username}` : username);
@@ -29,7 +29,7 @@ export default function UserLink({
       onClick={(e) => {
         if (onClick) onClick(e);
       }}
-      className={`text-blue-600 hover:text-blue-800 hover:underline ${className}`}
+      className={`text-accent hover:underline ${className}`}
     >
       {display}
     </Link>

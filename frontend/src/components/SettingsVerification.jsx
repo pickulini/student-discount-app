@@ -33,7 +33,7 @@ const SettingsVerification = () => {
 
   return (
     <Card className="p-6">
-      <h2 className="text-xl font-semibold text-ink mb-1">Верификация студента</h2>
+      <h2 className="text-editorial text-xl text-ink uppercase mb-1">Верификация студента</h2>
       <p className="text-sm text-ink-soft mb-4">
         Верифицированные студенты получают доступ ко всем скидкам и ивентам
       </p>

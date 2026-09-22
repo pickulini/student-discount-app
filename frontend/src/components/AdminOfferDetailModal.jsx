@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import ImageUpload from './ImageUpload';
+import { Button, Input, Textarea, Label, Badge, ErrorText } from '../design/UI';
+import { RouteLoadingView } from '../design/DottedPath';
 
 const EMPTY_FORM = {
   title: '',
@@ -19,6 +21,16 @@ const EMPTY_FORM = {
   website: '',
   working_hours: '',
   image_url: '',
+};
+
+const STATUS_LABELS = {
+  draft: 'Черновик',
+  pending_review: 'На модерации',
+  pending_partner_approval: 'У партнёра',
+  published: 'Опубликовано',
+  expired: 'Истёк',
+  archived: 'Архив',
+  rejected: 'Отклонён',
 };
 
 const toLocalDatetime = (iso) => {
@@ -121,41 +133,35 @@ const AdminOfferDetailModal = ({ offerId, onClose, onUpdate }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={onClose}>
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" onClick={onClose}>
+      <div className="bg-surface border border-line rounded-[var(--radius-lg)] max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="p-6">
           <div className="flex justify-between items-start mb-4">
-            <h2 className="text-2xl font-bold">
+            <h2 className="text-editorial text-2xl text-ink uppercase">
               {editMode ? 'Редактирование оффера' : 'Просмотр оффера'}
             </h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">✕</button>
+            <button onClick={onClose} className="text-ink-faint hover:text-ink text-2xl leading-none">✕</button>
           </div>
 
           {loading ? (
-            <div className="py-8 text-center">Загрузка...</div>
+            <RouteLoadingView />
           ) : !offer ? (
-            <div className="py-8 text-center text-red-500">{error || 'Оффер не найден'}</div>
+            <div className="py-8 text-center text-danger">{error || 'Оффер не найден'}</div>
           ) : (
             <>
               {/* Верхняя панель статусов */}
-              <div className="flex flex-wrap gap-2 mb-4">
-                <span className={`px-3 py-1 rounded text-white text-sm ${
-                  offer.status === 'published' ? 'bg-green-500' :
-                  offer.status === 'pending_review' ? 'bg-yellow-500' :
-                  offer.status === 'pending_partner_approval' ? 'bg-purple-500' :
-                  offer.status === 'rejected' ? 'bg-red-500' :
-                  offer.status === 'archived' ? 'bg-gray-500' : 'bg-gray-400'
-                }`}>
-                  {offer.status}
-                </span>
-                {offer.is_event && <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded text-sm">📅 Ивент</span>}
+              <div className="flex flex-wrap gap-2 mb-4 items-center">
+                <Badge filled={offer.status === 'published'}>
+                  {STATUS_LABELS[offer.status] || offer.status}
+                </Badge>
+                {offer.is_event && <Badge>Ивент</Badge>}
                 {offer.admin_edit_comment && (
-                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                  <span className="text-xs text-ink-soft bg-surface-2 border border-line px-2 py-1 rounded-[var(--radius-xs)]">
                     Комментарий админа: {offer.admin_edit_comment}
                   </span>
                 )}
                 {offer.partner_reject_comment && (
-                  <span className="text-xs text-red-700 bg-red-50 border border-red-200 px-2 py-1 rounded">
+                  <span className="text-xs text-danger bg-danger/10 border border-danger/30 px-2 py-1 rounded-[var(--radius-xs)]">
                     Партнёр отклонил: {offer.partner_reject_comment}
                   </span>
                 )}
@@ -165,40 +171,38 @@ const AdminOfferDetailModal = ({ offerId, onClose, onUpdate }) => {
                 <>
                   {offer.image_url && (
                     <div
-                      className="w-full h-48 bg-cover bg-center rounded-lg mb-4"
+                      className="w-full h-48 bg-cover bg-center rounded-[var(--radius-md)] mb-4 bg-surface-2"
                       style={{ backgroundImage: `url('${offer.image_url}')` }}
                     />
                   )}
-                  <h3 className="text-xl font-semibold">{offer.title}</h3>
-                  <p className="text-gray-600 mt-1 whitespace-pre-line">{offer.description}</p>
+                  <h3 className="text-xl font-semibold text-ink">{offer.title}</h3>
+                  <p className="text-ink-soft mt-1 whitespace-pre-line">{offer.description}</p>
 
-                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                    <div><strong>Компания:</strong> #{offer.company_id || '—'}</div>
-                    <div><strong>Базовая цена:</strong> {offer.base_price} ₽</div>
-                    <div><strong>Скидка:</strong> {offer.discount_value}{offer.discount_type === 'percentage' ? '%' : ' ₽'}</div>
-                    {offer.special_price && <div><strong>Спец. цена:</strong> {offer.special_price} ₽</div>}
-                    <div><strong>Начало:</strong> {new Date(offer.start_at).toLocaleString('ru-RU')}</div>
-                    <div><strong>Окончание:</strong> {new Date(offer.end_at).toLocaleString('ru-RU')}</div>
-                    {offer.max_uses && <div><strong>Лимит:</strong> {offer.max_uses}</div>}
-                    {offer.bonus_allowed && <div><strong>Бонусы:</strong> до {offer.max_bonus_percent}%</div>}
-                    {offer.address && <div className="md:col-span-2"><strong>Адрес:</strong> {offer.address}</div>}
-                    {offer.phone && <div><strong>Телефон:</strong> {offer.phone}</div>}
-                    {offer.website && <div><strong>Сайт:</strong> {offer.website}</div>}
-                    {offer.working_hours && <div className="md:col-span-2"><strong>Часы работы:</strong> {offer.working_hours}</div>}
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-ink">
+                    <div><span className="text-ink-soft">Компания:</span> #{offer.company_id || '—'}</div>
+                    <div><span className="text-ink-soft">Базовая цена:</span> {offer.base_price} ₽</div>
+                    <div><span className="text-ink-soft">Скидка:</span> {offer.discount_value}{offer.discount_type === 'percentage' ? '%' : ' ₽'}</div>
+                    {offer.special_price && <div><span className="text-ink-soft">Спец. цена:</span> {offer.special_price} ₽</div>}
+                    <div><span className="text-ink-soft">Начало:</span> {new Date(offer.start_at).toLocaleString('ru-RU')}</div>
+                    <div><span className="text-ink-soft">Окончание:</span> {new Date(offer.end_at).toLocaleString('ru-RU')}</div>
+                    {offer.max_uses && <div><span className="text-ink-soft">Лимит:</span> {offer.max_uses}</div>}
+                    {offer.bonus_allowed && <div><span className="text-ink-soft">Бонусы:</span> до {offer.max_bonus_percent}%</div>}
+                    {offer.address && <div className="md:col-span-2"><span className="text-ink-soft">Адрес:</span> {offer.address}</div>}
+                    {offer.phone && <div><span className="text-ink-soft">Телефон:</span> {offer.phone}</div>}
+                    {offer.website && <div><span className="text-ink-soft">Сайт:</span> {offer.website}</div>}
+                    {offer.working_hours && <div className="md:col-span-2"><span className="text-ink-soft">Часы работы:</span> {offer.working_hours}</div>}
                   </div>
 
                   {offer.tags && offer.tags.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-1">
                       {offer.tags.map(t => (
-                        <span key={t.id} className="bg-gray-100 text-gray-700 text-xs px-2 py-0.5 rounded-full">
-                          #{t.name}
-                        </span>
+                        <Badge key={t.id} className="normal-case">#{t.name}</Badge>
                       ))}
                     </div>
                   )}
 
                   {offer.rejection_reason && (
-                    <div className="mt-4 bg-red-50 border border-red-200 rounded p-2 text-sm text-red-700">
+                    <div className="mt-4 bg-danger/10 border border-danger/30 rounded-[var(--radius-sm)] p-2 text-sm text-danger">
                       <strong>Причина отклонения:</strong> {offer.rejection_reason}
                     </div>
                   )}
@@ -206,55 +210,41 @@ const AdminOfferDetailModal = ({ offerId, onClose, onUpdate }) => {
                   <div className="mt-6 flex gap-2 flex-wrap">
                     {offer.status === 'pending_review' && (
                       <>
-                        <button
-                          onClick={() => handleModerate('publish')}
-                          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-                        >
+                        <Button onClick={() => handleModerate('publish')}>
                           Опубликовать
-                        </button>
-                        <button
-                          onClick={() => handleModerate('reject')}
-                          className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-                        >
+                        </Button>
+                        <Button variant="danger" onClick={() => handleModerate('reject')}>
                           Отклонить
-                        </button>
+                        </Button>
                       </>
                     )}
-                    <button
-                      onClick={() => setEditMode(true)}
-                      className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                    >
+                    <Button variant="ghost" onClick={() => setEditMode(true)}>
                       Редактировать
-                    </button>
-                    <button
-                      onClick={onClose}
-                      className="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300"
-                    >
+                    </Button>
+                    <Button variant="ghost" onClick={onClose}>
                       Закрыть
-                    </button>
+                    </Button>
                   </div>
                 </>
               ) : (
                 <form onSubmit={handleSave} className="space-y-3">
-                  {error && <div className="bg-red-50 text-red-700 p-2 rounded text-sm">{error}</div>}
+                  <ErrorText>{error}</ErrorText>
 
                   <div>
-                    <label className="block text-sm mb-1">Название</label>
-                    <input
+                    <Label className="mb-1">Название</Label>
+                    <Input
                       type="text"
                       value={form.title}
                       onChange={e => setForm({ ...form, title: e.target.value })}
-                      className="w-full border p-2 rounded"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm mb-1">Описание</label>
-                    <textarea
+                    <Label className="mb-1">Описание</Label>
+                    <Textarea
                       value={form.description}
                       onChange={e => setForm({ ...form, description: e.target.value })}
-                      className="w-full border p-2 rounded"
                       rows="3"
                     />
                   </div>
@@ -267,109 +257,99 @@ const AdminOfferDetailModal = ({ offerId, onClose, onUpdate }) => {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm mb-1">Базовая цена (₽)</label>
-                      <input
+                      <Label className="mb-1">Базовая цена (₽)</Label>
+                      <Input
                         type="number"
                         value={form.base_price}
                         onChange={e => setForm({ ...form, base_price: e.target.value })}
-                        className="w-full border p-2 rounded"
                         min="0"
                         step="1"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm mb-1">Тип скидки</label>
+                      <Label className="mb-1">Тип скидки</Label>
                       <select
                         value={form.discount_type}
                         onChange={e => setForm({ ...form, discount_type: e.target.value })}
-                        className="w-full border p-2 rounded"
+                        className="w-full bg-transparent border-b border-line focus:border-accent outline-none py-2.5 text-ink text-sm transition"
                       >
                         <option value="percentage">Процент</option>
                         <option value="fixed">Фиксированная</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm mb-1">Значение</label>
-                      <input
+                      <Label className="mb-1">Значение</Label>
+                      <Input
                         type="number"
                         value={form.discount_value}
                         onChange={e => setForm({ ...form, discount_value: e.target.value })}
-                        className="w-full border p-2 rounded"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm mb-1">Спец. цена</label>
-                      <input
+                      <Label className="mb-1">Спец. цена</Label>
+                      <Input
                         type="number"
                         value={form.special_price}
                         onChange={e => setForm({ ...form, special_price: e.target.value })}
-                        className="w-full border p-2 rounded"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm mb-1">Макс. использований</label>
-                      <input
+                      <Label className="mb-1">Макс. использований</Label>
+                      <Input
                         type="number"
                         value={form.max_uses}
                         onChange={e => setForm({ ...form, max_uses: e.target.value })}
-                        className="w-full border p-2 rounded"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm mb-1">Начало</label>
-                      <input
+                      <Label className="mb-1">Начало</Label>
+                      <Input
                         type="datetime-local"
                         value={form.start_at}
                         onChange={e => setForm({ ...form, start_at: e.target.value })}
-                        className="w-full border p-2 rounded"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm mb-1">Окончание</label>
-                      <input
+                      <Label className="mb-1">Окончание</Label>
+                      <Input
                         type="datetime-local"
                         value={form.end_at}
                         onChange={e => setForm({ ...form, end_at: e.target.value })}
-                        className="w-full border p-2 rounded"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm mb-1">Адрес</label>
-                      <input
+                      <Label className="mb-1">Адрес</Label>
+                      <Input
                         type="text"
                         value={form.address}
                         onChange={e => setForm({ ...form, address: e.target.value })}
-                        className="w-full border p-2 rounded"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm mb-1">Телефон</label>
-                      <input
+                      <Label className="mb-1">Телефон</Label>
+                      <Input
                         type="text"
                         value={form.phone}
                         onChange={e => setForm({ ...form, phone: e.target.value })}
-                        className="w-full border p-2 rounded"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm mb-1">Сайт</label>
-                      <input
+                      <Label className="mb-1">Сайт</Label>
+                      <Input
                         type="text"
                         value={form.website}
                         onChange={e => setForm({ ...form, website: e.target.value })}
-                        className="w-full border p-2 rounded"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm mb-1">Часы работы</label>
-                      <input
+                      <Label className="mb-1">Часы работы</Label>
+                      <Input
                         type="text"
                         value={form.working_hours}
                         onChange={e => setForm({ ...form, working_hours: e.target.value })}
-                        className="w-full border p-2 rounded"
                       />
                     </div>
                   </div>
@@ -381,27 +361,26 @@ const AdminOfferDetailModal = ({ offerId, onClose, onUpdate }) => {
                       checked={form.bonus_allowed}
                       onChange={e => setForm({ ...form, bonus_allowed: e.target.checked })}
                     />
-                    <label htmlFor="bonus" className="text-sm">Бонусы разрешены</label>
+                    <label htmlFor="bonus" className="text-sm text-ink-soft">Бонусы разрешены</label>
                     {form.bonus_allowed && (
                       <>
-                        <span className="text-sm ml-2">до</span>
+                        <span className="text-sm text-ink-soft ml-2">до</span>
                         <input
                           type="number"
                           value={form.max_bonus_percent}
                           onChange={e => setForm({ ...form, max_bonus_percent: e.target.value })}
-                          className="border p-1 rounded w-16"
+                          className="bg-transparent border-b border-line focus:border-accent outline-none py-1 text-ink w-16 text-sm"
                         />
-                        <span className="text-sm">%</span>
+                        <span className="text-sm text-ink-soft">%</span>
                       </>
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-sm mb-1">Комментарий партнёру (обязательно)</label>
-                    <textarea
+                    <Label className="mb-1">Комментарий партнёру (обязательно)</Label>
+                    <Textarea
                       value={comment}
                       onChange={e => setComment(e.target.value)}
-                      className="w-full border p-2 rounded"
                       rows="2"
                       placeholder="Опишите, что и почему вы изменили — партнёр увидит это"
                       required
@@ -409,20 +388,16 @@ const AdminOfferDetailModal = ({ offerId, onClose, onUpdate }) => {
                   </div>
 
                   <div className="flex gap-2 pt-2">
-                    <button
-                      type="submit"
-                      disabled={saving}
-                      className="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-                    >
+                    <Button type="submit" disabled={saving} className="flex-1">
                       {saving ? 'Сохранение...' : 'Сохранить и отправить партнёру'}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
+                      variant="ghost"
                       onClick={() => { setEditMode(false); setError(''); }}
-                      className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
                     >
                       Отмена
-                    </button>
+                    </Button>
                   </div>
                 </form>
               )}

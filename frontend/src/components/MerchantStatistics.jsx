@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import { Link } from 'react-router-dom';
+import { Card, PageTitle, Eyebrow, Caption, Badge } from '../design/UI';
+import { RouteLoadingView } from '../design/DottedPath';
 
 const MerchantStatistics = () => {
   const [tab, setTab] = useState('overview'); // overview | events | offers
@@ -29,8 +31,8 @@ const MerchantStatistics = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="text-center py-8">Загрузка...</div>;
-  if (!balance) return <div className="text-center py-8 text-red-500">Не удалось загрузить данные</div>;
+  if (loading) return <RouteLoadingView label="Загрузка..." />;
+  if (!balance) return <div className="text-center py-8 text-danger">Не удалось загрузить данные</div>;
 
   // ---- Общая ----
   const totalUses = offers.reduce((sum, o) => sum + (o.current_uses || 0), 0);
@@ -58,109 +60,106 @@ const MerchantStatistics = () => {
   const topEvents = eventStats?.top_events || [];
   const maxEventAttendees = Math.max(...topEvents.map(e => e.attendees_count || 0), 1);
 
+  const tabs = [
+    { key: 'overview', label: 'Общая' },
+    { key: 'events', label: `Ивенты${eventStats?.total_events > 0 ? ` (${eventStats.total_events})` : ''}` },
+    { key: 'offers', label: `Предложения${offers.length > 0 ? ` (${offers.length})` : ''}` },
+  ];
+
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-4">Статистика партнёра</h2>
+      <PageTitle>Статистика партнёра</PageTitle>
 
       {/* Табы */}
-      <div className="flex gap-1 border-b mb-6">
-        <button
-          onClick={() => setTab('overview')}
-          className={`px-4 py-2 text-sm ${tab === 'overview' ? 'border-b-2 border-blue-600 text-blue-600 font-semibold' : 'text-gray-600'}`}
-        >
-          Общая
-        </button>
-        <button
-          onClick={() => setTab('events')}
-          className={`px-4 py-2 text-sm ${tab === 'events' ? 'border-b-2 border-blue-600 text-blue-600 font-semibold' : 'text-gray-600'}`}
-        >
-          📅 Ивенты {eventStats?.total_events > 0 && `(${eventStats.total_events})`}
-        </button>
-        <button
-          onClick={() => setTab('offers')}
-          className={`px-4 py-2 text-sm ${tab === 'offers' ? 'border-b-2 border-blue-600 text-blue-600 font-semibold' : 'text-gray-600'}`}
-        >
-          🎁 Предложения {offers.length > 0 && `(${offers.length})`}
-        </button>
+      <div className="flex gap-1 border-b border-line mb-6">
+        {tabs.map(t => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`px-4 py-2 text-sm transition ${
+              tab === t.key ? 'border-b-2 border-accent text-ink font-semibold' : 'text-ink-soft hover:text-ink'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {/* === ОБЩАЯ === */}
       {tab === 'overview' && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-blue-100 p-4 rounded shadow">
-              <p className="text-sm text-gray-600">Общий баланс</p>
-              <p className="text-3xl font-bold">{balance.total_balance || 0} ₽</p>
-            </div>
-            <div className="bg-green-100 p-4 rounded shadow">
-              <p className="text-sm text-gray-600">Начислено за 30 дней</p>
-              <p className="text-3xl font-bold">{recentGross.toFixed(0)} ₽</p>
-            </div>
-            <div className="bg-red-100 p-4 rounded shadow">
-              <p className="text-sm text-gray-600">Возвраты за 30 дней</p>
-              <p className="text-3xl font-bold">-{recentRefunds.toFixed(0)} ₽</p>
-            </div>
-            <div className="bg-purple-100 p-4 rounded shadow">
-              <p className="text-sm text-gray-600">Чистыми за 30 дней</p>
-              <p className={`text-3xl font-bold ${recentNet >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+            <Card className="p-4">
+              <Eyebrow>Общий баланс</Eyebrow>
+              <p className="text-editorial text-3xl text-ink mt-1">{balance.total_balance || 0} ₽</p>
+            </Card>
+            <Card className="p-4">
+              <Eyebrow>Начислено за 30 дней</Eyebrow>
+              <p className="text-editorial text-3xl text-ink mt-1">{recentGross.toFixed(0)} ₽</p>
+            </Card>
+            <Card className="p-4">
+              <Eyebrow>Возвраты за 30 дней</Eyebrow>
+              <p className="text-editorial text-3xl text-danger mt-1">-{recentRefunds.toFixed(0)} ₽</p>
+            </Card>
+            <Card className="p-4">
+              <Eyebrow>Чистыми за 30 дней</Eyebrow>
+              <p className={`text-editorial text-3xl mt-1 ${recentNet >= 0 ? 'text-accent' : 'text-danger'}`}>
                 {recentNet.toFixed(0)} ₽
               </p>
-            </div>
+            </Card>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="bg-white p-4 rounded shadow">
-              <p className="text-sm text-gray-600">Предложений</p>
-              <p className="text-2xl font-bold">{offers.length}</p>
-              <p className="text-xs text-gray-500 mt-1">
-                ✓ {publishedOffers} · ⏳ {pendingOffers} · 📝 {draftOffers}
-              </p>
-            </div>
-            <div className="bg-white p-4 rounded shadow">
-              <p className="text-sm text-gray-600">Ивентов</p>
-              <p className="text-2xl font-bold">{eventStats?.total_events || 0}</p>
-              <p className="text-xs text-gray-500 mt-1">
-                ✓ {eventStats?.published_events || 0} · 👥 {eventStats?.total_attendees || 0} участников
-              </p>
-            </div>
-            <div className="bg-white p-4 rounded shadow">
-              <p className="text-sm text-gray-600">Всего использований офферов</p>
-              <p className="text-2xl font-bold">{totalUses}</p>
-            </div>
+            <Card className="p-4">
+              <Eyebrow>Предложений</Eyebrow>
+              <p className="text-editorial text-2xl text-ink mt-1">{offers.length}</p>
+              <Caption className="mt-1">
+                {publishedOffers} опубл. · {pendingOffers} на модерации · {draftOffers} черновиков
+              </Caption>
+            </Card>
+            <Card className="p-4">
+              <Eyebrow>Ивентов</Eyebrow>
+              <p className="text-editorial text-2xl text-ink mt-1">{eventStats?.total_events || 0}</p>
+              <Caption className="mt-1">
+                {eventStats?.published_events || 0} опубл. · {eventStats?.total_attendees || 0} участников
+              </Caption>
+            </Card>
+            <Card className="p-4">
+              <Eyebrow>Всего использований офферов</Eyebrow>
+              <p className="text-editorial text-2xl text-ink mt-1">{totalUses}</p>
+            </Card>
           </div>
 
           {/* Последние транзакции */}
-          <div className="bg-white rounded shadow p-4">
-            <h3 className="text-lg font-semibold mb-3">Последние транзакции</h3>
+          <Card className="p-4">
+            <Eyebrow className="mb-3">Последние транзакции</Eyebrow>
             {transactions.length === 0 ? (
-              <p className="text-gray-500 text-sm">Нет транзакций</p>
+              <p className="text-ink-soft text-sm">Нет транзакций</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm border-collapse">
                   <thead>
-                    <tr className="bg-gray-100">
-                      <th className="p-2 text-left">Дата</th>
-                      <th className="p-2 text-left">Тип</th>
-                      <th className="p-2 text-right">Сумма</th>
-                      <th className="p-2 text-left">Статус</th>
+                    <tr className="border-b border-line">
+                      <th className="p-2 text-left text-eyebrow">Дата</th>
+                      <th className="p-2 text-left text-eyebrow">Тип</th>
+                      <th className="p-2 text-right text-eyebrow">Сумма</th>
+                      <th className="p-2 text-left text-eyebrow">Статус</th>
                     </tr>
                   </thead>
                   <tbody>
                     {transactions.slice(0, 10).map(tx => (
-                      <tr key={tx.id} className="border-b">
-                        <td className="p-2">{new Date(tx.created_at).toLocaleString('ru-RU')}</td>
-                        <td className="p-2">
-                          {tx.type === 'order_earning' ? '💰 Заработок' :
-                           tx.type === 'refund' ? '↩️ Возврат' :
-                           tx.type === 'settlement' ? '📤 Выплата' : tx.type}
+                      <tr key={tx.id} className="border-b border-line last:border-0">
+                        <td className="p-2 text-caption text-ink">{new Date(tx.created_at).toLocaleString('ru-RU')}</td>
+                        <td className="p-2 text-ink">
+                          {tx.type === 'order_earning' ? 'Заработок' :
+                           tx.type === 'refund' ? 'Возврат' :
+                           tx.type === 'settlement' ? 'Выплата' : tx.type}
                         </td>
-                        <td className={`p-2 text-right font-semibold ${tx.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <td className={`p-2 text-right text-caption font-semibold ${tx.amount >= 0 ? 'text-accent' : 'text-danger'}`}>
                           {tx.amount >= 0 ? '+' : ''}{tx.amount} ₽
                         </td>
                         <td className="p-2">
-                          <span className={`px-2 py-1 rounded text-white text-xs ${tx.status === 'completed' ? 'bg-green-500' : 'bg-yellow-500'}`}>
-                            {tx.status}
-                          </span>
+                          <Badge filled={tx.status === 'completed'}>{tx.status}</Badge>
                         </td>
                       </tr>
                     ))}
@@ -168,7 +167,7 @@ const MerchantStatistics = () => {
                 </table>
               </div>
             )}
-          </div>
+          </Card>
         </>
       )}
 
@@ -176,79 +175,79 @@ const MerchantStatistics = () => {
       {tab === 'events' && eventStats && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-            <div className="bg-blue-100 p-3 rounded shadow">
-              <p className="text-xs text-gray-600">Всего ивентов</p>
-              <p className="text-2xl font-bold">{eventStats.total_events}</p>
-            </div>
-            <div className="bg-green-100 p-3 rounded shadow">
-              <p className="text-xs text-gray-600">Опубликовано</p>
-              <p className="text-2xl font-bold">{eventStats.published_events}</p>
-            </div>
-            <div className="bg-yellow-100 p-3 rounded shadow">
-              <p className="text-xs text-gray-600">На модерации</p>
-              <p className="text-2xl font-bold">{eventStats.pending_events}</p>
-            </div>
-            <div className="bg-purple-100 p-3 rounded shadow">
-              <p className="text-xs text-gray-600">👥 Идут</p>
-              <p className="text-2xl font-bold">{eventStats.total_attendees}</p>
-            </div>
-            <div className="bg-orange-100 p-3 rounded shadow">
-              <p className="text-xs text-gray-600">⭐ Интерес</p>
-              <p className="text-2xl font-bold">{eventStats.total_interested || 0}</p>
-            </div>
-            <div className="bg-gray-100 p-3 rounded shadow">
-              <p className="text-xs text-gray-600">Средний размер</p>
-              <p className="text-2xl font-bold">{(eventStats.avg_attendees || 0).toFixed(1)}</p>
-            </div>
+            <Card className="p-3">
+              <Caption>Всего ивентов</Caption>
+              <p className="text-editorial text-2xl text-ink mt-1">{eventStats.total_events}</p>
+            </Card>
+            <Card className="p-3">
+              <Caption>Опубликовано</Caption>
+              <p className="text-editorial text-2xl text-ink mt-1">{eventStats.published_events}</p>
+            </Card>
+            <Card className="p-3">
+              <Caption>На модерации</Caption>
+              <p className="text-editorial text-2xl text-ink mt-1">{eventStats.pending_events}</p>
+            </Card>
+            <Card className="p-3">
+              <Caption>Идут</Caption>
+              <p className="text-editorial text-2xl text-ink mt-1">{eventStats.total_attendees}</p>
+            </Card>
+            <Card className="p-3">
+              <Caption>Интерес</Caption>
+              <p className="text-editorial text-2xl text-ink mt-1">{eventStats.total_interested || 0}</p>
+            </Card>
+            <Card className="p-3">
+              <Caption>Средний размер</Caption>
+              <p className="text-editorial text-2xl text-ink mt-1">{(eventStats.avg_attendees || 0).toFixed(1)}</p>
+            </Card>
           </div>
 
           {eventStats.rejected_events > 0 && (
-            <div className="bg-red-50 border border-red-200 text-red-800 rounded p-3 mb-4 text-sm">
+            <div className="border border-danger/30 bg-danger/10 text-danger rounded-[var(--radius-sm)] p-3 mb-4 text-sm">
               Отклонено ивентов: <strong>{eventStats.rejected_events}</strong>
             </div>
           )}
 
           {eventStats.top_interested && eventStats.top_interested.length > 0 && eventStats.top_interested.some(e => e.interested_count > 0) && (
-            <div className="bg-white rounded shadow p-4 mb-6">
-              <h3 className="text-lg font-semibold mb-3">⭐ Топ-3 по интересу</h3>
+            <Card className="p-4 mb-6">
+              <Eyebrow className="mb-3">Топ-3 по интересу</Eyebrow>
               <div className="space-y-3">
                 {eventStats.top_interested.filter(e => e.interested_count > 0).map(e => (
                   <div key={e.id}>
                     <div className="flex justify-between text-sm mb-1">
-                      <Link to={`/events`} className="text-blue-600 hover:underline truncate mr-2">
+                      <Link to="/events" className="text-accent hover:underline truncate mr-2">
                         {e.title}
                       </Link>
-                      <span className="font-semibold whitespace-nowrap">⭐ {e.interested_count}</span>
+                      <span className="font-semibold whitespace-nowrap text-ink">{e.interested_count}</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-surface-2 border border-line h-2">
                       <div
-                        className="bg-orange-500 h-2 rounded-full transition-all"
+                        className="bg-accent h-2 transition-all"
                         style={{ width: `${((e.interested_count || 0) / Math.max(...eventStats.top_interested.map(x => x.interested_count || 0), 1)) * 100}%` }}
                       />
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
 
-          <div className="bg-white rounded shadow p-4 mb-6">
-            <h3 className="text-lg font-semibold mb-3">Топ-3 ивента по посещаемости</h3>
+          <Card className="p-4 mb-6">
+            <Eyebrow className="mb-3">Топ-3 ивента по посещаемости</Eyebrow>
             {topEvents.length === 0 ? (
-              <p className="text-gray-500 text-sm">Нет опубликованных ивентов</p>
+              <p className="text-ink-soft text-sm">Нет опубликованных ивентов</p>
             ) : (
               <div className="space-y-3">
                 {topEvents.map(e => (
                   <div key={e.id}>
                     <div className="flex justify-between text-sm mb-1">
-                      <Link to={`/events`} className="text-blue-600 hover:underline truncate mr-2">
+                      <Link to="/events" className="text-accent hover:underline truncate mr-2">
                         {e.title}
                       </Link>
-                      <span className="font-semibold whitespace-nowrap">{e.attendees_count || 0} идут</span>
+                      <span className="font-semibold whitespace-nowrap text-ink">{e.attendees_count || 0} идут</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-surface-2 border border-line h-2">
                       <div
-                        className="bg-purple-500 h-2 rounded-full transition-all"
+                        className="bg-accent h-2 transition-all"
                         style={{ width: `${((e.attendees_count || 0) / maxEventAttendees) * 100}%` }}
                       />
                     </div>
@@ -256,48 +255,40 @@ const MerchantStatistics = () => {
                 ))}
               </div>
             )}
-          </div>
+          </Card>
 
           {events.length > 0 && (
-            <div className="bg-white rounded shadow p-4">
-              <h3 className="text-lg font-semibold mb-3">Все ивенты</h3>
+            <Card className="p-4">
+              <Eyebrow className="mb-3">Все ивенты</Eyebrow>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm border-collapse">
                   <thead>
-                    <tr className="bg-gray-100">
-                      <th className="p-2 text-left">Дата</th>
-                      <th className="p-2 text-left">Название</th>
-                      <th className="p-2 text-left">Статус</th>
-                      <th className="p-2 text-right">Идут</th>
-                      <th className="p-2 text-right">Интерес</th>
+                    <tr className="border-b border-line">
+                      <th className="p-2 text-left text-eyebrow">Дата</th>
+                      <th className="p-2 text-left text-eyebrow">Название</th>
+                      <th className="p-2 text-left text-eyebrow">Статус</th>
+                      <th className="p-2 text-right text-eyebrow">Идут</th>
+                      <th className="p-2 text-right text-eyebrow">Интерес</th>
                     </tr>
                   </thead>
                   <tbody>
                     {events.map(e => (
-                      <tr key={e.id} className="border-b">
-                        <td className="p-2 whitespace-nowrap">
+                      <tr key={e.id} className="border-b border-line last:border-0">
+                        <td className="p-2 whitespace-nowrap text-caption text-ink">
                           {new Date(e.start_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: '2-digit' })}
                         </td>
-                        <td className="p-2 max-w-xs truncate">{e.title}</td>
+                        <td className="p-2 max-w-xs truncate text-ink">{e.title}</td>
                         <td className="p-2">
-                          <span className={`px-2 py-1 rounded text-white text-xs ${
-                            e.status === 'published' ? 'bg-green-500' :
-                            e.status === 'pending_review' ? 'bg-yellow-500' :
-                            e.status === 'pending_partner_approval' ? 'bg-purple-500' :
-                            e.status === 'rejected' ? 'bg-red-500' :
-                            e.status === 'archived' ? 'bg-gray-500' : 'bg-gray-400'
-                          }`}>
-                            {e.status}
-                          </span>
+                          <Badge filled={e.status === 'published'}>{e.status}</Badge>
                         </td>
-                        <td className="p-2 text-right font-semibold">{e.attendees_count || 0}</td>
-                        <td className="p-2 text-right font-semibold text-orange-600">⭐ {e.interested_count || 0}</td>
+                        <td className="p-2 text-right font-semibold text-ink">{e.attendees_count || 0}</td>
+                        <td className="p-2 text-right font-semibold text-accent">{e.interested_count || 0}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            </div>
+            </Card>
           )}
         </>
       )}
@@ -306,35 +297,35 @@ const MerchantStatistics = () => {
       {tab === 'offers' && (
         <>
           <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="bg-green-100 p-3 rounded shadow text-center">
-              <p className="text-3xl font-bold text-green-700">{publishedOffers}</p>
-              <p className="text-sm text-gray-600">Опубликовано</p>
-            </div>
-            <div className="bg-yellow-100 p-3 rounded shadow text-center">
-              <p className="text-3xl font-bold text-yellow-700">{pendingOffers}</p>
-              <p className="text-sm text-gray-600">На модерации</p>
-            </div>
-            <div className="bg-gray-100 p-3 rounded shadow text-center">
-              <p className="text-3xl font-bold text-gray-700">{draftOffers}</p>
-              <p className="text-sm text-gray-600">Черновиков</p>
-            </div>
+            <Card className="p-3 text-center">
+              <p className="text-editorial text-3xl text-accent">{publishedOffers}</p>
+              <Caption className="mt-1">Опубликовано</Caption>
+            </Card>
+            <Card className="p-3 text-center">
+              <p className="text-editorial text-3xl text-ink">{pendingOffers}</p>
+              <Caption className="mt-1">На модерации</Caption>
+            </Card>
+            <Card className="p-3 text-center">
+              <p className="text-editorial text-3xl text-ink-soft">{draftOffers}</p>
+              <Caption className="mt-1">Черновиков</Caption>
+            </Card>
           </div>
 
-          <div className="bg-white rounded shadow p-4">
-            <h3 className="text-lg font-semibold mb-3">Топ-5 предложений по использованию</h3>
+          <Card className="p-4">
+            <Eyebrow className="mb-3">Топ-5 предложений по использованию</Eyebrow>
             {topOffers.length === 0 ? (
-              <p className="text-gray-500 text-sm">Нет предложений</p>
+              <p className="text-ink-soft text-sm">Нет предложений</p>
             ) : (
               <div className="space-y-3">
                 {topOffers.map(o => (
                   <div key={o.id}>
                     <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-700 truncate mr-2">{o.title}</span>
-                      <span className="font-semibold whitespace-nowrap">{o.current_uses || 0} раз</span>
+                      <span className="text-ink-soft truncate mr-2">{o.title}</span>
+                      <span className="font-semibold whitespace-nowrap text-ink">{o.current_uses || 0} раз</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-surface-2 border border-line h-2">
                       <div
-                        className="bg-blue-500 h-2 rounded-full transition-all"
+                        className="bg-accent h-2 transition-all"
                         style={{ width: `${((o.current_uses || 0) / maxUses) * 100}%` }}
                       />
                     </div>
@@ -342,7 +333,7 @@ const MerchantStatistics = () => {
                 ))}
               </div>
             )}
-          </div>
+          </Card>
         </>
       )}
     </div>

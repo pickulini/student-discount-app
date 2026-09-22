@@ -4,6 +4,8 @@ import ImageUpload from './ImageUpload';
 import HashtagInput from './HashtagInput';
 import LocationPicker from './LocationPicker';
 import AdminEditDiffModal from './AdminEditDiffModal';
+import { Card, Button, Input, Textarea, Label, PageTitle, Eyebrow, Badge, ErrorText } from '../design/UI';
+import { RouteLoadingView } from '../design/DottedPath';
 
 const EMPTY_FORM = {
   company_id: '',
@@ -25,6 +27,8 @@ const EMPTY_FORM = {
   website: '',
   working_hours: '',
 };
+
+const selectClass = 'w-full bg-transparent border-b border-line focus:border-accent outline-none py-2.5 text-ink transition';
 
 const MerchantOffers = () => {
   const [offers, setOffers] = useState([]);
@@ -173,43 +177,40 @@ const MerchantOffers = () => {
     }
   };
 
-  if (loading) return <div>Загрузка...</div>;
+  if (loading) return <RouteLoadingView label="Загрузка..." />;
 
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">Мои предложения</h2>
-        <button
-          onClick={() => { resetForm(); setShowForm(true); }}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
+        <PageTitle className="mb-0">Мои предложения</PageTitle>
+        <Button onClick={() => { resetForm(); setShowForm(true); }}>
           Создать предложение
-        </button>
+        </Button>
       </div>
 
       {showForm && (
-        <div className="bg-gray-50 p-4 rounded shadow mb-6">
-          <h3 className="text-lg font-semibold mb-2">
+        <Card className="p-4 mb-6">
+          <Eyebrow className="mb-2">
             {editingId ? `Редактировать предложение #${editingId}` : 'Новое предложение'}
-          </h3>
+          </Eyebrow>
           {editingId && (
-            <p className="text-sm text-orange-600 mb-2">
+            <p className="text-sm text-accent mb-2">
               При сохранении предложение уйдёт на повторную модерацию.
             </p>
           )}
           {editingId && offers.find(o => o.id === editingId)?.rejection_reason && (
-            <div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-800 mb-3">
+            <div className="border border-danger/30 bg-danger/10 rounded-[var(--radius-sm)] p-3 text-sm text-danger mb-3">
               <strong>Причина отклонения:</strong> {offers.find(o => o.id === editingId).rejection_reason}
             </div>
           )}
-          {error && <div className="text-red-500 mb-2 text-sm">{error}</div>}
+          <ErrorText>{error}</ErrorText>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm">Компания</label>
+              <Label className="mb-1">Компания</Label>
               <select
                 value={form.company_id}
                 onChange={e => setForm({...form, company_id: e.target.value})}
-                className="w-full border p-2 rounded"
+                className={selectClass}
                 required
               >
                 <option value="">Выберите компанию</option>
@@ -219,22 +220,20 @@ const MerchantOffers = () => {
               </select>
             </div>
             <div>
-              <label className="block text-sm">Название</label>
-              <input
+              <Label className="mb-1">Название</Label>
+              <Input
                 type="text"
                 value={form.title}
                 onChange={e => setForm({...form, title: e.target.value})}
-                className="w-full border p-2 rounded"
                 placeholder="Скидка 20% на кофе"
                 required
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm">Описание</label>
-              <textarea
+              <Label className="mb-1">Описание</Label>
+              <Textarea
                 value={form.description}
                 onChange={e => setForm({...form, description: e.target.value})}
-                className="w-full border p-2 rounded"
                 placeholder="На все напитки в меню"
                 rows="2"
               />
@@ -267,226 +266,202 @@ const MerchantOffers = () => {
             </div>
 
             <div>
-              <label className="block text-sm">Адрес</label>
-              <input
+              <Label className="mb-1">Адрес</Label>
+              <Input
                 type="text"
                 value={form.address}
                 onChange={e => setForm({...form, address: e.target.value})}
-                className="w-full border p-2 rounded"
                 placeholder="г. Москва, ул. Примерная, д. 1"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-ink-faint mt-1">
                 Можно править вручную или установить точку на карте — адрес подтянется автоматически
               </p>
             </div>
             <div>
-              <label className="block text-sm">Телефон</label>
-              <input
+              <Label className="mb-1">Телефон</Label>
+              <Input
                 type="text"
                 value={form.phone}
                 onChange={e => setForm({...form, phone: e.target.value})}
-                className="w-full border p-2 rounded"
                 placeholder="+7 (999) 123-45-67"
               />
             </div>
             <div>
-              <label className="block text-sm">Сайт</label>
-              <input
+              <Label className="mb-1">Сайт</Label>
+              <Input
                 type="text"
                 value={form.website}
                 onChange={e => setForm({...form, website: e.target.value})}
-                className="w-full border p-2 rounded"
                 placeholder="example.com"
               />
             </div>
             <div>
-              <label className="block text-sm">Часы работы</label>
-              <input
+              <Label className="mb-1">Часы работы</Label>
+              <Input
                 type="text"
                 value={form.working_hours}
                 onChange={e => setForm({...form, working_hours: e.target.value})}
-                className="w-full border p-2 rounded"
                 placeholder="Пн–Пт 10:00–20:00"
               />
             </div>
 
             <div>
-              <label className="block text-sm">Базовая цена (₽)</label>
-              <input
+              <Label className="mb-1">Базовая цена (₽)</Label>
+              <Input
                 type="number"
                 value={form.base_price}
                 onChange={e => setForm({...form, base_price: parseFloat(e.target.value) || 0})}
-                className="w-full border p-2 rounded"
                 placeholder="1000"
                 min="0"
                 step="1"
                 required
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-ink-faint mt-1">
                 Стоимость без скидки. Скидка применяется к этой цене.
               </p>
             </div>
             <div>
-              <label className="block text-sm">Тип скидки</label>
+              <Label className="mb-1">Тип скидки</Label>
               <select
                 value={form.discount_type}
                 onChange={e => setForm({...form, discount_type: e.target.value})}
-                className="w-full border p-2 rounded"
+                className={selectClass}
               >
                 <option value="percentage">Процент</option>
                 <option value="fixed">Фиксированная</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm">Значение</label>
-              <input
+              <Label className="mb-1">Значение</Label>
+              <Input
                 type="number"
                 value={form.discount_value}
                 onChange={e => setForm({...form, discount_value: parseFloat(e.target.value)})}
-                className="w-full border p-2 rounded"
                 placeholder="20"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm">Начало</label>
-              <input
+              <Label className="mb-1">Начало</Label>
+              <Input
                 type="datetime-local"
                 value={form.start_at}
                 onChange={e => setForm({...form, start_at: e.target.value})}
-                className="w-full border p-2 rounded"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm">Окончание</label>
-              <input
+              <Label className="mb-1">Окончание</Label>
+              <Input
                 type="datetime-local"
                 value={form.end_at}
                 onChange={e => setForm({...form, end_at: e.target.value})}
-                className="w-full border p-2 rounded"
                 required
               />
             </div>
             <div className="flex items-center gap-2">
-              <label className="block text-sm">Бонусы разрешены</label>
+              <Label className="mb-0">Бонусы разрешены</Label>
               <input
                 type="checkbox"
                 checked={form.bonus_allowed}
                 onChange={e => setForm({...form, bonus_allowed: e.target.checked})}
+                className="accent-[var(--color-accent)]"
               />
             </div>
             <div>
-              <label className="block text-sm">Макс. % бонусов</label>
-              <input
+              <Label className="mb-1">Макс. % бонусов</Label>
+              <Input
                 type="number"
                 value={form.max_bonus_percent}
                 onChange={e => setForm({...form, max_bonus_percent: parseInt(e.target.value)})}
-                className="w-full border p-2 rounded"
                 placeholder="20"
               />
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm mb-1">Хештеги</label>
+              <Label className="mb-1">Хештеги</Label>
               <HashtagInput value={hashtags} onChange={setHashtags} />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-ink-faint mt-1">
                 Новые теги появятся в общем пуле после одобрения предложения модератором.
               </p>
             </div>
 
             <div className="md:col-span-2 flex gap-2">
-              <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+              <Button type="submit">
                 {editingId ? 'Сохранить' : 'Создать'}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => { setShowForm(false); resetForm(); }}
-                className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400"
               >
                 Отмена
-              </button>
+              </Button>
             </div>
           </form>
-        </div>
+        </Card>
       )}
 
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="p-2 text-left">Название</th>
-            <th className="p-2 text-left">Скидка</th>
-            <th className="p-2 text-left">Статус</th>
-            <th className="p-2 text-left">Причина</th>
-            <th className="p-2 text-left">Действия</th>
-          </tr>
-        </thead>
-        <tbody>
-          {offers.map(o => (
-            <tr key={o.id} className="border-b">
-              <td className="p-2">{o.title}</td>
-              <td className="p-2">
-                <div className="text-xs text-gray-500">{o.base_price} ₽</div>
-                <div className="font-semibold text-red-600">
-                  −{o.discount_value}{o.discount_type === 'percentage' ? '%' : ' ₽'}
-                </div>
-              </td>
-              <td className="p-2">
-                <span className={`px-2 py-1 rounded text-white text-sm ${
-                  o.status === 'published' ? 'bg-green-500' :
-                  o.status === 'pending_review' ? 'bg-yellow-500' :
-                  o.status === 'rejected' ? 'bg-red-500' :
-                  o.status === 'archived' ? 'bg-gray-500' : 'bg-gray-400'
-                }`}>
-                  {o.status}
-                </span>
-              </td>
-              <td className="p-2 text-xs text-red-600">
-                {o.status === 'pending_partner_approval' ? (
-                  <span className="text-purple-700">
-                    ⚠️ Админ изменил оффер
-                    {o.admin_edit_comment && (
-                      <span className="block text-gray-600 mt-0.5">
-                        «{o.admin_edit_comment}»
-                      </span>
-                    )}
-                  </span>
-                ) : (
-                  o.rejection_reason || '—'
-                )}
-              </td>
-              <td className="p-2 space-x-2">
-                {o.status === 'pending_partner_approval' && (
-                  <>
-                    <button
-                      onClick={() => setSelectedDiffOffer(o)}
-                      className="bg-purple-600 text-white px-2 py-1 rounded text-sm hover:bg-purple-700"
-                    >
-                      Посмотреть правки
-                    </button>
-                  </>
-                )}
-                {(o.status === 'draft' || o.status === 'published' || o.status === 'rejected') && (
-                  <button
-                    onClick={() => handleEdit(o)}
-                    className="bg-yellow-500 text-white px-2 py-1 rounded text-sm hover:bg-yellow-600"
-                  >
-                    Редактировать
-                  </button>
-                )}
-                {o.status === 'draft' && (
-                  <button
-                    onClick={() => handleSubmitForReview(o.id)}
-                    className="bg-blue-500 text-white px-2 py-1 rounded text-sm hover:bg-blue-600"
-                  >
-                    На модерацию
-                  </button>
-                )}
-              </td>
+      <Card className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-line">
+              <th className="p-2 text-left text-eyebrow">Название</th>
+              <th className="p-2 text-left text-eyebrow">Скидка</th>
+              <th className="p-2 text-left text-eyebrow">Статус</th>
+              <th className="p-2 text-left text-eyebrow">Причина</th>
+              <th className="p-2 text-left text-eyebrow">Действия</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {offers.map(o => (
+              <tr key={o.id} className="border-b border-line last:border-0">
+                <td className="p-2 text-ink">{o.title}</td>
+                <td className="p-2">
+                  <div className="text-xs text-ink-faint">{o.base_price} ₽</div>
+                  <div className="font-semibold text-danger">
+                    −{o.discount_value}{o.discount_type === 'percentage' ? '%' : ' ₽'}
+                  </div>
+                </td>
+                <td className="p-2">
+                  <Badge filled={o.status === 'published'}>{o.status}</Badge>
+                </td>
+                <td className="p-2 text-xs text-danger">
+                  {o.status === 'pending_partner_approval' ? (
+                    <span className="text-accent">
+                      Админ изменил оффер
+                      {o.admin_edit_comment && (
+                        <span className="block text-ink-soft mt-0.5">
+                          «{o.admin_edit_comment}»
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    o.rejection_reason || '—'
+                  )}
+                </td>
+                <td className="p-2 space-x-2">
+                  {o.status === 'pending_partner_approval' && (
+                    <Button variant="ghost" onClick={() => setSelectedDiffOffer(o)} className="px-2 py-1 text-xs">
+                      Посмотреть правки
+                    </Button>
+                  )}
+                  {(o.status === 'draft' || o.status === 'published' || o.status === 'rejected') && (
+                    <Button variant="ghost" onClick={() => handleEdit(o)} className="px-2 py-1 text-xs">
+                      Редактировать
+                    </Button>
+                  )}
+                  {o.status === 'draft' && (
+                    <Button onClick={() => handleSubmitForReview(o.id)} className="px-2 py-1 text-xs">
+                      На модерацию
+                    </Button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
       {selectedDiffOffer && (
         <AdminEditDiffModal
           offer={selectedDiffOffer}

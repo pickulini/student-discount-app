@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
-import { Card, PageTitle } from '../design/UI';
+import { Card, PageTitle, Eyebrow, Caption } from '../design/UI';
 import { RouteLoadingView } from '../design/DottedPath';
 
 const Referral = () => {
@@ -33,7 +33,7 @@ const Referral = () => {
       <PageTitle className="mb-4">Реферальная система</PageTitle>
       <div className="space-y-4">
         <div>
-          <p className="text-sm text-ink-soft mb-1">Ваш реферальный код</p>
+          <Eyebrow className="mb-1">Ваш реферальный код</Eyebrow>
           <div className="flex items-center gap-2">
             <code className="bg-surface-2 px-3 py-1 rounded-[var(--radius-sm)] font-mono text-lg text-ink">{code}</code>
             <button
@@ -43,7 +43,7 @@ const Referral = () => {
           </div>
         </div>
         <div>
-          <p className="text-sm text-ink-soft mb-1">Реферальная ссылка</p>
+          <Eyebrow className="mb-1">Реферальная ссылка</Eyebrow>
           <div className="flex items-center gap-2">
             <code className="bg-surface-2 px-3 py-1 rounded-[var(--radius-sm)] text-sm text-ink truncate max-w-xs">{referralLink}</code>
             <button
@@ -53,11 +53,11 @@ const Referral = () => {
           </div>
         </div>
         <div className="border-t border-line pt-3 mt-2 space-y-1 text-sm">
-          <p className="text-ink"><strong>Приглашено:</strong> {stats.total_invites}</p>
-          <p className="text-ink"><strong>Активных:</strong> {stats.active}</p>
-          <p className="text-ink"><strong>Заработано бонусов:</strong> {stats.bonus_total} баллов</p>
+          <p className="text-ink-soft">Приглашено <span className="text-ink font-medium">{stats.total_invites}</span></p>
+          <p className="text-ink-soft">Активных <span className="text-ink font-medium">{stats.active}</span></p>
+          <p className="text-ink-soft">Заработано бонусов <span className="text-accent font-medium">{stats.bonus_total}</span></p>
         </div>
-        <p className="text-xs text-ink-faint">* Бонус начисляется за каждого приглашённого пользователя после регистрации.</p>
+        <Caption>* Бонус начисляется за каждого приглашённого пользователя после регистрации.</Caption>
       </div>
     </Card>
   );

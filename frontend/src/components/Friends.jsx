@@ -147,7 +147,7 @@ const Friends = () => {
 
   return (
     <div className="max-w-2xl mx-auto p-4">
-      <h1 className="text-2xl font-semibold text-ink mb-4">Друзья</h1>
+      <h1 className="text-editorial text-2xl text-ink uppercase mb-4">Друзья</h1>
 
       <div className="flex gap-1 mb-4 border-b border-line overflow-x-auto">
         {tabs.map((t) => (

@@ -94,7 +94,7 @@ const EventDetailModal = ({ event: initialEvent, onClose, onAttendeeChange }) =>
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" onClick={onClose}>
-      <div className="bg-surface border border-line rounded-[var(--radius-lg)] max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-surface rounded-[var(--radius-lg)] max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="p-6">
           <div className="flex justify-between items-start gap-3">
             <h2 className="text-editorial text-2xl text-ink uppercase">{event.title}</h2>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { Card, Button, Input, Label } from '../design/UI';
+import { Card, Button, Input, Label, Eyebrow } from '../design/UI';
 
 const SettingsAccount = () => {
   const navigate = useNavigate();
@@ -40,22 +40,22 @@ const SettingsAccount = () => {
     <div className="space-y-4">
       {/* Баланс и бонусы */}
       <Card className="p-6">
-        <h2 className="text-xl font-semibold text-ink mb-4">Кошелёк</h2>
+        <h2 className="text-editorial text-xl text-ink uppercase mb-4">Кошелёк</h2>
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-surface-2 border border-line p-4 rounded-[var(--radius-sm)]">
-            <div className="text-xs text-ink-soft mb-1">Баланс</div>
-            <div className="text-2xl font-bold text-ink">{user.balance || 0} ₽</div>
+            <Eyebrow className="mb-1">Баланс</Eyebrow>
+            <div className="text-editorial text-2xl text-ink">{user.balance || 0} ₽</div>
           </div>
           <div className="bg-surface-2 border border-line p-4 rounded-[var(--radius-sm)]">
-            <div className="text-xs text-ink-soft mb-1">Бонусы</div>
-            <div className="text-2xl font-bold text-accent">{user.bonus_balance || 0}</div>
+            <Eyebrow className="mb-1">Бонусы</Eyebrow>
+            <div className="text-editorial text-2xl text-accent">{user.bonus_balance || 0}</div>
           </div>
         </div>
       </Card>
 
       {/* Реферальная программа */}
       <Card className="p-6">
-        <h2 className="text-xl font-semibold text-ink mb-4">Реферальная программа</h2>
+        <h2 className="text-editorial text-xl text-ink uppercase mb-4">Реферальная программа</h2>
         <div className="flex items-center justify-between gap-3 p-3 bg-surface-2 rounded-[var(--radius-sm)]">
           <div className="min-w-0">
             <div className="text-xs text-ink-faint mb-1">Ваш код</div>
@@ -74,7 +74,7 @@ const SettingsAccount = () => {
 
       {/* Информация об аккаунте */}
       <Card className="p-6">
-        <h2 className="text-xl font-semibold text-ink mb-4">Информация</h2>
+        <h2 className="text-editorial text-xl text-ink uppercase mb-4">Информация</h2>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-ink-soft">Email</span>
@@ -92,7 +92,7 @@ const SettingsAccount = () => {
             <div className="flex justify-between">
               <span className="text-ink-soft">VIP</span>
               <span className="font-medium text-accent">
-                ⭐ Активен
+                Активен
                 {user.vip_until && ` до ${formatDate(user.vip_until)}`}
               </span>
             </div>
@@ -102,7 +102,7 @@ const SettingsAccount = () => {
 
       {/* Опасная зона */}
       <Card className="p-6 border-2 border-danger/30">
-        <h2 className="text-xl font-semibold mb-1 text-danger">Удаление аккаунта</h2>
+        <h2 className="text-editorial text-xl uppercase mb-1 text-danger">Удаление аккаунта</h2>
         <p className="text-sm text-ink-soft mb-4">
           Все данные будут удалены безвозвратно: заказы, друзья, подписки, баланс.
         </p>

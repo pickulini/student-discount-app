@@ -35,7 +35,7 @@ const Profile = () => {
   return (
     <Card className="max-w-lg mx-auto p-6">
       <div className="flex justify-between items-start mb-6">
-        <h2 className="text-2xl font-semibold text-ink">Мой профиль</h2>
+        <h2 className="text-editorial text-2xl text-ink uppercase">Мой профиль</h2>
         <Link to="/settings/profile" className="text-sm text-accent hover:underline">
           Настроить →
         </Link>
@@ -66,12 +66,12 @@ const Profile = () => {
 
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="bg-surface-2 border border-line p-3 rounded-[var(--radius-sm)] text-center">
-          <div className="text-2xl font-bold text-ink">{data.balance || 0} ₽</div>
-          <div className="text-xs text-ink-soft">Баланс</div>
+          <div className="text-editorial text-2xl text-ink">{data.balance || 0} ₽</div>
+          <div className="text-eyebrow text-ink-faint mt-1">Баланс</div>
         </div>
         <div className="bg-surface-2 border border-line p-3 rounded-[var(--radius-sm)] text-center">
-          <div className="text-2xl font-bold text-accent">{data.bonus_balance || 0}</div>
-          <div className="text-xs text-ink-soft">Бонусы</div>
+          <div className="text-editorial text-2xl text-accent">{data.bonus_balance || 0}</div>
+          <div className="text-eyebrow text-ink-faint mt-1">Бонусы</div>
         </div>
       </div>
 

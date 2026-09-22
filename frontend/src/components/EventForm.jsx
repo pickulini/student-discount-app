@@ -88,7 +88,7 @@ const EventForm = () => {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-semibold text-ink mb-4">Предложить ивент</h1>
+      <h1 className="text-editorial text-2xl text-ink uppercase mb-4">Предложить ивент</h1>
 
       <div className="bg-surface-2 border border-line text-ink-soft rounded-[var(--radius-sm)] p-3 mb-4 text-sm">
         Ивент уйдёт на модерацию. После одобрения станет доступен другим пользователям.

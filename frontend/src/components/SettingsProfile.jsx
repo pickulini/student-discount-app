@@ -54,7 +54,7 @@ const SettingsProfile = () => {
 
   return (
     <Card className="p-6">
-      <h2 className="text-xl font-semibold text-ink mb-4">Профиль</h2>
+      <h2 className="text-editorial text-xl text-ink uppercase mb-4">Профиль</h2>
 
       {error && <div className="bg-danger/10 text-danger p-3 rounded-[var(--radius-sm)] mb-3 text-sm">{error}</div>}
       {success && <div className="bg-accent/10 text-accent p-3 rounded-[var(--radius-sm)] mb-3 text-sm">{success}</div>}

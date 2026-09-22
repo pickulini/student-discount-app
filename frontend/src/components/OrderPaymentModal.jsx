@@ -32,7 +32,7 @@ const OrderPaymentModal = ({ order, onClose, onSuccess }) => {
           {step === 2 && (
             <>
               <div className="flex justify-between items-start mb-4">
-                <h2 className="text-2xl font-bold text-ink">Оплата заказа №{order.id}</h2>
+                <h2 className="text-editorial text-2xl text-ink uppercase">Оплата заказа №{order.id}</h2>
                 <button onClick={onClose} className="text-ink-faint hover:text-ink text-2xl leading-none">✕</button>
               </div>
 
@@ -81,7 +81,7 @@ const OrderPaymentModal = ({ order, onClose, onSuccess }) => {
           {step === 3 && (
             <div className="text-center py-4">
               <div className="text-accent text-6xl mb-4">✓</div>
-              <h2 className="text-2xl font-bold text-ink mb-2">Заказ оплачен!</h2>
+              <h2 className="text-editorial text-2xl text-ink uppercase mb-2">Заказ оплачен!</h2>
               <p className="text-ink-soft mb-6">Заказ №{order.id} успешно оплачен.</p>
               <p className="text-sm text-ink-faint mb-6">Покажите этот номер партнёру для получения услуги.</p>
               <Button onClick={onClose} className="px-6">

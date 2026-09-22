@@ -29,7 +29,7 @@ const Subscriptions = () => {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-semibold text-ink mb-4">Мои подписки</h1>
+      <h1 className="text-editorial text-2xl text-ink uppercase mb-4">Мои подписки</h1>
 
       {companies.length === 0 ? (
         <Card className="p-6 text-center text-ink-soft">

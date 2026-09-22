@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
+import { PageTitle } from '../design/UI';
+import { RouteLoadingView, RouteEmptyState, TrailDivider } from '../design/DottedPath';
 
 const MerchantCompanies = () => {
   const [companies, setCompanies] = useState([]);
@@ -12,19 +14,22 @@ const MerchantCompanies = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div>Загрузка...</div>;
+  if (loading) return <RouteLoadingView label="Загрузка..." />;
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-4">Мои компании</h2>
+      <PageTitle>Мои компании</PageTitle>
       {companies.length === 0 ? (
-        <p className="text-gray-500">Вы не привязаны ни к одной компании</p>
+        <RouteEmptyState title="Вы не привязаны ни к одной компании" />
       ) : (
-        <ul className="divide-y">
-          {companies.map(c => (
-            <li key={c.id} className="py-2">{c.name}</li>
+        <div>
+          {companies.map((c, i) => (
+            <div key={c.id}>
+              {i > 0 && <TrailDivider className="my-3" />}
+              <div className="py-2 text-ink">{c.name}</div>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

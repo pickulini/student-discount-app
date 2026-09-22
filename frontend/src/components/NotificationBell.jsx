@@ -168,7 +168,6 @@ const NotificationBell = () => {
                         onClick={() => setExpandedGroup(isExpanded ? null : gk)}
                         className="w-full flex items-center gap-2 p-3 hover:bg-surface-2 text-left"
                       >
-                        <span className="text-lg">{g.icon}</span>
                         <span className="flex-1 text-sm text-ink">{g.label}</span>
                         <span className="text-xs text-ink-faint">{list.length}</span>
                         {unreadInGroup > 0 && (

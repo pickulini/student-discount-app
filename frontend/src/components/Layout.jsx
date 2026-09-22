@@ -67,7 +67,7 @@ const Layout = () => {
   const publicProfileUrl = user?.username ? `/@${user.username}` : '/profile';
 
   return (
-    <div className="min-h-screen bg-bg flex flex-col text-ink">
+    <div className="min-h-screen flex flex-col text-ink">
       <nav className="bg-bg/95 backdrop-blur border-b border-line sticky top-0 z-20">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-2">
           <Link to="/" className="flex items-center gap-2.5 flex-shrink-0 group">

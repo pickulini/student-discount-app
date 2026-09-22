@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import SubscribeButton from './SubscribeButton';
-import { Card } from '../design/UI';
+import { Card, Eyebrow } from '../design/UI';
 import { RouteLoadingView } from '../design/DottedPath';
 
 const PublicProfile = () => {
@@ -84,8 +84,8 @@ const PublicProfile = () => {
     <Card className="max-w-lg mx-auto p-6">
       <div className="flex items-center gap-4 mb-6">
         {profile.avatar_visible === false ? (
-          <div className="w-20 h-20 rounded-full bg-surface-2 border border-line flex items-center justify-center text-ink-faint text-2xl">
-            🔒
+          <div className="w-20 h-20 rounded-full bg-surface-2 border border-line flex items-center justify-center text-ink-faint text-eyebrow">
+            Скрыто
           </div>
         ) : avatarSrc ? (
           <img
@@ -99,7 +99,7 @@ const PublicProfile = () => {
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-bold text-ink truncate">{displayName}</h1>
+          <h1 className="text-editorial text-2xl text-ink uppercase truncate">{displayName}</h1>
           <p className="text-accent text-sm">@{profile.username}</p>
           {profile.university && profile.university_visible !== false && (
             <p className="text-ink-faint text-sm truncate">{profile.university}</p>
@@ -116,26 +116,26 @@ const PublicProfile = () => {
         <div className="bg-surface-2 border border-line p-3 rounded-[var(--radius-sm)] text-center">
           {profile.friends_list_visible === false ? (
             <>
-              <p className="text-2xl font-bold text-ink-faint">🔒</p>
-              <p className="text-xs text-ink-soft">Скрыто</p>
+              <p className="text-editorial text-2xl text-ink-faint">—</p>
+              <p className="text-eyebrow text-ink-soft mt-1">Скрыто</p>
             </>
           ) : (
             <>
-              <p className="text-2xl font-bold text-accent">{profile.friends_count}</p>
-              <p className="text-xs text-ink-soft">Друзей</p>
+              <p className="text-editorial text-2xl text-accent">{profile.friends_count}</p>
+              <p className="text-eyebrow text-ink-soft mt-1">Друзей</p>
             </>
           )}
         </div>
         <div className="bg-surface-2 border border-line p-3 rounded-[var(--radius-sm)] text-center">
-          <p className="text-sm font-semibold text-ink capitalize">{profile.student_status}</p>
-          <p className="text-xs text-ink-soft">Статус студента</p>
+          <p className="text-editorial text-sm text-ink capitalize">{profile.student_status}</p>
+          <p className="text-eyebrow text-ink-soft mt-1">Статус студента</p>
         </div>
       </div>
 
       {profile.subscriptions_visible === false && (
         <div className="mt-4 pt-4 border-t border-line">
-          <h3 className="font-semibold mb-2 text-ink-soft">Подписки</h3>
-          <div className="text-sm text-ink-faint">🔒 Скрыто настройками приватности</div>
+          <Eyebrow className="mb-2">Подписки</Eyebrow>
+          <div className="text-sm text-ink-faint">Скрыто настройками приватности</div>
         </div>
       )}
 
@@ -147,30 +147,32 @@ const PublicProfile = () => {
 
       {attendingEvents.length > 0 && profile.attending_events_visible !== false && (
         <div className="mt-4 pt-4 border-t border-line">
-          <h3 className="font-semibold text-ink mb-3">Планирует посетить</h3>
+          <Eyebrow className="mb-3">Планирует посетить</Eyebrow>
           <div className="space-y-2">
-            {attendingEvents.map(e => (
+            {attendingEvents.map(e => {
+              const d = new Date(e.start_at);
+              return (
               <div key={e.id} className="flex items-center gap-3 bg-surface-2 rounded-[var(--radius-sm)] p-2">
-                <div className="w-10 h-10 rounded-[var(--radius-sm)] bg-surface flex items-center justify-center text-accent font-bold">
-                  📅
+                <div className="w-10 h-10 rounded-[var(--radius-sm)] bg-surface flex flex-col items-center justify-center leading-none">
+                  <span className="text-editorial text-sm text-ink">{d.toLocaleDateString('ru-RU', { day: 'numeric' })}</span>
+                  <span className="text-eyebrow text-ink-faint text-[9px]">{d.toLocaleDateString('ru-RU', { month: 'short' }).replace('.', '')}</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-ink truncate">{e.title}</div>
-                  <div className="text-xs text-ink-faint">
-                    {new Date(e.start_at).toLocaleDateString('ru-RU', {
-                      day: 'numeric', month: 'long',
-                    })}
+                  <div className="text-caption text-xs text-ink-faint">
+                    {d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
 
       {userSubscriptions.length > 0 && profile.subscriptions_visible !== false && (
         <div className="mt-4 pt-4 border-t border-line">
-          <h3 className="font-semibold text-ink mb-3">Подписки</h3>
+          <Eyebrow className="mb-3">Подписки</Eyebrow>
           <div className="space-y-2">
             {userSubscriptions.map(c => (
               <div key={c.id} className="flex items-center gap-3">
@@ -206,7 +208,7 @@ const PublicProfile = () => {
 
       {companies.length > 0 && profile.offers_visible !== false && (
         <div className="mt-4 pt-4 border-t border-line">
-          <h3 className="font-semibold text-ink mb-3">Мои компании</h3>
+          <Eyebrow className="mb-3">Мои компании</Eyebrow>
           <div className="space-y-2">
             {companies.map(c => (
               <div key={c.id} className="flex items-center gap-3">
@@ -240,7 +242,7 @@ const PublicProfile = () => {
         </div>
       )}
 
-      <div className="text-xs text-ink-faint border-t border-line pt-3 mt-4">
+      <div className="text-caption text-xs text-ink-faint border-t border-line pt-3 mt-4">
         На платформе с {new Date(profile.created_at).toLocaleDateString('ru-RU')}
       </div>
     </Card>

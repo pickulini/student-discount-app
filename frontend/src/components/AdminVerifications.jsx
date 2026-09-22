@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import AdminVerificationDetailModal from './AdminVerificationDetailModal';
+import { PageTitle, Button, Badge } from '../design/UI';
+import { RouteLoadingView } from '../design/DottedPath';
+
+const STATUS_LABELS = {
+  pending: 'Ожидает',
+  verified: 'Подтверждён',
+  rejected: 'Отклонён',
+};
 
 const AdminVerifications = () => {
   const [verifications, setVerifications] = useState([]);
@@ -27,7 +35,7 @@ const AdminVerifications = () => {
     fetchVerifications();
   };
 
-  if (loading) return <div>Загрузка...</div>;
+  if (loading) return <RouteLoadingView label="Загрузка верификаций..." />;
 
   const filtered = filterStatus === 'all'
     ? verifications
@@ -35,14 +43,14 @@ const AdminVerifications = () => {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-4">Верификации</h2>
+      <PageTitle>Верификации</PageTitle>
 
-      <div className="mb-4 flex gap-2">
-        <label className="text-sm">Фильтр:</label>
+      <div className="mb-4 flex gap-2 items-center">
+        <label className="text-sm text-ink-soft">Фильтр:</label>
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
-          className="border rounded p-1 text-sm"
+          className="bg-surface border border-line rounded-[var(--radius-xs)] p-1.5 text-sm text-ink"
         >
           <option value="all">Все</option>
           <option value="pending">Ожидают</option>
@@ -54,68 +62,62 @@ const AdminVerifications = () => {
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="bg-gray-100">
-              <th className="p-2 text-left">ID</th>
-              <th className="p-2 text-left">Пользователь</th>
-              <th className="p-2 text-left">Email</th>
-              <th className="p-2 text-left">Студенческий</th>
-              <th className="p-2 text-left">Статус</th>
-              <th className="p-2 text-left">Фото</th>
-              <th className="p-2 text-left">Действия</th>
+            <tr className="border-b border-line">
+              <th className="p-2 text-left text-eyebrow text-ink-faint font-normal">ID</th>
+              <th className="p-2 text-left text-eyebrow text-ink-faint font-normal">Пользователь</th>
+              <th className="p-2 text-left text-eyebrow text-ink-faint font-normal">Email</th>
+              <th className="p-2 text-left text-eyebrow text-ink-faint font-normal">Студенческий</th>
+              <th className="p-2 text-left text-eyebrow text-ink-faint font-normal">Статус</th>
+              <th className="p-2 text-left text-eyebrow text-ink-faint font-normal">Фото</th>
+              <th className="p-2 text-left text-eyebrow text-ink-faint font-normal">Действия</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map((v) => {
               const displayName = v.user_nickname || v.user_full_name || `#${v.user_id}`;
-              const hasPhotos = v.document_key || v.selfie_key;
               return (
-                <tr key={v.id} className="border-b">
-                  <td className="p-2">{v.id}</td>
+                <tr key={v.id} className="border-b border-line">
+                  <td className="p-2 text-ink-faint">{v.id}</td>
                   <td className="p-2">
                     {v.user_username ? (
                       <span>
-                        <span className="font-semibold">{displayName}</span>
-                        <span className="text-blue-600 ml-1 text-xs">@{v.user_username}</span>
+                        <span className="font-medium text-ink">{displayName}</span>
+                        <span className="text-accent ml-1 text-xs">@{v.user_username}</span>
                       </span>
                     ) : (
-                      displayName
+                      <span className="text-ink">{displayName}</span>
                     )}
                   </td>
-                  <td className="p-2 text-xs text-gray-600">{v.user_email || '—'}</td>
-                  <td className="p-2 text-xs">{v.student_identifier || '—'}</td>
+                  <td className="p-2 text-xs text-ink-soft">{v.user_email || '—'}</td>
+                  <td className="p-2 text-xs text-ink-soft">{v.student_identifier || '—'}</td>
                   <td className="p-2">
-                    <span
-                      className={`px-2 py-1 rounded text-white text-xs ${
-                        v.status === 'pending' ? 'bg-yellow-500' :
-                        v.status === 'verified' ? 'bg-green-500' : 'bg-red-500'
-                      }`}
+                    <Badge
+                      filled={v.status === 'verified'}
+                      className={v.status === 'rejected' ? '!text-danger !border-danger/30' : ''}
                     >
-                      {v.status}
-                    </span>
+                      {STATUS_LABELS[v.status] || v.status}
+                    </Badge>
                   </td>
                   <td className="p-2">
                     <div className="flex gap-1">
                       <span
                         title="Студенческий"
-                        className={`text-xs px-2 py-1 rounded ${v.document_key ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-400'}`}
+                        className={`text-xs px-2 py-1 rounded-[var(--radius-xs)] border border-line ${v.document_key ? 'text-accent' : 'text-ink-faint'}`}
                       >
-                        📄 {v.document_key ? '✓' : '—'}
+                        {v.document_key ? '✓' : '—'}
                       </span>
                       <span
                         title="Селфи"
-                        className={`text-xs px-2 py-1 rounded ${v.selfie_key ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-400'}`}
+                        className={`text-xs px-2 py-1 rounded-[var(--radius-xs)] border border-line ${v.selfie_key ? 'text-accent' : 'text-ink-faint'}`}
                       >
-                        🤳 {v.selfie_key ? '✓' : '—'}
+                        {v.selfie_key ? '✓' : '—'}
                       </span>
                     </div>
                   </td>
                   <td className="p-2">
-                    <button
-                      onClick={() => setSelected(v)}
-                      className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-xs"
-                    >
+                    <Button variant="ghost" onClick={() => setSelected(v)} className="text-xs px-3 py-1">
                       Открыть
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               );

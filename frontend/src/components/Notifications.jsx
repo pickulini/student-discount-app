@@ -91,7 +91,7 @@ const Notifications = () => {
   return (
     <div className="max-w-3xl mx-auto">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-semibold text-ink">Уведомления</h1>
+        <h1 className="text-editorial text-2xl text-ink uppercase">Уведомления</h1>
         {items.length > 0 && (
           <button onClick={deleteAll} className="text-sm text-accent hover:underline">
             Прочитать все
@@ -121,7 +121,7 @@ const Notifications = () => {
                 tab === gk ? 'border-b-2 border-accent text-accent font-semibold' : 'text-ink-soft hover:text-ink'
               }`}
             >
-              {g.icon} {g.shortLabel} <span className="text-xs text-ink-faint">({cnt})</span>
+              {g.shortLabel} <span className="text-xs text-ink-faint">({cnt})</span>
             </button>
           );
         })}
@@ -146,8 +146,8 @@ const Notifications = () => {
                   {n.actor_avatar ? (
                     <img src={n.actor_avatar} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-surface-2 border border-line flex items-center justify-center text-accent flex-shrink-0">
-                      🔔
+                    <div className="w-10 h-10 rounded-full bg-surface-2 border border-line flex items-center justify-center flex-shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-accent" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">

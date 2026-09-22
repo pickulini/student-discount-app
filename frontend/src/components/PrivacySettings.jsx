@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
-import { Button } from '../design/UI';
+import { Button, Eyebrow } from '../design/UI';
 
 const FIELDS = [
   { key: 'avatar_visibility', label: 'Аватар', hint: 'Фотография профиля' },
@@ -16,9 +16,9 @@ const FIELDS = [
 ];
 
 const OPTIONS = [
-  { value: 'public', label: '👁 Всем' },
-  { value: 'friends', label: '👥 Друзьям' },
-  { value: 'private', label: '🔒 Только мне' },
+  { value: 'public', label: 'Всем' },
+  { value: 'friends', label: 'Друзьям' },
+  { value: 'private', label: 'Только мне' },
 ];
 
 const PrivacySettings = () => {
@@ -65,7 +65,7 @@ const PrivacySettings = () => {
   return (
     <div>
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-ink mb-1">Приватность</h3>
+        <h3 className="text-editorial text-lg text-ink uppercase mb-1">Приватность</h3>
         <p className="text-sm text-ink-soft">
           Управляйте, кто видит каждую часть вашего профиля.
         </p>

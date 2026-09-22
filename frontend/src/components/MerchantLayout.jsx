@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { RouteMark } from '../design/DottedPath';
 
 const MerchantLayout = () => {
   const { user, isAdmin } = useAuth();
@@ -11,23 +12,27 @@ const MerchantLayout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
-      <aside className="w-64 bg-white shadow-md p-4">
-        <h2 className="text-xl font-bold text-blue-600 mb-4">Партнёрский кабинет</h2>
-        <nav className="space-y-2">
-          <Link to="/merchant" className="block p-2 rounded hover:bg-blue-50">📊 Дашборд</Link>
-          <Link to="/merchant/offers" className="block p-2 rounded hover:bg-blue-50">🎁 Мои предложения</Link>
-          <Link to="/events/new" className="block p-2 rounded hover:bg-blue-50">📅 Создать ивент</Link>
-          <Link to="/merchant/events" className="block p-2 rounded hover:bg-blue-50">🎟 Мои ивенты</Link>
-          <Link to="/merchant/companies" className="block p-2 rounded hover:bg-blue-50">🏢 Мои компании</Link>
-          <Link to="/merchant/statistics" className="block p-2 rounded hover:bg-blue-50">📈 Статистика</Link>
-          <Link to="/" className="block p-2 rounded hover:bg-blue-50 text-blue-600">← На сайт</Link>
+    <div className="min-h-screen bg-bg flex text-ink">
+      <aside className="w-64 flex-shrink-0 border-r border-line p-4">
+        <Link to="/" className="flex items-center gap-2.5 mb-6 group">
+          <RouteMark />
+          <span className="text-sm font-semibold tracking-wide text-ink group-hover:text-accent transition">
+            Партнёрский кабинет
+          </span>
+        </Link>
+        <nav className="space-y-1 text-sm">
+          <Link to="/merchant" className="block px-3 py-2 rounded-[var(--radius-xs)] hover:bg-surface-2 text-ink-soft hover:text-ink transition">Дашборд</Link>
+          <Link to="/merchant/offers" className="block px-3 py-2 rounded-[var(--radius-xs)] hover:bg-surface-2 text-ink-soft hover:text-ink transition">Мои предложения</Link>
+          <Link to="/events/new" className="block px-3 py-2 rounded-[var(--radius-xs)] hover:bg-surface-2 text-ink-soft hover:text-ink transition">Создать ивент</Link>
+          <Link to="/merchant/events" className="block px-3 py-2 rounded-[var(--radius-xs)] hover:bg-surface-2 text-ink-soft hover:text-ink transition">Мои ивенты</Link>
+          <Link to="/merchant/companies" className="block px-3 py-2 rounded-[var(--radius-xs)] hover:bg-surface-2 text-ink-soft hover:text-ink transition">Мои компании</Link>
+          <Link to="/merchant/statistics" className="block px-3 py-2 rounded-[var(--radius-xs)] hover:bg-surface-2 text-ink-soft hover:text-ink transition">Статистика</Link>
+          <div className="border-t border-line my-2" />
+          <Link to="/" className="block px-3 py-2 rounded-[var(--radius-xs)] hover:bg-surface-2 text-accent transition">← На сайт</Link>
         </nav>
       </aside>
       <div className="flex-1 p-6">
-        <div className="bg-white p-6 rounded shadow">
-          <Outlet />
-        </div>
+        <Outlet />
       </div>
     </div>
   );

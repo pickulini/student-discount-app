@@ -3,13 +3,13 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const NAV = [
-  { to: '/settings', label: 'Общее', icon: '⚙️', exact: true },
-  { to: '/settings/profile', label: 'Профиль', icon: '👤' },
-  { to: '/settings/privacy', label: 'Приватность', icon: '🔒' },
-  { to: '/settings/notifications', label: 'Уведомления', icon: '🔔' },
-  { to: '/settings/verification', label: 'Верификация', icon: '🎓' },
-  { to: '/settings/security', label: 'Безопасность', icon: '🔑' },
-  { to: '/settings/account', label: 'Аккаунт', icon: '📊' },
+  { to: '/settings', label: 'Общее', exact: true },
+  { to: '/settings/profile', label: 'Профиль' },
+  { to: '/settings/privacy', label: 'Приватность' },
+  { to: '/settings/notifications', label: 'Уведомления' },
+  { to: '/settings/verification', label: 'Верификация' },
+  { to: '/settings/security', label: 'Безопасность' },
+  { to: '/settings/account', label: 'Аккаунт' },
 ];
 
 const SettingsLayout = () => {
@@ -30,7 +30,7 @@ const SettingsLayout = () => {
       <div className="flex flex-col md:flex-row gap-6">
         {/* Sidebar / top-tabs */}
         <aside className="md:w-64 flex-shrink-0">
-          <h1 className="text-2xl font-semibold text-ink mb-4">Настройки</h1>
+          <h1 className="text-editorial text-2xl text-ink uppercase mb-4">Настройки</h1>
           <nav className="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible">
             {NAV.map((item) => {
               const active = isActive(item);
@@ -38,14 +38,13 @@ const SettingsLayout = () => {
                 <Link
                   key={item.to}
                   to={item.to}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-[var(--radius-sm)] whitespace-nowrap transition ${
+                  className={`px-3 py-2 rounded-[var(--radius-sm)] whitespace-nowrap text-sm transition ${
                     active
                       ? 'bg-surface-2 text-accent font-semibold'
                       : 'text-ink-soft hover:bg-surface-2 hover:text-ink'
                   }`}
                 >
-                  <span>{item.icon}</span>
-                  <span className="text-sm">{item.label}</span>
+                  {item.label}
                 </Link>
               );
             })}

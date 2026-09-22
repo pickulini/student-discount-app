@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button, Eyebrow } from '../design/UI';
 
 const FIELD_LABELS = {
   title: 'Название',
@@ -68,55 +69,53 @@ const AdminEditDiffModal = ({ offer, onClose, onAccept, onReject }) => {
   });
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={onClose}>
-      <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" onClick={onClose}>
+      <div className="bg-surface border border-line rounded-[var(--radius-lg)] max-w-3xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="p-6">
           <div className="flex justify-between items-start mb-4">
             <div>
-              <h2 className="text-2xl font-bold">Правки от администратора</h2>
-              <p className="text-sm text-gray-500 mt-1">{offer.title}</p>
+              <h2 className="text-editorial text-2xl text-ink uppercase">Правки от администратора</h2>
+              <p className="text-sm text-ink-soft mt-1">{offer.title}</p>
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">✕</button>
+            <button onClick={onClose} className="text-ink-faint hover:text-ink text-2xl leading-none">✕</button>
           </div>
 
           {offer.admin_edit_comment && (
-            <div className="bg-purple-50 border border-purple-200 rounded p-3 mb-4 text-sm text-purple-900">
+            <div className="bg-surface-2 border border-line rounded-[var(--radius-sm)] p-3 mb-4 text-sm text-ink">
               <strong>Комментарий администратора:</strong>
-              <div className="mt-1 whitespace-pre-line">{offer.admin_edit_comment}</div>
+              <div className="mt-1 whitespace-pre-line text-ink-soft">{offer.admin_edit_comment}</div>
             </div>
           )}
 
           {diffs.length === 0 ? (
-            <div className="bg-gray-50 rounded p-6 text-center text-gray-500">
+            <div className="border border-line rounded-[var(--radius-sm)] p-6 text-center text-ink-faint">
               Администратор не изменил ни одного поля (только комментарий).
             </div>
           ) : (
             <div className="space-y-3">
-              <h3 className="font-semibold text-gray-700">
-                Изменённые поля ({diffs.length}):
-              </h3>
+              <Eyebrow>Изменённые поля ({diffs.length})</Eyebrow>
               {diffs.map((d) => (
-                <div key={d.field} className="border rounded overflow-hidden">
-                  <div className="bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
+                <div key={d.field} className="border border-line rounded-[var(--radius-sm)] overflow-hidden">
+                  <div className="bg-surface-2 border-b border-line px-3 py-1 text-xs font-semibold text-ink-soft">
                     {d.label}
                   </div>
-                  <div className="grid grid-cols-2 divide-x">
+                  <div className="grid grid-cols-2 divide-x divide-line">
                     <div className="p-3">
-                      <div className="text-xs text-gray-500 mb-1">Было</div>
+                      <div className="text-xs text-ink-faint mb-1">Было</div>
                       {d.field === 'image_url' && d.oldValue ? (
-                        <img src={d.oldValue} alt="" className="max-h-32 rounded object-cover" />
+                        <img src={d.oldValue} alt="" className="max-h-32 rounded-[var(--radius-xs)] object-cover" />
                       ) : (
-                        <div className="text-sm text-red-700 line-through break-words">
+                        <div className="text-sm text-danger line-through break-words">
                           {formatValue(d.field, d.oldValue, offer)}
                         </div>
                       )}
                     </div>
-                    <div className="p-3 bg-green-50">
-                      <div className="text-xs text-gray-500 mb-1">Стало</div>
+                    <div className="p-3">
+                      <div className="text-xs text-ink-faint mb-1">Стало</div>
                       {d.field === 'image_url' && d.newValue ? (
-                        <img src={d.newValue} alt="" className="max-h-32 rounded object-cover" />
+                        <img src={d.newValue} alt="" className="max-h-32 rounded-[var(--radius-xs)] object-cover" />
                       ) : (
-                        <div className="text-sm text-green-800 font-medium break-words">
+                        <div className="text-sm text-accent font-medium break-words">
                           {formatValue(d.field, d.newValue, offer)}
                         </div>
                       )}
@@ -128,24 +127,15 @@ const AdminEditDiffModal = ({ offer, onClose, onAccept, onReject }) => {
           )}
 
           <div className="mt-6 flex gap-3">
-            <button
-              onClick={() => onAccept(offer.id)}
-              className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700"
-            >
-              ✓ Согласовать и опубликовать
-            </button>
-            <button
-              onClick={() => onReject(offer.id)}
-              className="flex-1 bg-red-500 text-white py-2 rounded-lg hover:bg-red-600"
-            >
-              ✕ Отклонить правки
-            </button>
-            <button
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
+            <Button onClick={() => onAccept(offer.id)} className="flex-1">
+              Согласовать и опубликовать
+            </Button>
+            <Button variant="danger" onClick={() => onReject(offer.id)} className="flex-1">
+              Отклонить правки
+            </Button>
+            <Button variant="ghost" onClick={onClose}>
               Закрыть
-            </button>
+            </Button>
           </div>
         </div>
       </div>

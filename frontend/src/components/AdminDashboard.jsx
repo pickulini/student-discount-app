@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
+import { Card, PageTitle, Eyebrow } from '../design/UI';
+import { RouteLoadingView, RouteErrorState } from '../design/DottedPath';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
@@ -18,33 +20,27 @@ const AdminDashboard = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div>Загрузка...</div>;
-  if (error) return <div className="text-red-500">{error}</div>;
+  if (loading) return <RouteLoadingView label="Загрузка статистики..." />;
+  if (error) return <RouteErrorState message={error} />;
+
+  const tiles = [
+    { label: 'Пользователи', value: stats?.total_users || 0 },
+    { label: 'Компании', value: stats?.total_companies || 0 },
+    { label: 'Предложения', value: stats?.total_offers || 0 },
+    { label: 'Заказы', value: stats?.total_orders || 0 },
+    { label: 'Выручка', value: `${stats?.total_revenue || 0} ₽` },
+  ];
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-4">Статистика</h2>
+      <PageTitle>Статистика</PageTitle>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-blue-100 p-4 rounded shadow">
-          <p className="text-sm text-gray-600">Пользователи</p>
-          <p className="text-3xl font-bold">{stats?.total_users || 0}</p>
-        </div>
-        <div className="bg-green-100 p-4 rounded shadow">
-          <p className="text-sm text-gray-600">Компании</p>
-          <p className="text-3xl font-bold">{stats?.total_companies || 0}</p>
-        </div>
-        <div className="bg-purple-100 p-4 rounded shadow">
-          <p className="text-sm text-gray-600">Предложения</p>
-          <p className="text-3xl font-bold">{stats?.total_offers || 0}</p>
-        </div>
-        <div className="bg-yellow-100 p-4 rounded shadow">
-          <p className="text-sm text-gray-600">Заказы</p>
-          <p className="text-3xl font-bold">{stats?.total_orders || 0}</p>
-        </div>
-        <div className="bg-red-100 p-4 rounded shadow">
-          <p className="text-sm text-gray-600">Выручка</p>
-          <p className="text-3xl font-bold">{stats?.total_revenue || 0} ₽</p>
-        </div>
+        {tiles.map((tile) => (
+          <Card key={tile.label} className="p-4">
+            <Eyebrow>{tile.label}</Eyebrow>
+            <div className="text-editorial text-3xl text-ink mt-1">{tile.value}</div>
+          </Card>
+        ))}
       </div>
     </div>
   );

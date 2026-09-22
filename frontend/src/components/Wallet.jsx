@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
-import { Card, Button, Input, PageTitle } from '../design/UI';
+import { Card, Button, Input, PageTitle, Eyebrow, Caption } from '../design/UI';
 
 const Wallet = () => {
   const [balance, setBalance] = useState(0);
@@ -45,12 +45,12 @@ const Wallet = () => {
       <PageTitle className="mb-4">Кошелёк</PageTitle>
       <div className="grid grid-cols-2 gap-3 mb-6">
         <div className="bg-surface-2 border border-line p-3 rounded-[var(--radius-sm)] text-center">
-          <div className="text-2xl font-bold text-ink">{balance} ₽</div>
-          <div className="text-xs text-ink-soft">Денежный баланс</div>
+          <div className="text-editorial text-2xl text-ink">{balance} ₽</div>
+          <Eyebrow className="mt-1">Денежный баланс</Eyebrow>
         </div>
         <div className="bg-surface-2 border border-line p-3 rounded-[var(--radius-sm)] text-center">
-          <div className="text-2xl font-bold text-accent">{bonus}</div>
-          <div className="text-xs text-ink-soft">Бонусные баллы</div>
+          <div className="text-editorial text-2xl text-accent">{bonus}</div>
+          <Eyebrow className="mt-1">Бонусные баллы</Eyebrow>
         </div>
       </div>
       <div className="flex gap-2">
@@ -65,7 +65,7 @@ const Wallet = () => {
           {loading ? 'Обработка...' : 'Пополнить'}
         </Button>
       </div>
-      <p className="text-xs text-ink-faint mt-3">* Пополнение через СБП (эмуляция)</p>
+      <Caption className="mt-3">* Пополнение через СБП (эмуляция)</Caption>
     </Card>
   );
 };

@@ -5,7 +5,7 @@ import EventCard from './EventCard';
 import EventDetailModal from './EventDetailModal';
 import { useAuth } from '../context/AuthContext';
 import { PageTitle, Button, Badge } from '../design/UI';
-import { RouteLoadingView, RouteEmptyState } from '../design/DottedPath';
+import { RouteLoadingView, RouteEmptyState, TrailDivider } from '../design/DottedPath';
 
 const Events = () => {
   const { user } = useAuth();
@@ -73,13 +73,19 @@ const Events = () => {
       ) : events.length === 0 ? (
         <RouteEmptyState title={tab === 'my' ? 'У вас пока нет ивентов' : 'Пока нет ивентов'} />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {events.map(e => (
-            <EventCard
+        // 2–3 колонки вместо одной: на широком экране список из одной
+        // колонки выглядел слишком пусто. Карточки по-прежнему без рамок,
+        // разделяет их пунктирная «тропинка» снизу.
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-8">
+          {events.map((e, i) => (
+            <div
               key={e.id}
-              event={e}
-              onClick={setSelected}
-            />
+              className="fade-in-up pb-8"
+              style={{ animationDelay: `${Math.min(i, 8) * 60}ms` }}
+            >
+              <EventCard event={e} onClick={setSelected} />
+              <TrailDivider className="mt-8" />
+            </div>
           ))}
         </div>
       )}

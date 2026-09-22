@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
+import { PageTitle, Eyebrow, Button, Input, Label, Badge } from '../design/UI';
+import { RouteLoadingView } from '../design/DottedPath';
 
 const AdminCompanies = () => {
   const [companies, setCompanies] = useState([]);
@@ -21,21 +23,48 @@ const AdminCompanies = () => {
     try { await api.delete(`/admin/companies?id=${id}`); fetchCompanies(); } catch(e) { alert('Ошибка удаления'); }
   };
 
-  if (loading) return <div>Загрузка...</div>;
+  if (loading) return <RouteLoadingView label="Загрузка компаний..." />;
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-4">Компании</h2>
-      <form onSubmit={handleCreate} className="mb-6 flex gap-2 flex-wrap items-end">
-        <div><label className="block text-sm">Название</label><input type="text" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="border p-2 rounded" required /></div>
-        <div><label className="block text-sm">Описание</label><input type="text" value={form.description} onChange={e => setForm({...form, description: e.target.value})} className="border p-2 rounded" /></div>
-        <div><label className="block text-sm">Активна</label><input type="checkbox" checked={form.is_active} onChange={e => setForm({...form, is_active: e.target.checked})} /></div>
-        <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">Создать</button>
+      <PageTitle>Компании</PageTitle>
+      <form onSubmit={handleCreate} className="mb-6 flex gap-4 flex-wrap items-end">
+        <div>
+          <Label className="mb-1">Название</Label>
+          <Input type="text" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-56" required />
+        </div>
+        <div>
+          <Label className="mb-1">Описание</Label>
+          <Input type="text" value={form.description} onChange={e => setForm({...form, description: e.target.value})} className="w-56" />
+        </div>
+        <div className="flex items-center gap-2 pb-2.5">
+          <input type="checkbox" checked={form.is_active} onChange={e => setForm({...form, is_active: e.target.checked})} id="company-active" />
+          <label htmlFor="company-active" className="text-sm text-ink-soft">Активна</label>
+        </div>
+        <Button type="submit">Создать</Button>
       </form>
-      <table className="w-full border-collapse">
-        <thead><tr className="bg-gray-100"><th className="p-2 text-left">ID</th><th className="p-2 text-left">Название</th><th className="p-2 text-left">Описание</th><th className="p-2 text-left">Активна</th><th className="p-2 text-left">Действия</th></tr></thead>
+      <table className="w-full border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-line">
+            <th className="p-2 text-left text-eyebrow text-ink-faint font-normal">ID</th>
+            <th className="p-2 text-left text-eyebrow text-ink-faint font-normal">Название</th>
+            <th className="p-2 text-left text-eyebrow text-ink-faint font-normal">Описание</th>
+            <th className="p-2 text-left text-eyebrow text-ink-faint font-normal">Активна</th>
+            <th className="p-2 text-left text-eyebrow text-ink-faint font-normal">Действия</th>
+          </tr>
+        </thead>
         <tbody>
           {companies.map(c => (
-            <tr key={c.id} className="border-b"><td className="p-2">{c.id}</td><td className="p-2">{c.name}</td><td className="p-2">{c.description}</td><td className="p-2">{c.is_active ? '✅' : '❌'}</td><td className="p-2"><button onClick={() => handleDelete(c.id)} className="text-red-500">Удалить</button></td></tr>
+            <tr key={c.id} className="border-b border-line">
+              <td className="p-2 text-ink-faint">{c.id}</td>
+              <td className="p-2 text-ink">{c.name}</td>
+              <td className="p-2 text-ink-soft">{c.description}</td>
+              <td className="p-2">
+                <Badge filled={c.is_active}>{c.is_active ? 'Активна' : 'Неактивна'}</Badge>
+              </td>
+              <td className="p-2">
+                <button onClick={() => handleDelete(c.id)} className="text-danger hover:underline text-sm">Удалить</button>
+              </td>
+            </tr>
           ))}
         </tbody>
       </table>

@@ -1,8 +1,10 @@
 import React from 'react';
-import { formatRecurrence } from '../utils/recurrence';
 import { RouteMark } from '../design/DottedPath';
 
-const EventCard = ({ event, onClick }) => {
+/** Безрамочная карточка ивента. `size="lg"` — крупный вариант для
+    основной вертикальной ленты, `size="md"` — для карусели. Без эмодзи:
+    статус и повторяемость — обычным текстом, не значками. */
+const EventCard = ({ event, onClick, size = 'md' }) => {
   const isPaid = event.special_price && event.special_price > 0;
   const priceText = isPaid ? `${event.special_price} ₽` : 'Бесплатно';
 
@@ -11,57 +13,55 @@ const EventCard = ({ event, onClick }) => {
   const dayNum = startDate.toLocaleDateString('ru-RU', { day: 'numeric' });
   const monthShort = startDate.toLocaleDateString('ru-RU', { month: 'short' }).replace('.', '').toUpperCase();
   const time = startDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  const isLg = size === 'lg';
 
   return (
-    <div
-      onClick={() => onClick(event)}
-      className="relative bg-surface rounded-[var(--radius-md)] border border-line hover:border-ink-faint transition-colors duration-200 cursor-pointer overflow-hidden flex flex-col h-full"
-    >
-      {/* Дата — афишный акцент, как в разделе 10 ТЗ: "24 СЕН" крупно и заметно. */}
+    <div onClick={() => onClick(event)} className="relative cursor-pointer group">
+      {/* Дата — афишный акцент прямо на фото (ТЗ, раздел 10: "24 СЕН"). */}
       <div className="absolute top-3 left-3 z-10 bg-bg/85 backdrop-blur rounded-[var(--radius-sm)] px-2.5 py-1.5 text-center leading-none">
         <div className="text-editorial text-xl text-ink">{dayNum}</div>
         <div className="text-eyebrow text-ink-faint mt-0.5">{monthShort}</div>
       </div>
 
       {coverSrc ? (
-        <div
-          className="w-full h-40 bg-cover bg-center bg-surface-2"
-          style={{ backgroundImage: `url('${coverSrc}')` }}
-        />
+        <div className="overflow-hidden rounded-[var(--radius-sm)]">
+          <div
+            className={`media-hover w-full ${isLg ? 'h-64 sm:h-80' : 'h-44 sm:h-48'} bg-cover bg-center bg-surface-2`}
+            style={{ backgroundImage: `url('${coverSrc}')` }}
+          />
+        </div>
       ) : (
-        <div className="w-full h-40 bg-surface-2 flex items-center justify-center">
+        <div className={`w-full ${isLg ? 'h-64 sm:h-80' : 'h-44 sm:h-48'} bg-surface-2 rounded-[var(--radius-sm)] flex items-center justify-center`}>
           <RouteMark />
         </div>
       )}
-      <div className="p-4 flex flex-col flex-1">
-        <div className="flex justify-between items-start gap-2">
-          <h3 className="text-editorial text-base text-ink uppercase line-clamp-2">{event.title}</h3>
-          <span className={`text-xs font-medium px-2 py-0.5 rounded-[var(--radius-xs)] whitespace-nowrap ${
-            isPaid ? 'bg-accent/10 text-accent' : 'bg-surface-2 text-ink-soft'
-          }`}>
-            {priceText}
-          </span>
-        </div>
 
-        {event.recurrence_rule && (
-          <div className="mt-1 inline-block bg-surface-2 text-ink-soft text-xs font-medium px-2 py-0.5 rounded-[var(--radius-xs)] self-start">
-            🔄 {formatRecurrence(event.recurrence_rule, event.recurrence_until)}
-          </div>
+      <div className="pt-3">
+        <h3 className={`text-editorial ${isLg ? 'text-xl' : 'text-base'} text-ink uppercase group-hover:text-accent transition-colors line-clamp-2`}>
+          {event.title}
+        </h3>
+
+        {isLg && event.description && (
+          <p className="text-ink-soft text-sm mt-2 line-clamp-2">{event.description}</p>
         )}
 
-        <div className="text-caption text-xs text-ink-faint mt-1">
-          {event.address ? `${event.address} · ` : ''}{time}
+        <div className="mt-2 flex flex-wrap items-baseline gap-x-2 text-sm">
+          <span className={isPaid ? 'text-ink' : 'text-accent'}>{priceText}</span>
+          {event.address && (
+            <>
+              <span className="text-ink-faint">·</span>
+              <span className="text-ink-faint line-clamp-1">{event.address}</span>
+            </>
+          )}
+          <span className="text-ink-faint">·</span>
+          <span className="text-caption text-ink-faint">{time}</span>
         </div>
 
         {event.my_attendee_status === 'going' && (
-          <div className="mt-2 inline-block bg-accent/10 text-accent text-xs font-medium px-2 py-0.5 rounded-[var(--radius-xs)] self-start">
-            ✓ Вы идёте
-          </div>
+          <div className="mt-1 text-xs text-accent">Вы идёте</div>
         )}
         {event.my_attendee_status === 'interested' && (
-          <div className="mt-2 inline-block bg-surface-2 text-ink-soft text-xs font-medium px-2 py-0.5 rounded-[var(--radius-xs)] self-start">
-            ⭐ Вы интересуетесь
-          </div>
+          <div className="mt-1 text-xs text-ink-soft">Вы интересуетесь</div>
         )}
       </div>
     </div>

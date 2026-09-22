@@ -34,7 +34,7 @@ const Login = () => {
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center gap-4 mb-8">
           <RouteMark />
-          <h2 className="text-xl font-semibold text-ink">Вход</h2>
+          <h2 className="text-editorial text-xl text-ink uppercase">Вход</h2>
         </div>
 
         <Card className="p-6">

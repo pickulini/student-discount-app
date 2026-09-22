@@ -5,9 +5,9 @@ import { RouteLoadingView } from '../design/DottedPath';
 
 const ROWS = [
   { key: 'enabled', label: 'Все уведомления', hint: 'Главный выключатель' },
-  { key: 'friends', label: '👥 Друзья', hint: 'Заявки в друзья, принятие' },
-  { key: 'events', label: '📅 Ивенты', hint: 'Новые ивенты подписок и друзей' },
-  { key: 'offers', label: '🎁 Офферы', hint: 'Новые предложения компаний' },
+  { key: 'friends', label: 'Друзья', hint: 'Заявки в друзья, принятие' },
+  { key: 'events', label: 'Ивенты', hint: 'Новые ивенты подписок и друзей' },
+  { key: 'offers', label: 'Офферы', hint: 'Новые предложения компаний' },
 ];
 
 const SettingsNotifications = () => {
@@ -49,7 +49,7 @@ const SettingsNotifications = () => {
 
   return (
     <Card className="p-6">
-      <h2 className="text-xl font-semibold text-ink mb-1">Уведомления</h2>
+      <h2 className="text-editorial text-xl text-ink uppercase mb-1">Уведомления</h2>
       <p className="text-sm text-ink-soft mb-4">Выберите, что вам присылать</p>
 
       {error && <div className="bg-danger/10 text-danger p-3 rounded-[var(--radius-sm)] mb-3 text-sm">{error}</div>}

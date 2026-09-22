@@ -17,6 +17,28 @@ export const DottedDividerV = ({ className = '', accent = false, style }) => (
   />
 );
 
+/**
+ * Тропинка — штриховая линия между безрамочными элементами ленты
+ * (офферы, ивенты). В отличие от DottedDivider (точки), это настоящий
+ * пунктир — визуально путь, а не декоративная точечная насечка.
+ */
+export const TrailDivider = ({ className = '', accent = false, animated = false, style }) => (
+  <div
+    className={`trail-divider ${accent ? 'trail-divider--accent' : ''} ${animated ? 'trail-divider--animated' : ''} ${className}`}
+    style={style}
+  />
+);
+
+/** Вертикальный вариант тропинки — между карточками в горизонтальной секции.
+    `animated` — лёгкое "движение" по маршруту, для точечного использования
+    (напр. в горизонтальных каруселях), не по всему сайту разом. */
+export const TrailDividerV = ({ className = '', accent = false, animated = false, style }) => (
+  <div
+    className={`trail-divider-v ${accent ? 'trail-divider-v--accent' : ''} ${animated ? 'trail-divider-v--animated' : ''} ${className}`}
+    style={style}
+  />
+);
+
 /** Логотип-метафора: точка (студент) — пунктир (путь) — точка (место/событие). */
 export const RouteMark = ({ className = '' }) => (
   <span className={`inline-flex items-center gap-1.5 ${className}`}>
