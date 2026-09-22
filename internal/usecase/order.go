@@ -249,10 +249,13 @@ func (u *OrderUsecase) UpdateOrderStatus(ctx context.Context, orderID int64, new
     return u.orderRepo.UpdateStatus(ctx, orderID, newStatus)
 }
 
-func (u *OrderUsecase) CancelOrder(ctx context.Context, orderID int64) error {
+func (u *OrderUsecase) CancelOrder(ctx context.Context, userID, orderID int64) error {
     order, err := u.orderRepo.GetByID(ctx, orderID)
     if err != nil {
         return errors.New("order not found")
+    }
+    if order.UserID != userID {
+        return errors.New("access denied")
     }
 
     if order.Status != domain.OrderStatusCreated {

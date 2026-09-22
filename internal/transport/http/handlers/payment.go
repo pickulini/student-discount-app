@@ -3,10 +3,13 @@ package handlers
 import (
     "encoding/json"
     "fmt"
+    "io"
     "net/http"
     "strconv"
     "your-project/internal/transport/http/middleware"
     "your-project/internal/usecase"
+
+    "github.com/go-chi/chi/v5"
 )
 
 type PaymentHandler struct {
@@ -44,7 +47,8 @@ func (h *PaymentHandler) InitiatePayment(w http.ResponseWriter, r *http.Request)
     if r.TLS != nil {
         scheme = "https"
     }
-    paymentURL := fmt.Sprintf("%s://%s/payments/sbp/checkout/%d", scheme, r.Host, paymentID)
+    token := h.paymentUsecase.GenerateCheckoutToken(paymentID)
+    paymentURL := fmt.Sprintf("%s://%s/payments/sbp/checkout/%d?t=%s", scheme, r.Host, paymentID, token)
     writeJSON(w, http.StatusOK, map[string]interface{}{
         "payment_id":  paymentID,
         "payment_url": paymentURL,
@@ -53,10 +57,20 @@ func (h *PaymentHandler) InitiatePayment(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *PaymentHandler) ConfirmPayment(w http.ResponseWriter, r *http.Request) {
-    idStr := r.URL.Path[len("/payments/sbp/checkout/"):]
-    id, err := strconv.ParseInt(idStr, 10, 64)
+    id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
     if err != nil {
         http.Error(w, "invalid payment id", http.StatusBadRequest)
+        return
+    }
+
+    // Эта страница не требует логина (эмуляция редиректа на страницу оплаты СБП, куда
+    // браузер переходит через window.location, без Authorization-заголовка). Вместо
+    // сессии её защищает непредсказуемый токен, который знает только тот, кто получил
+    // payment_url из /api/v1/payments/init — иначе любой человек, подобрав ID платежа,
+    // мог бы подтвердить чужой платёж и зачислить деньги на чужой баланс.
+    token := r.URL.Query().Get("t")
+    if !h.paymentUsecase.VerifyCheckoutToken(id, token) {
+        http.Error(w, "invalid or missing payment token", http.StatusForbidden)
         return
     }
 
@@ -130,7 +144,7 @@ func (h *PaymentHandler) ConfirmPayment(w http.ResponseWriter, r *http.Request) 
         <div class="amount">` + fmt.Sprintf("%.2f", payment.Amount) + ` <span class="currency">RUB</span></div>
         <p>Платёж будет обработан через СБП (эмуляция).</p>
         <div class="buttons">
-            <form method="POST" action="` + r.URL.Path + `">
+            <form method="POST" action="` + r.URL.RequestURI() + `">
                 <button type="submit" class="btn btn-primary">Подтвердить</button>
             </form>
             <a href="/wallet" class="btn btn-secondary">Отмена</a>
@@ -144,11 +158,25 @@ func (h *PaymentHandler) ConfirmPayment(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *PaymentHandler) WebhookHandler(w http.ResponseWriter, r *http.Request) {
+    body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20)) // 1 MB — вебхук не должен быть больше
+    if err != nil {
+        writeError(w, http.StatusBadRequest, "invalid request")
+        return
+    }
+
+    // Без проверки подписи любой человек в интернете мог бы POST-ить сюда
+    // {"payment_id": N, "status": "succeeded"} и зачислять деньги на произвольный счёт.
+    signature := r.Header.Get("X-Webhook-Signature")
+    if !h.paymentUsecase.VerifyWebhookSignature(body, signature) {
+        writeError(w, http.StatusUnauthorized, "invalid webhook signature")
+        return
+    }
+
     var req struct {
         PaymentID int64  `json:"payment_id"`
         Status    string `json:"status"`
     }
-    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+    if err := json.Unmarshal(body, &req); err != nil {
         writeError(w, http.StatusBadRequest, "invalid request")
         return
     }

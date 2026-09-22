@@ -89,7 +89,7 @@ func (h *OrderHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
     writeJSON(w, http.StatusOK, map[string]string{"message": "status updated"})
 }
 
-// CancelOrder – отмена заказа пользователем
+// CancelOrder – отмена заказа пользователем (только своего)
 func (h *OrderHandler) CancelOrder(w http.ResponseWriter, r *http.Request) {
     idStr := chi.URLParam(r, "id")
     id, err := strconv.ParseInt(idStr, 10, 64)
@@ -97,8 +97,13 @@ func (h *OrderHandler) CancelOrder(w http.ResponseWriter, r *http.Request) {
         writeError(w, http.StatusBadRequest, "invalid order id")
         return
     }
+    userID, ok := r.Context().Value(middleware.UserIDKey).(int64)
+    if !ok {
+        writeError(w, http.StatusUnauthorized, "unauthorized")
+        return
+    }
 
-    if err := h.orderUsecase.CancelOrder(r.Context(), id); err != nil {
+    if err := h.orderUsecase.CancelOrder(r.Context(), userID, id); err != nil {
         writeError(w, http.StatusBadRequest, err.Error())
         return
     }

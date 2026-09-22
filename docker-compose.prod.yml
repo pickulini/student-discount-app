@@ -3,13 +3,16 @@ services:
     image: postgis/postgis:16-3.4
     platform: linux/amd64
     environment:
-      POSTGRES_USER: ${DB_USER:-studentapp}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
-      POSTGRES_DB: ${DB_NAME:-discount_db}
+      # Никаких дефолтов вида ":-secret" — в проде это должно быть явно задано,
+      # иначе контейнер просто не стартует, вместо того чтобы тихо подняться с
+      # паролем "secret", который лежит в публичном репозитории.
+      POSTGRES_USER: ${DB_USER:?DB_USER must be set}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+      POSTGRES_DB: ${DB_NAME:?DB_NAME must be set}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-studentapp} -d ${DB_NAME:-discount_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:?DB_USER must be set} -d ${DB_NAME:?DB_NAME must be set}"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -27,7 +30,7 @@ services:
       - ./db/migrations:/migrations
     command:
       - "-path=/migrations"
-      - "-database=postgres://${DB_USER:-studentapp}:${DB_PASSWORD:-secret}@postgres:5432/${DB_NAME:-discount_db}?sslmode=disable"
+      - "-database=postgres://${DB_USER:?DB_USER must be set}:${DB_PASSWORD:?DB_PASSWORD must be set}@postgres:5432/${DB_NAME:?DB_NAME must be set}?sslmode=disable"
       - "up"
     depends_on:
       postgres:
@@ -46,12 +49,13 @@ services:
       migrate:
         condition: service_completed_successfully
     environment:
-      DATABASE_URL: postgres://${DB_USER:-studentapp}:${DB_PASSWORD:-secret}@postgres:5432/${DB_NAME:-discount_db}?sslmode=disable
+      DATABASE_URL: postgres://${DB_USER:?DB_USER must be set}:${DB_PASSWORD:?DB_PASSWORD must be set}@postgres:5432/${DB_NAME:?DB_NAME must be set}?sslmode=disable
       REDIS_URL: redis://redis:6379
-      JWT_SECRET: ${JWT_SECRET:-supersecretkey}
-      IP_HASH_SECRET: ${IP_HASH_SECRET:-change-me}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      IP_HASH_SECRET: ${IP_HASH_SECRET:?IP_HASH_SECRET must be set}
+      PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET:?PAYMENT_WEBHOOK_SECRET must be set}
       APP_PORT: 8080
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL must be set}
     volumes:
       - ./uploads:/app/uploads
     expose:

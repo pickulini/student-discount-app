@@ -6,6 +6,7 @@ import (
     "time"
     "your-project/internal/domain"
     "your-project/internal/repository"
+    "github.com/jackc/pgx/v5"
 )
 
 type PaymentRepo struct {
@@ -32,6 +33,34 @@ func (r *PaymentRepo) GetByID(ctx context.Context, id int64) (*domain.Payment, e
     var externalID, paymentURL sql.NullString
     var completedAt sql.NullTime
     err := r.db.Pool.QueryRow(ctx, query, id).Scan(
+        &p.ID, &p.UserID, &p.Amount, &p.Currency, &p.Provider,
+        &externalID, &p.Status, &p.IdempotencyKey, &paymentURL,
+        &p.CreatedAt, &p.UpdatedAt, &completedAt,
+    )
+    if err != nil {
+        return nil, err
+    }
+    if externalID.Valid {
+        p.ExternalPaymentID = &externalID.String
+    }
+    if paymentURL.Valid {
+        p.PaymentURL = &paymentURL.String
+    }
+    if completedAt.Valid {
+        p.CompletedAt = &completedAt.Time
+    }
+    return &p, nil
+}
+
+// GetByIDForUpdateTx locks the payment row for the duration of the transaction so that
+// concurrent webhook/confirm calls can't race each other past the "still pending" check.
+func (r *PaymentRepo) GetByIDForUpdateTx(ctx context.Context, tx pgx.Tx, id int64) (*domain.Payment, error) {
+    query := `SELECT id, user_id, amount, currency, provider, external_payment_id, status, idempotency_key, payment_url, created_at, updated_at, completed_at
+              FROM payments WHERE id = $1 FOR UPDATE`
+    var p domain.Payment
+    var externalID, paymentURL sql.NullString
+    var completedAt sql.NullTime
+    err := tx.QueryRow(ctx, query, id).Scan(
         &p.ID, &p.UserID, &p.Amount, &p.Currency, &p.Provider,
         &externalID, &p.Status, &p.IdempotencyKey, &paymentURL,
         &p.CreatedAt, &p.UpdatedAt, &completedAt,
@@ -106,6 +135,12 @@ func (r *PaymentRepo) GetByIdempotencyKey(ctx context.Context, key string) (*dom
 func (r *PaymentRepo) UpdateStatus(ctx context.Context, id int64, status string, externalID *string, completedAt *time.Time) error {
     query := `UPDATE payments SET status=$1, external_payment_id=$2, completed_at=$3, updated_at=NOW() WHERE id=$4`
     _, err := r.db.Pool.Exec(ctx, query, status, externalID, completedAt, id)
+    return err
+}
+
+func (r *PaymentRepo) UpdateStatusTx(ctx context.Context, tx pgx.Tx, id int64, status string, externalID *string, completedAt *time.Time) error {
+    query := `UPDATE payments SET status=$1, external_payment_id=$2, completed_at=$3, updated_at=NOW() WHERE id=$4`
+    _, err := tx.Exec(ctx, query, status, externalID, completedAt, id)
     return err
 }
 

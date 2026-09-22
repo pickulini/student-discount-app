@@ -36,11 +36,14 @@ func NewRouterProto(
     uploadHandler *handlers.UploadHandler,
 	userRepo repository.UserRepository,
 	jwtManager *crypto.JWTManager,
+	allowedOrigin string,
+	loginRateLimitPerMin int,
 ) *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(chiMiddleware.Logger)
 	r.Use(chiMiddleware.Recoverer)
-	r.Use(middleware.CORS)
+	r.Use(middleware.SecurityHeaders)
+	r.Use(middleware.CORS(allowedOrigin))
 	r.Use(middleware.RequestInfo)
 
 	authHandler := handlers.NewAuthHandler(authUsecase)
@@ -50,8 +53,10 @@ func NewRouterProto(
 	referralHandler := handlers.NewReferralHandler(referralUsecase)
 
 	// Публичные
-	r.Post("/api/v1/auth/register", authHandler.Register)
-	r.Post("/api/v1/auth/login", authHandler.Login)
+	// Логин и регистрация — под rate-limit по IP: раньше на /auth/login не было
+	// никакой защиты от перебора паролей.
+	r.With(middleware.RateLimit(loginRateLimitPerMin)).Post("/api/v1/auth/register", authHandler.Register)
+	r.With(middleware.RateLimit(loginRateLimitPerMin)).Post("/api/v1/auth/login", authHandler.Login)
 	r.Get("/api/v1/companies", companyHandler.ListCompanies)
 	r.Get("/api/v1/universities", companyHandler.ListUniversities)
 	r.Get("/api/v1/offers", companyHandler.ListOffers)
@@ -142,8 +147,9 @@ func NewRouterProto(
 		r.Get("/api/v1/orders", orderHandler.GetUserOrders)
 		r.Get("/api/v1/orders/{id}", orderHandler.GetOrder)
 		r.Post("/api/v1/orders/{id}/confirm", orderHandler.ConfirmOrder)
-		r.Put("/api/v1/orders/{id}/status", orderHandler.UpdateStatus)
-		r.Post("/api/v1/orders/{id}/refund", orderHandler.RefundOrder)
+		// UpdateStatus и RefundOrder — ниже, в админ-группе: это операции над ЛЮБЫМ
+		// заказом, а не только своим, поэтому они не должны быть доступны рядовому
+		// пользователю по одному только Auth (см. CVE-подобный IDOR, который тут был).
 		r.Post("/api/v1/orders/{id}/cancel", orderHandler.CancelOrder)
 
 		// Поддержка (пользователь)
@@ -190,6 +196,10 @@ func NewRouterProto(
 			// Верификации
 			r.Get("/api/v1/admin/verifications", adminHandler.ListVerifications)
 			r.Put("/api/v1/admin/verifications/{id}", adminHandler.UpdateVerification)
+
+			// Заказы (управление любым заказом — только админ)
+			r.Put("/api/v1/orders/{id}/status", orderHandler.UpdateStatus)
+			r.Post("/api/v1/orders/{id}/refund", orderHandler.RefundOrder)
 
 			// Статистика общая
 			r.Get("/api/v1/admin/statistics", adminHandler.GetStatistics)

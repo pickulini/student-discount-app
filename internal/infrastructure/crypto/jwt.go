@@ -37,8 +37,13 @@ func (m *JWTManager) Generate(userID int64) (string, error) {
 
 func (m *JWTManager) Verify(tokenStr string) (*Claims, error) {
     token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
+        // Явно проверяем алгоритм подписи: без этого keyFunc отдаёт секрет вне
+        // зависимости от того, что указано в заголовке токена (alg confusion).
+        if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+            return nil, errors.New("unexpected signing method")
+        }
         return m.secret, nil
-    })
+    }, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
     if err != nil {
         return nil, err
     }

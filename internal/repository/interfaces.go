@@ -189,9 +189,13 @@ type CompanyUserRepository interface {
 type PaymentRepository interface {
     Create(ctx context.Context, p *domain.Payment) error
     GetByID(ctx context.Context, id int64) (*domain.Payment, error)
+    // GetByIDForUpdateTx locks the row (SELECT ... FOR UPDATE) so concurrent webhook/confirm
+    // calls for the same payment can't both pass the "status == pending" check.
+    GetByIDForUpdateTx(ctx context.Context, tx pgx.Tx, id int64) (*domain.Payment, error)
     GetByExternalID(ctx context.Context, externalID string) (*domain.Payment, error)
     GetByIdempotencyKey(ctx context.Context, key string) (*domain.Payment, error)
     UpdateStatus(ctx context.Context, id int64, status string, externalID *string, completedAt *time.Time) error
+    UpdateStatusTx(ctx context.Context, tx pgx.Tx, id int64, status string, externalID *string, completedAt *time.Time) error
     UpdatePaymentURL(ctx context.Context, id int64, url string) error
 }
 

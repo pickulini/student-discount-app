@@ -76,7 +76,7 @@ func main() {
     userUsecase := usecase.NewUserUsecase(userRepo, accountRepo, bonusRepo, ledgerRepo, studentVerifRepo, companyRepo, friendshipRepo)
     companyUsecase := usecase.NewCompanyUsecase(companyRepo, locationRepo, offerRepo, uniRepo)
     orderUsecase := usecase.NewOrderUsecase(orderRepo, offerRepo, userRepo, accountRepo, ledgerRepo, bonusRepo, merchantAccountRepo, merchantTxRepo, eventAttendeeRepo, db.Pool)
-    paymentUsecase := usecase.NewPaymentUsecase(accountRepo, ledgerRepo, bonusRepo, paymentRepo)
+    paymentUsecase := usecase.NewPaymentUsecase(accountRepo, ledgerRepo, bonusRepo, paymentRepo, db.Pool, cfg.PaymentWebhookSecret)
     referralUsecase := usecase.NewReferralUsecase(referralRepo, userRepo)
 	notificationUsecase := usecase.NewNotificationUsecase(notificationRepo, userRepo, sseHub)
     supportUsecase := usecase.NewSupportUsecase(ticketRepo, msgRepo, userRepo, notificationUsecase)
@@ -126,6 +126,8 @@ func main() {
         uploadHandler,
         userRepo,
         jwtManager,
+        cfg.FrontendURL,
+        cfg.LoginRateLimitPerMin,
     )
 
     srv := &http.Server{

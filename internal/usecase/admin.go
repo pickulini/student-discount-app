@@ -102,7 +102,16 @@ func (u *AdminUsecase) GetUser(ctx context.Context, id int64) (*domain.User, err
     return u.userRepo.GetByID(ctx, id)
 }
 
+var allowedUserRoles = map[string]bool{
+    "student":  true,
+    "merchant": true,
+    "admin":    true,
+}
+
 func (u *AdminUsecase) UpdateUserRole(ctx context.Context, userID int64, role string) error {
+    if !allowedUserRoles[role] {
+        return errors.New("invalid role")
+    }
     return u.userRepo.UpdateRole(ctx, userID, role)
 }
 

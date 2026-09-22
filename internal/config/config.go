@@ -22,6 +22,8 @@ type Config struct {
     SMTPUser        string
     SMTPPassword    string
     FrontendURL     string
+    PaymentWebhookSecret string
+    LoginRateLimitPerMin int
 }
 
 func Load() *Config {
@@ -31,7 +33,7 @@ func Load() *Config {
         RedisURL:      getEnv("REDIS_URL", "redis://localhost:6379"),
         JWTSecret:     getEnv("JWT_SECRET", "change-me-in-production"),
         JWTExpiryMin:  getEnvAsInt("JWT_EXPIRY_MIN", 30),
-        Argon2Time:    uint32(getEnvAsInt("ARGON2_TIME", 1)),
+        Argon2Time:    uint32(getEnvAsInt("ARGON2_TIME", 2)), // OWASP рекомендует t>=2 при m=64MB
         Argon2Memory:  uint32(getEnvAsInt("ARGON2_MEMORY", 64*1024)),
         Argon2Threads: uint8(getEnvAsInt("ARGON2_THREADS", 4)),
         Argon2KeyLen:  uint32(getEnvAsInt("ARGON2_KEY_LEN", 32)),
@@ -41,9 +43,20 @@ func Load() *Config {
         SMTPUser:      getEnv("SMTP_USER", ""),
         SMTPPassword:  getEnv("SMTP_PASSWORD", ""),
         FrontendURL:   getEnv("FRONTEND_URL", "http://localhost:3000"),
+        PaymentWebhookSecret: getEnv("PAYMENT_WEBHOOK_SECRET", ""),
+        LoginRateLimitPerMin: getEnvAsInt("LOGIN_RATE_LIMIT_PER_MIN", 10),
     }
     if cfg.DatabaseURL == "" {
         log.Fatal("DATABASE_URL is required")
+    }
+    if cfg.JWTSecret == "change-me-in-production" {
+        log.Println("WARNING: JWT_SECRET is not set, using an insecure default. Set JWT_SECRET before deploying to production!")
+    }
+    if cfg.PaymentWebhookSecret == "" {
+        // Fallback so the app keeps working out of the box, but this is not safe for production:
+        // anyone who can read the (weak, possibly default) JWT secret could also forge payment webhooks.
+        log.Println("WARNING: PAYMENT_WEBHOOK_SECRET is not set, deriving it from JWT_SECRET. Set a dedicated PAYMENT_WEBHOOK_SECRET before deploying to production!")
+        cfg.PaymentWebhookSecret = "webhook:" + cfg.JWTSecret
     }
     return cfg
 }

@@ -27,6 +27,7 @@ type AuthUsecase struct {
     hasher           *crypto.PasswordHasher
     jwtManager       *crypto.JWTManager
     frontendURL      string
+    dummyHash        string // используется в Login, чтобы не палить таймингом, есть ли такой email
 }
 
 func NewAuthUsecase(
@@ -42,6 +43,15 @@ func NewAuthUsecase(
     jwtManager *crypto.JWTManager,
     frontendURL string,
 ) *AuthUsecase {
+    // Фиксированный хэш для сверки, когда пользователь с таким email не найден —
+    // чтобы Login занимал примерно одинаковое время в обоих случаях и по ответу
+    // нельзя было по времени угадывать, зарегистрирован ли email.
+    dummyHash, err := hasher.Hash(generateRandomToken(32))
+    if err != nil {
+        // Не должно случаться (rand.Read почти никогда не падает), но на всякий случай
+        // не роняем приложение — просто не будет защиты от enumeration по таймингу.
+        log.Printf("[AUTH] failed to precompute dummy hash: %v", err)
+    }
     return &AuthUsecase{
         userRepo:         userRepo,
         sessionRepo:      sessionRepo,
@@ -54,6 +64,7 @@ func NewAuthUsecase(
         hasher:           hasher,
         jwtManager:       jwtManager,
         frontendURL:      frontendURL,
+        dummyHash:        dummyHash,
     }
 }
 
@@ -185,11 +196,17 @@ func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName st
 }
 
 func (u *AuthUsecase) Login(ctx context.Context, email, password, deviceName, userAgent, ip string) (accessToken, refreshToken string, err error) {
+    // Rate-limit по IP для /auth/login навешен на уровне HTTP-middleware (см. router_proto.go
+    // и middleware.RateLimit) — раньше сюда вообще не пускали никакой защиты от перебора.
     user, err := u.userRepo.GetByEmail(ctx, email)
     if err != nil || user == nil {
+        // Пользователя нет — всё равно считаем хэш, чтобы время ответа не отличалось
+        // от случая "пользователь есть, пароль неверный" (защита от enumeration email по времени).
+        _, _ = u.hasher.Verify(password, u.dummyHash)
         return "", "", domain.ErrInvalidCredentials
     }
     if !user.IsActive {
+        _, _ = u.hasher.Verify(password, u.dummyHash)
         return "", "", domain.ErrInvalidCredentials
     }
     ok, err := u.hasher.Verify(password, user.PasswordHash)

@@ -2,21 +2,30 @@ package usecase
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 	"your-project/internal/domain"
 	"your-project/internal/repository"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type PaymentUsecase struct {
-	accountRepo repository.AccountRepository
-	ledgerRepo  repository.LedgerRepository
-	bonusRepo   repository.BonusRepository
-	paymentRepo repository.PaymentRepository
+	accountRepo   repository.AccountRepository
+	ledgerRepo    repository.LedgerRepository
+	bonusRepo     repository.BonusRepository
+	paymentRepo   repository.PaymentRepository
+	db            *pgxpool.Pool
+	webhookSecret []byte
 }
 
 func NewPaymentUsecase(
@@ -24,12 +33,16 @@ func NewPaymentUsecase(
 	ledgerRepo repository.LedgerRepository,
 	bonusRepo repository.BonusRepository,
 	paymentRepo repository.PaymentRepository,
+	db *pgxpool.Pool,
+	webhookSecret string,
 ) *PaymentUsecase {
 	return &PaymentUsecase{
-		accountRepo: accountRepo,
-		ledgerRepo:  ledgerRepo,
-		bonusRepo:   bonusRepo,
-		paymentRepo: paymentRepo,
+		accountRepo:   accountRepo,
+		ledgerRepo:    ledgerRepo,
+		bonusRepo:     bonusRepo,
+		paymentRepo:   paymentRepo,
+		db:            db,
+		webhookSecret: []byte(webhookSecret),
 	}
 }
 
@@ -71,15 +84,38 @@ func (u *PaymentUsecase) Deposit(ctx context.Context, input DepositInput) (int64
 	return payment.ID, nil
 }
 
+// GenerateCheckoutToken returns an unguessable, per-payment token that authorizes access to
+// the (unauthenticated, full-page-redirect) SBP checkout/confirm page for this one payment.
+// Without it, anyone who can guess a sequential payment ID could confirm someone else's payment.
+func (u *PaymentUsecase) GenerateCheckoutToken(paymentID int64) string {
+	mac := hmac.New(sha256.New, u.webhookSecret)
+	mac.Write([]byte("checkout:" + strconv.FormatInt(paymentID, 10)))
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+// VerifyCheckoutToken checks a token produced by GenerateCheckoutToken in constant time.
+func (u *PaymentUsecase) VerifyCheckoutToken(paymentID int64, token string) bool {
+	expected := u.GenerateCheckoutToken(paymentID)
+	return subtle.ConstantTimeCompare([]byte(expected), []byte(token)) == 1
+}
+
+// VerifyWebhookSignature validates an HMAC-SHA256 signature (hex-encoded) over the raw webhook
+// body. Real payment providers sign their webhook payloads this way; without this check, anyone
+// could POST a fake "succeeded" webhook and credit an arbitrary balance.
+func (u *PaymentUsecase) VerifyWebhookSignature(body []byte, signatureHex string) bool {
+	if signatureHex == "" {
+		return false
+	}
+	mac := hmac.New(sha256.New, u.webhookSecret)
+	mac.Write(body)
+	expected := hex.EncodeToString(mac.Sum(nil))
+	return subtle.ConstantTimeCompare([]byte(expected), []byte(signatureHex)) == 1
+}
+
 func (u *PaymentUsecase) CompletePayment(ctx context.Context, paymentID int64) error {
-	payment, err := u.paymentRepo.GetByID(ctx, paymentID)
-	if err != nil {
-		return err
-	}
-	if payment.Status != "pending" {
-		return errors.New("payment already processed")
-	}
-	return u.processSuccessfulPayment(ctx, payment)
+	return u.withLockedPendingPayment(ctx, paymentID, func(ctx context.Context, tx pgx.Tx, payment *domain.Payment) error {
+		return u.processSuccessfulPaymentTx(ctx, tx, payment)
+	})
 }
 
 // ConfirmPayment – устаревший, оставляем для совместимости, но можно удалить
@@ -88,30 +124,52 @@ func (u *PaymentUsecase) ConfirmPayment(ctx context.Context, paymentID int64) er
 }
 
 func (u *PaymentUsecase) ProcessWebhook(ctx context.Context, paymentID int64, status string) error {
-	payment, err := u.paymentRepo.GetByID(ctx, paymentID)
+	if status != "succeeded" && status != "failed" {
+		return errors.New("unknown status")
+	}
+	return u.withLockedPendingPayment(ctx, paymentID, func(ctx context.Context, tx pgx.Tx, payment *domain.Payment) error {
+		if status == "succeeded" {
+			return u.processSuccessfulPaymentTx(ctx, tx, payment)
+		}
+		return u.paymentRepo.UpdateStatusTx(ctx, tx, paymentID, "failed", nil, nil)
+	})
+}
+
+// withLockedPendingPayment opens a transaction, locks the payment row (SELECT ... FOR UPDATE)
+// and re-checks that it's still "pending" before calling fn. This closes a race where two
+// concurrent webhook/confirm requests for the same payment could both pass a plain
+// GetByID+status-check and double-credit the account.
+func (u *PaymentUsecase) withLockedPendingPayment(ctx context.Context, paymentID int64, fn func(ctx context.Context, tx pgx.Tx, payment *domain.Payment) error) error {
+	tx, err := u.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	payment, err := u.paymentRepo.GetByIDForUpdateTx(ctx, tx, paymentID)
 	if err != nil {
 		return err
 	}
 	if payment.Status != "pending" {
 		return errors.New("payment already processed")
 	}
-	if status == "succeeded" {
-		return u.processSuccessfulPayment(ctx, payment)
-	} else if status == "failed" {
-		return u.paymentRepo.UpdateStatus(ctx, paymentID, "failed", nil, nil)
-	}
-	return errors.New("unknown status")
-}
 
-func (u *PaymentUsecase) processSuccessfulPayment(ctx context.Context, payment *domain.Payment) error {
-	now := time.Now()
-	externalID := "sbp_" + hex.EncodeToString([]byte(fmt.Sprintf("%d", payment.ID)))
-
-	if err := u.paymentRepo.UpdateStatus(ctx, payment.ID, "succeeded", &externalID, &now); err != nil {
+	if err := fn(ctx, tx, payment); err != nil {
 		return err
 	}
 
-	account, err := u.accountRepo.GetByUserIDAndType(ctx, payment.UserID, "cash")
+	return tx.Commit(ctx)
+}
+
+func (u *PaymentUsecase) processSuccessfulPaymentTx(ctx context.Context, tx pgx.Tx, payment *domain.Payment) error {
+	now := time.Now()
+	externalID := "sbp_" + hex.EncodeToString([]byte(fmt.Sprintf("%d", payment.ID)))
+
+	if err := u.paymentRepo.UpdateStatusTx(ctx, tx, payment.ID, "succeeded", &externalID, &now); err != nil {
+		return err
+	}
+
+	account, err := u.accountRepo.GetByUserIDAndTypeTx(ctx, tx, payment.UserID, "cash")
 	if err != nil {
 		return err
 	}
@@ -125,7 +183,7 @@ func (u *PaymentUsecase) processSuccessfulPayment(ctx context.Context, payment *
 		ReferenceID:    payment.ID,
 		Description:    "Пополнение баланса через СБП",
 	}
-	if err := u.ledgerRepo.CreateTransaction(ctx, ledgerTx); err != nil {
+	if err := u.ledgerRepo.CreateTransactionTx(ctx, tx, ledgerTx); err != nil {
 		return err
 	}
 
@@ -134,16 +192,16 @@ func (u *PaymentUsecase) processSuccessfulPayment(ctx context.Context, payment *
 		AccountID:     account.ID,
 		Amount:        payment.Amount,
 	}
-	if err := u.ledgerRepo.CreateEntry(ctx, entry); err != nil {
+	if err := u.ledgerRepo.CreateEntryTx(ctx, tx, entry); err != nil {
 		return err
 	}
 
 	newBalance := account.Balance + payment.Amount
-	if err := u.accountRepo.UpdateBalance(ctx, account.ID, newBalance); err != nil {
+	if err := u.accountRepo.UpdateBalanceTx(ctx, tx, account.ID, newBalance); err != nil {
 		return err
 	}
 
-	if err := u.ledgerRepo.UpdateTransactionStatus(ctx, ledgerTx.ID, "completed"); err != nil {
+	if err := u.ledgerRepo.UpdateTransactionStatusTx(ctx, tx, ledgerTx.ID, "completed"); err != nil {
 		return err
 	}
 

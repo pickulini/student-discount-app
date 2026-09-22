@@ -39,6 +39,17 @@ func (h *NotificationHandler) Stream(w http.ResponseWriter, r *http.Request) {
         writeError(w, http.StatusInternalServerError, "streaming not supported")
         return
     }
+
+    // Сервер задаёт глобальный http.Server.WriteTimeout (см. cmd/api/main.go) —
+    // это абсолютный дедлайн на запись ответа, отсчитываемый от начала запроса.
+    // Для короткоживущих запросов это защита от medленных клиентов (slowloris),
+    // но для долгоживущего SSE-соединения он обрывает TCP-соединение каждые
+    // WriteTimeout секунд, даже если keep-alive исправно отправляется.
+    // Отключаем дедлайн записи только для этого соединения, не трогая
+    // глобальный WriteTimeout для остальных обработчиков.
+    rc := http.NewResponseController(w)
+    _ = rc.SetWriteDeadline(time.Time{})
+
     w.Header().Set("Content-Type", "text/event-stream")
     w.Header().Set("Cache-Control", "no-cache")
     w.Header().Set("Connection", "keep-alive")

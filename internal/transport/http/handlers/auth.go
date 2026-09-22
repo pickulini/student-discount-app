@@ -70,7 +70,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
         return
     }
     userAgent := r.Header.Get("User-Agent")
-    ip := r.RemoteAddr
+    ip := middleware.GetIP(r.Context())
+    if ip == "" {
+        ip = r.RemoteAddr
+    }
     accessToken, refreshToken, err := h.authUsecase.Login(r.Context(), req.Email, req.Password, "unknown", userAgent, ip)
     if err != nil {
         writeError(w, http.StatusUnauthorized, "invalid credentials")

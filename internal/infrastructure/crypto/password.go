@@ -2,6 +2,7 @@ package crypto
 
 import (
     "crypto/rand"
+    "crypto/subtle"
     "encoding/base64"
     "fmt"
     "strings"
@@ -65,10 +66,7 @@ func (p *PasswordHasher) Verify(password, encodedHash string) (bool, error) {
     if len(computedHash) != len(hash) {
         return false, nil
     }
-    for i := range computedHash {
-        if computedHash[i] != hash[i] {
-            return false, nil
-        }
-    }
-    return true, nil
+    // subtle.ConstantTimeCompare вместо ручного цикла с ранним выходом — иначе время
+    // сравнения зависит от того, на каком байте нашлось расхождение (timing side-channel).
+    return subtle.ConstantTimeCompare(computedHash, hash) == 1, nil
 }
