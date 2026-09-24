@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { Rule, Rule2, VRule, SectionLabel, PrimaryButton, TextButton, Photo } from './merchant/kit';
+import { Rule, Rule2, VRule, SectionLabel, PrimaryButton, TextButton, Photo, Tabs } from './merchant/kit';
+import { useMobileTop } from '../context/MobileChrome';
 import { yandexSearchUrl } from '../utils/mapLinks';
 
 /** D32 · Предложить ивент: форма слева, справа — «так будет в ленте» и правила. */
@@ -13,6 +14,7 @@ const RECURRENCE = [
   { value: 'FREQ=WEEKLY', label: 'Каждую неделю' },
   { value: 'FREQ=MONTHLY', label: 'Каждый месяц' },
 ];
+const RECURRENCE_SHORT = { '': 'Нет', 'FREQ=DAILY': 'Каждый день', 'FREQ=WEEKLY': 'Неделя', 'FREQ=MONTHLY': 'Месяц' };
 
 const inputCls =
   'w-full bg-transparent pb-[10px] border-b border-dashed border-line focus:border-solid focus:border-ink outline-none text-[16px] text-ink placeholder:text-ink-faint';
@@ -28,12 +30,12 @@ const Field = ({ label, right, hint, children }) => (
   </label>
 );
 
-const Radio = ({ checked, disabled, onClick, children, note }) => (
+const Radio = ({ checked, disabled, onClick, children, note, className = 'flex' }) => (
   <button
     type="button"
     onClick={onClick}
     disabled={disabled}
-    className={`flex gap-3 items-start text-left ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+    className={`${className} gap-3 items-start text-left ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
   >
     <span className={`font-mono font-bold text-[13px] whitespace-nowrap ${checked ? 'text-ink' : 'text-ink-faint'}`}>{checked ? '[×]' : '[ ]'}</span>
     <span className="flex flex-col gap-[2px]">
@@ -71,6 +73,21 @@ const EventForm = ({ backTo }) => {
 
   const isMerchant = user?.role === 'merchant';
   const target = backTo || (isMerchant ? '/merchant/events' : '/events?tab=mine');
+
+  const draftRef = useRef(null);
+  useMobileTop(
+    {
+      back: isMerchant ? '/merchant/events' : '/events',
+      label: 'Отмена',
+      mark: '×',
+      right: user ? (
+        <button onClick={() => draftRef.current?.()} disabled={busy !== ''} className="font-mono font-medium text-[11px] tracking-[0.06em] uppercase text-ink">
+          {busy === 'draft' ? 'Сохраняем…' : 'Черновик'}
+        </button>
+      ) : null,
+    },
+    [busy, isMerchant, !!user]
+  );
 
   useEffect(() => {
     if (isMerchant) api.get('/merchant/companies').then((r) => setCompanies(r.data || [])).catch(() => {});
@@ -139,33 +156,56 @@ const EventForm = ({ backTo }) => {
     }
   };
 
+  draftRef.current = () => submit(false);
+
   const price = parseFloat(String(form.special_price).replace(',', '.')) || 0;
   const companyName = companies.find((c) => String(c.id) === String(form.company_id))?.name;
 
+  const companyField = (
+  <Field label="Компания" right="НЕОБЯЗ.">
+    <span className="relative flex items-center border-b border-dashed border-line focus-within:border-solid focus-within:border-ink pb-[10px]">
+      <select
+        value={form.company_id}
+        onChange={(e) => setForm({ ...form, company_id: e.target.value, event_privacy: !e.target.value && form.event_privacy === 'subscribers' ? 'public' : form.event_privacy })}
+        disabled={!companies.length}
+        className="appearance-none bg-transparent w-full pr-6 text-[16px] text-ink outline-none cursor-pointer disabled:cursor-default"
+      >
+        <option value="">— Личный ивент —</option>
+        {companies.map((c) => (
+          <option key={c.id} value={c.id}>{c.name}</option>
+        ))}
+      </select>
+      {companies.length > 0 && <span className="absolute right-0 font-mono font-bold text-[11px] text-ink pointer-events-none">↓</span>}
+    </span>
+  </Field>
+  );
+
   return (
     <div className="flex flex-col gap-8">
-      <div className="font-mono font-medium text-[11px] tracking-[0.06em] uppercase text-ink-soft whitespace-pre">
+      <div className="hidden md:block font-mono font-medium text-[11px] tracking-[0.06em] uppercase text-ink-soft whitespace-pre">
         <Link to={isMerchant ? '/merchant/events' : '/events'} className="hover:text-ink">Ивенты</Link>
         {'  /  '}Предложить
       </div>
       <div className="flex flex-col lg:flex-row gap-10 lg:gap-14 items-start">
         <div className="flex-1 min-w-0 w-full flex flex-col gap-6">
           <div className="flex flex-col gap-[10px]">
-            <h1 className="font-display font-bold text-[28px] sm:text-[36px] leading-none tracking-[-0.02em] uppercase text-ink">Предложить ивент</h1>
-            <p className="text-[16px] leading-[24px] text-ink-soft">После модерации ивент появится в ленте. Обычно проверяем за пару часов.</p>
+            <h1 className="font-display font-bold text-[30px] md:text-[36px] leading-none tracking-[-0.02em] uppercase text-ink">Предложить ивент</h1>
+            <p className="text-[14px] md:text-[16px] leading-[22px] md:leading-[24px] text-ink-soft">
+              После модерации ивент появится в ленте.<span className="hidden md:inline"> Обычно проверяем за пару часов.</span>
+            </p>
           </div>
           <Rule2 />
           <Field label="Название *">
             <input className={inputCls} value={form.title} onChange={set('title')} maxLength={200} placeholder="Встреча студентов" />
           </Field>
           <Field label="Описание">
-            <textarea className={`${inputCls} min-h-[80px] resize-y`} value={form.description} onChange={set('description')} placeholder="Что будет, для кого, программа…" />
+            <textarea className={`${inputCls} min-h-[32px] md:min-h-[80px] resize-y`} value={form.description} onChange={set('description')} placeholder="Что будет, для кого, программа…" />
           </Field>
-          <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
+          <div className="flex flex-row gap-5 md:gap-8">
             <Field label="Начало *">
               <input type="datetime-local" className={`${inputCls} font-mono`} value={form.start_at} onChange={set('start_at')} />
             </Field>
-            <Field label="Окончание" hint={!form.end_at ? 'Не указано — через 2 часа после начала' : null}>
+            <Field label="Окончание" hint={!form.end_at ? <span className="hidden md:inline">Не указано — через 2 часа после начала</span> : null}>
               <input type="datetime-local" className={`${inputCls} font-mono`} value={form.end_at} onChange={set('end_at')} />
             </Field>
           </div>
@@ -180,37 +220,28 @@ const EventForm = ({ backTo }) => {
                 )}
               </span>
             </Field>
-            <Field label="Компания" right="НЕОБЯЗ.">
-              <span className="relative flex items-center border-b border-dashed border-line focus-within:border-solid focus-within:border-ink pb-[10px]">
-                <select
-                  value={form.company_id}
-                  onChange={(e) => setForm({ ...form, company_id: e.target.value, event_privacy: !e.target.value && form.event_privacy === 'subscribers' ? 'public' : form.event_privacy })}
-                  disabled={!companies.length}
-                  className="appearance-none bg-transparent w-full pr-6 text-[16px] text-ink outline-none cursor-pointer disabled:cursor-default"
-                >
-                  <option value="">— Личный ивент —</option>
-                  {companies.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-                {companies.length > 0 && <span className="absolute right-0 font-mono font-bold text-[11px] text-ink pointer-events-none">↓</span>}
-              </span>
-            </Field>
+            <div className="hidden md:flex flex-1 min-w-0">{companyField}</div>
           </div>
-          <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
+          <div className="flex flex-row gap-5 md:gap-8">
             <Field label="Цена билета" hint="0 = бесплатно">
               <input className={`${inputCls} font-mono`} inputMode="decimal" value={form.special_price} onChange={set('special_price')} placeholder="0 ₽" />
             </Field>
-            <Field label="Макс. участников">
+            <Field label={<><span className="md:hidden">Макс. мест</span><span className="hidden md:inline">Макс. участников</span></>}>
               <input className={inputCls} inputMode="numeric" value={form.max_uses} onChange={(e) => setForm({ ...form, max_uses: e.target.value.replace(/\D/g, '') })} placeholder="без ограничений" />
             </Field>
           </div>
           <Rule />
-          <div className="flex flex-col sm:flex-row gap-8">
+          <div className="flex flex-col sm:flex-row gap-6 md:gap-8">
             <div className="flex-1 min-w-0 flex flex-col gap-3">
               <SectionLabel>Повторение</SectionLabel>
+              <Tabs
+                className="md:hidden pt-1 gap-x-3 gap-y-2"
+                value={form.recurrence_rule}
+                onChange={(v) => setForm({ ...form, recurrence_rule: v })}
+                items={RECURRENCE.map((r) => ({ key: r.value, label: RECURRENCE_SHORT[r.value] }))}
+              />
               {RECURRENCE.map((r) => (
-                <Radio key={r.value} checked={form.recurrence_rule === r.value} onClick={() => setForm({ ...form, recurrence_rule: r.value })}>
+                <Radio className="hidden md:flex" key={r.value} checked={form.recurrence_rule === r.value} onClick={() => setForm({ ...form, recurrence_rule: r.value })}>
                   {r.label}
                 </Radio>
               ))}
@@ -243,12 +274,23 @@ const EventForm = ({ backTo }) => {
               <Radio checked={form.event_privacy === 'invite_only'} onClick={() => setForm({ ...form, event_privacy: 'invite_only' })}>Только по приглашению</Radio>
             </div>
           </div>
+          <div className="md:hidden flex flex-col gap-6">
+            <Rule />
+            <div className="flex items-center justify-between gap-4">
+              <span className="font-mono font-medium text-[11px] tracking-[0.06em] uppercase text-ink-soft">Обложка</span>
+              <button type="button" onClick={() => fileRef.current?.click()} className="btn-bracket text-[11px]" disabled={uploading}>
+                {uploading ? 'Загружаем…' : form.image_url ? 'Заменить' : 'Загрузить'}
+              </button>
+            </div>
+            {form.image_url && <Photo src={form.image_url} className="w-full h-[160px]" />}
+            {companyField}
+          </div>
           {error && <div className="font-mono text-[12px] text-accent uppercase">{error}</div>}
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
-            <PrimaryButton onClick={() => submit(true)} disabled={busy !== '' || uploading}>
+            <PrimaryButton className="w-full md:w-auto" onClick={() => submit(true)} disabled={busy !== '' || uploading}>
               {busy === 'send' ? 'Отправляем…' : 'Отправить на модерацию'}
             </PrimaryButton>
-            <TextButton onClick={() => submit(false)} disabled={busy !== '' || uploading}>
+            <TextButton className="hidden md:inline-flex" onClick={() => submit(false)} disabled={busy !== '' || uploading}>
               {busy === 'draft' ? 'Сохраняем…' : 'Сохранить черновик'}
             </TextButton>
           </div>
@@ -256,7 +298,7 @@ const EventForm = ({ backTo }) => {
 
         <VRule className="hidden lg:block" />
 
-        <div className="w-full lg:w-[380px] shrink-0 flex flex-col gap-6">
+        <div className="hidden md:flex w-full lg:w-[380px] shrink-0 flex-col gap-6">
           <SectionLabel>Так будет в ленте</SectionLabel>
           <button
             type="button"

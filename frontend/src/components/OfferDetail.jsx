@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useMobileTop } from '../context/MobileChrome';
 import { yandexMapUrl, yandexSearchUrl } from '../utils/mapLinks';
 import { distanceMeters, formatDistance, getKnownPosition, requestPosition, walkMinutes } from '../utils/geo';
 import { RouteLoadingView, RouteEmptyState } from '../design/DottedPath';
@@ -15,7 +16,7 @@ import {
  * справа «Расчёт», карточка места и другие предложения этого места.
  */
 
-const MiniMap = ({ offer, me }) => {
+const MiniMap = ({ offer, me, h = 'h-[200px]' }) => {
   const target = offer.latitude && offer.longitude ? { lat: offer.latitude, lng: offer.longitude } : null;
   const dist = me && target ? distanceMeters(me, target) : null;
   const href = target
@@ -24,7 +25,7 @@ const MiniMap = ({ offer, me }) => {
       : yandexMapUrl(target.lat, target.lng)
     : yandexSearchUrl(offer.address);
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="relative block w-full h-[200px] bg-desk overflow-hidden group">
+    <a href={href} target="_blank" rel="noopener noreferrer" className={`relative block w-full ${h} bg-desk overflow-hidden group`}>
       <svg viewBox="0 0 395 200" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
         <path
           d="M30 170 C 90 165, 140 120, 175 105 S 230 85, 260 92 S 330 60, 397 40"
@@ -35,9 +36,9 @@ const MiniMap = ({ offer, me }) => {
           vectorEffect="non-scaling-stroke"
         />
       </svg>
-      <span className="absolute left-[26px] top-[166px] w-2 h-2 rounded-full bg-ink" />
-      <span className="absolute right-[-5px] top-[33px] w-[14px] h-[14px] rounded-full bg-accent" />
-      <span className="absolute left-[40px] top-[176px] font-mono text-[10px] tracking-[0.04em] uppercase text-ink-soft group-hover:text-ink transition">
+      <span className="absolute left-[26px] bottom-[26px] w-2 h-2 rounded-full bg-ink" />
+      <span className="absolute right-[-5px] top-[20%] w-[14px] h-[14px] rounded-full bg-accent" />
+      <span className="absolute left-[40px] bottom-[12px] font-mono text-[10px] tracking-[0.04em] uppercase text-ink-soft group-hover:text-ink transition">
         {dist != null
           ? `Вы · ${formatDistance(dist)} · ${walkMinutes(dist)} мин пешком`
           : offer.address
@@ -61,6 +62,7 @@ const OfferDetail = () => {
   const [photo, setPhoto] = useState(0);
   const [me, setMe] = useState(null);
   const [shared, setShared] = useState(false);
+  const toggleRef = React.useRef(null);
 
   useEffect(() => {
     setData(null);
@@ -88,6 +90,21 @@ const OfferDetail = () => {
     if (user) api.get('/wallet').then((r) => setWallet(r.data)).catch(() => {});
     getKnownPosition().then((p) => p && setMe(p));
   }, [user]);
+
+  // Телефон: «← НАЗАД» и «[ + ПОДПИСАТЬСЯ ]» в верхней строке.
+  const hasCompany = !!data?.offer?.company_id;
+  useMobileTop(
+    {
+      back: -1,
+      label: 'Назад',
+      right: hasCompany ? (
+        <button onClick={() => toggleRef.current?.()} disabled={subBusy} className="btn-bracket text-[11px]">
+          {subscribed ? '✓ Подписаны' : '+ Подписаться'}
+        </button>
+      ) : null,
+    },
+    [hasCompany, subscribed, subBusy]
+  );
 
   if (notFound) {
     return <RouteEmptyState title="Предложение не найдено" action={<Link to="/" className="btn-bracket">На главную</Link>} />;
@@ -125,6 +142,8 @@ const OfferDetail = () => {
     }
   };
 
+  toggleRef.current = toggleSubscribe;
+
   const share = async () => {
     try {
       if (navigator.share) await navigator.share({ title: name, url: window.location.href });
@@ -141,8 +160,84 @@ const OfferDetail = () => {
     navigate(`/offers/${offer.id}/checkout${method ? `?method=${method}` : ''}`);
   };
 
+  const mobile = (
+    <div className="md:hidden flex flex-col gap-5">
+      <Photo src={photos[photo]} className="w-full h-[300px]">
+        {offer.address && (
+          <span className="absolute left-3 bottom-[12px] right-3 truncate font-mono text-[10px] tracking-[0.06em] uppercase text-white">
+            {name} · {offer.address}
+          </span>
+        )}
+      </Photo>
+      {photos.length > 1 && (
+        <div className="grid grid-cols-4 gap-2 -mt-2">
+          {photos.slice(0, 4).map((p, i) => (
+            <button key={p} onClick={() => setPhoto(i)} className={`h-[60px] ${i === photo ? 'outline outline-1 outline-offset-2 outline-ink' : ''}`}>
+              <Photo src={p} className="w-full h-full" />
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="flex items-center justify-between font-mono text-[11px] tracking-[0.06em] uppercase">
+        <span className="text-ink-soft">Предложение № {pad6(offer.id)}</span>
+        <span className={`font-bold ${isActive ? 'text-ink' : 'text-ink-soft'}`}>{isActive ? 'Активно' : 'Завершено'}</span>
+      </div>
+      <div className="flex flex-col gap-3">
+        <h1 className="font-display font-bold text-[30px] leading-[1.1] tracking-[-0.02em] uppercase text-ink break-words">{name}</h1>
+        <p className="text-[15px] leading-[24px] text-ink-soft">
+          {offer.title}
+          {offer.description ? `. ${offer.description}` : ''}
+        </p>
+        {offer.tags?.length > 0 && (
+          <div className="flex gap-4 flex-wrap font-mono text-[11px] tracking-[0.06em] uppercase text-ink-soft">
+            {offer.tags.map((t) => (
+              <Link key={t.id} to={`/?tag=${t.slug}`}>#{t.name}</Link>
+            ))}
+          </div>
+        )}
+      </div>
+      <Rule2 />
+      <div className="flex flex-col gap-[10px]">
+        <Leader label="Цена" value={rub(base)} />
+        <Leader label="Скидка студента" value={<span className="text-accent font-bold">{discountLabel(offer)}</span>} />
+        {offer.bonus_allowed && maxBonus > 0 && <Leader label={`Бонусы (до ${offer.max_bonus_percent}%)`} value={`−${bonus} ₽`} />}
+      </div>
+      <Rule />
+      <div className="flex flex-col gap-[10px]">
+        <div className="flex items-end gap-2">
+          <span className="font-mono font-bold text-[12px] tracking-[0.03em] uppercase text-ink whitespace-nowrap">Итого к оплате</span>
+          <span className="flex-1 border-t border-dashed border-ink-faint h-[10px]" />
+          <span className="font-display font-bold text-[30px] leading-none text-ink whitespace-nowrap">{rub(total)}</span>
+        </div>
+        {save > 0 && <Leader soft label="Вы экономите" value={rub(save)} />}
+      </div>
+      <Rule2 />
+      <div className="flex flex-col gap-[10px]">
+        {offer.address && (
+          <Leader label="Адрес" value={<a href={addressLink} target="_blank" rel="noopener noreferrer">{offer.address} →</a>} />
+        )}
+        {offer.working_hours && <Leader label="Часы" value={offer.working_hours} />}
+        {offer.phone && <Leader label="Телефон" value={<a href={`tel:${offer.phone.replace(/[^+\d]/g, '')}`}>{offer.phone}</a>} />}
+        <Leader label="Действует до" value={ddmmyy(offer.end_at)} />
+      </div>
+      {(offer.address || offer.latitude) && (
+        <MiniMap offer={offer} me={me} h="h-[120px]" />
+      )}
+      <Rule />
+      <PrimaryButton className="w-full" onClick={() => goPay()} disabled={!isActive}>
+        {isActive ? `Оплатить ${rub(total)} · СБП` : 'Предложение завершено'}
+      </PrimaryButton>
+      <div className="flex items-center justify-between">
+        <TextButton onClick={() => goPay('wallet')} disabled={!isActive}>С кошелька</TextButton>
+        <TextButton onClick={share}>{shared ? 'Готово' : 'Поделиться'}</TextButton>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="flex flex-col gap-8">
+    <>
+    {mobile}
+    <div className="hidden md:flex flex-col gap-8">
       <div className="font-mono text-[11px] tracking-[0.06em] uppercase text-ink-soft">
         <Link to="/" className="hover:text-ink">Предложения</Link>
         <span className="mx-3">/</span>
@@ -305,6 +400,7 @@ const OfferDetail = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

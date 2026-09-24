@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
+import { useMobileTop } from '../context/MobileChrome';
 import { RouteLoadingView, RouteEmptyState } from '../design/DottedPath';
 import { SectionLabel, Leader, PrimaryButton, TextButton, Rule, Rule2, AlertBlock, Meta, rub } from './merchant/kit';
 
@@ -32,6 +33,12 @@ const Checkout = () => {
   const [method, setMethod] = useState(params.get('method') === 'sbp' ? 'sbp' : 'wallet');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  useMobileTop({
+    back: -1,
+    label: 'Назад',
+    right: <span className="font-mono font-medium text-[11px] tracking-[0.06em] uppercase text-ink">Новый заказ</span>,
+  });
 
   const load = () => {
     api.get(`/offers/${id}`).then((r) => setOffer(r.data.offer)).catch(() => setNotFound(true));
@@ -97,16 +104,16 @@ const Checkout = () => {
 
   return (
     <div className="w-full max-w-[560px] mx-auto flex flex-col">
-      <div className="font-mono text-[11px] tracking-[0.06em] uppercase text-ink-soft">
+      <div className="hidden md:block font-mono text-[11px] tracking-[0.06em] uppercase text-ink-soft">
         <Link to="/" className="hover:text-ink">Предложения</Link>
         <span className="mx-3">/</span>
         <Link to={`/offers/${offer.id}`} className="hover:text-ink">{name}</Link>
         <span className="mx-3">/</span>
         <span>Оплата</span>
       </div>
-      <div className="mt-6 flex items-end justify-between gap-4">
-        <h1 className="font-display font-bold text-[36px] leading-[1.25] tracking-[-0.02em] uppercase text-ink">Оплата</h1>
-        <Meta className="pb-[6px]">Новый заказ</Meta>
+      <div className="md:mt-6 flex items-end justify-between gap-4">
+        <h1 className="font-display font-bold text-[30px] md:text-[36px] leading-[1.25] tracking-[-0.02em] uppercase text-ink">Оплата</h1>
+        <Meta className="hidden md:block pb-[6px]">Новый заказ</Meta>
       </div>
       <div className="mt-6">
         <div className="font-display font-bold text-[18px] uppercase text-ink">{name}</div>
@@ -151,7 +158,7 @@ const Checkout = () => {
       <div className="mt-6 flex items-end gap-2">
         <span className="font-mono font-bold text-[12px] tracking-[0.03em] uppercase text-ink whitespace-nowrap">Итого к оплате</span>
         <span className="flex-1 border-t border-dashed border-ink-faint h-[11px]" />
-        <span className="font-display font-bold text-[36px] leading-none text-ink whitespace-nowrap">{rub(total)}</span>
+        <span className="font-display font-bold text-[30px] md:text-[36px] leading-none text-ink whitespace-nowrap">{rub(total)}</span>
       </div>
       <Rule2 className="mt-6" />
 
@@ -201,7 +208,7 @@ const Checkout = () => {
           <PrimaryButton className="mt-6 w-full" onClick={pay} disabled={busy}>
             {busy ? 'Оплачиваем…' : `Оплатить ${rub(total)}`}
           </PrimaryButton>
-          <div className="mt-6 text-center text-[13px] text-ink-soft">После оплаты вы получите чек с кодом — покажите его на кассе.</div>
+          <div className="mt-6 text-center text-[13px] text-ink-soft">После оплаты вы получите чек с кодом — покажите его на кассе. Код действует до конца дня.</div>
         </>
       )}
     </div>

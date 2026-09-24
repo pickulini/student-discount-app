@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/client';
+import { useMobileTop } from '../context/MobileChrome';
 import { RouteLoadingView } from '../design/DottedPath';
 import { Tabs, Rule, Rule2, VRule, Leader, SectionLabel, TextButton, SmallButton, Table, CellMono, CellText, pad6, ddmm, ddmmyy, hhmm, num } from './merchant/kit';
 import { loadOrdersWithOffers, savedOf, isSpent, orderCode, MONTHS_NOM, monthKey } from '../utils/orders';
@@ -35,7 +36,7 @@ const ActiveOrder = ({ order, offer, onPay, busy }) => {
         <span className="font-bold text-ink">{paid ? 'ОПЛАЧЕН' : 'ЖДЁТ ОПЛАТЫ'}</span>
       </div>
       <div className="flex flex-col gap-[3px] min-w-0">
-        <Link to={`/orders/${order.id}`} className="font-display font-bold text-[20px] tracking-[-0.01em] uppercase text-ink truncate hover:text-accent">
+        <Link to={`/orders/${order.id}`} className="font-display font-bold text-[20px] tracking-[-0.01em] uppercase text-ink break-words md:truncate hover:text-accent">
           {place}
         </Link>
         {order.company_name && order.offer_title && <span className="text-[14px] text-ink-soft truncate">{order.offer_title}</span>}
@@ -71,6 +72,7 @@ const Order = () => {
   const [shown, setShown] = useState(PAGE);
   const [payingId, setPayingId] = useState(null);
   const [error, setError] = useState('');
+  useMobileTop({ back: '/profile', label: 'Профиль' });
 
   const load = () =>
     loadOrdersWithOffers()
@@ -149,10 +151,12 @@ const Order = () => {
 
   return (
     <div className="flex flex-col gap-8">
-      <Crumbs items={[{ label: 'Профиль', to: '/profile' }, { label: 'Заказы' }]} />
+      <div className="hidden md:block">
+        <Crumbs items={[{ label: 'Профиль', to: '/profile' }, { label: 'Заказы' }]} />
+      </div>
       <div className="flex flex-col lg:flex-row gap-10 lg:gap-12 items-start">
         <div className="flex-1 min-w-0 w-full flex flex-col gap-6">
-          <h1 className="font-display font-bold text-[36px] leading-none tracking-[-0.02em] text-ink">ЗАКАЗЫ</h1>
+          <h1 className="font-display font-bold text-[30px] md:text-[36px] leading-none tracking-[-0.02em] text-ink">ЗАКАЗЫ</h1>
           <Tabs
             value={tab}
             onChange={(k) => {
@@ -197,10 +201,37 @@ const Order = () => {
               )}
               {error && <div className="font-mono text-[12px] text-accent">{error}</div>}
               <Rule2 />
-              <SectionLabel>Использованные</SectionLabel>
+              <SectionLabel>
+                <span className="md:hidden">Недавно использованные</span>
+                <span className="hidden md:inline">Использованные</span>
+              </SectionLabel>
             </>
           )}
 
+          {/* Телефон: короткий список «дата · место … экономия». */}
+          <div className="md:hidden flex flex-col gap-[10px]">
+            {tableRows.length === 0 ? (
+              <span className="text-[14px] text-ink-soft">{tab === 'back' ? 'Возвратов не было.' : 'Здесь появятся заказы, погашенные на кассе.'}</span>
+            ) : (
+              tableRows.slice(0, tab === 'active' ? 3 : shown).map((o) => (
+                <Link key={o.id} to={`/orders/${o.id}`} className="flex items-end gap-2">
+                  <span className="font-mono text-[12px] text-ink-soft whitespace-nowrap">{ddmm(o.created_at)}</span>
+                  <span className="font-mono text-[12px] tracking-[0.03em] uppercase text-ink truncate max-w-[55%]">{o.company_name || o.offer_title}</span>
+                  <span className="flex-1 min-w-[8px] border-t border-dashed border-ink-faint h-[4px]" />
+                  <span className="font-mono text-[12px] text-ink whitespace-nowrap">
+                    {tab === 'back' ? rub(o.total_amount) : `−${rub(savedOf(o))}`}
+                  </span>
+                </Link>
+              ))
+            )}
+            {tab === 'active' ? (
+              <TextButton as={Link} to="/savings" className="self-center mt-4">Весь журнал экономии</TextButton>
+            ) : (
+              rest > 0 && <TextButton onClick={() => setShown((n) => n + 10)} className="self-center mt-2">Показать ещё {Math.min(rest, 10)}</TextButton>
+            )}
+          </div>
+
+          <div className="hidden md:block">
           <Table
             columns={columns}
             rows={tableRows.slice(0, shown)}
@@ -208,15 +239,16 @@ const Order = () => {
             empty={tab === 'back' ? 'Возвратов не было.' : 'Здесь появятся заказы, погашенные на кассе.'}
           />
           {rest > 0 && (
-            <div className="flex justify-center">
+            <div className="flex justify-center mt-6">
               <TextButton onClick={() => setShown((n) => n + 10)}>Показать ещё {Math.min(rest, 10)}</TextButton>
             </div>
           )}
+          </div>
         </div>
 
         <VRule className="hidden lg:block" />
 
-        <div className="w-full lg:w-[360px] shrink-0 flex flex-col gap-6">
+        <div className="hidden md:flex w-full lg:w-[360px] shrink-0 flex-col gap-6">
           <SectionLabel>{month.name}</SectionLabel>
           <div className="flex flex-col gap-[10px]">
             <Leader label="Заказов" value={month.count} />

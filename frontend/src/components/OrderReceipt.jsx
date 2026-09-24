@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useMobileTop } from '../context/MobileChrome';
 import { yandexSearchUrl } from '../utils/mapLinks';
 import { RouteLoadingView, RouteEmptyState } from '../design/DottedPath';
 import { SectionLabel, PrimaryButton, TextButton, Barcode, pad6, ddmm, hhmm, ddmmyy } from './merchant/kit';
@@ -34,6 +35,17 @@ const OrderReceipt = () => {
   const [offer, setOffer] = useState(null);
   const [qr, setQr] = useState('');
   const [notFound, setNotFound] = useState(false);
+
+  useMobileTop({
+    back: '/',
+    label: 'Закрыть',
+    mark: '×',
+    right: (
+      <button onClick={() => window.print()} className="btn-bracket text-[11px]">
+        Сохранить
+      </button>
+    ),
+  });
 
   useEffect(() => {
     api
@@ -100,7 +112,7 @@ const OrderReceipt = () => {
 
   return (
     <div className="flex flex-col lg:flex-row gap-10 lg:gap-[90px] items-start lg:pl-[54px] print:block">
-      <div className="w-full lg:w-[300px] shrink-0 flex flex-col gap-6 print:hidden">
+      <div className="hidden md:flex w-full lg:w-[300px] shrink-0 flex-col gap-6 print:hidden">
         <SectionLabel>Что дальше</SectionLabel>
         {steps.map((s, i) => (
           <div key={i} className="flex gap-[14px]">
@@ -111,7 +123,7 @@ const OrderReceipt = () => {
       </div>
 
       <div className="w-full max-w-[440px] mx-auto lg:mx-0 shrink-0">
-        <div className="bg-white px-7 pt-7 pb-6 flex flex-col gap-[14px] text-center">
+        <div className="bg-white px-5 md:px-7 pt-7 pb-6 flex flex-col gap-[14px] text-center">
           <div className="font-display font-bold text-[18px] text-ink">СТУДЕНТ−%</div>
           <div className="font-mono text-[11px] tracking-[0.04em] text-ink-soft">КАССОВЫЙ ЧЕК № {pad6(order.id)}</div>
           <div className="font-mono text-[11px] tracking-[0.04em] text-ink-soft">
@@ -178,7 +190,15 @@ const OrderReceipt = () => {
         <div className="tear-paper" />
       </div>
 
-      <div className="w-full lg:w-[300px] shrink-0 flex flex-col gap-6 print:hidden">
+      {/* Телефон: маршрут и все чеки под чеком. */}
+      <div className="md:hidden w-full flex flex-col items-center gap-5 print:hidden">
+        <PrimaryButton as="a" href={routeHref} target="_blank" rel="noopener noreferrer" className="w-full">
+          Проложить маршрут
+        </PrimaryButton>
+        <TextButton as={Link} to="/order">Все мои чеки</TextButton>
+      </div>
+
+      <div className="hidden md:flex w-full lg:w-[300px] shrink-0 flex-col gap-6 print:hidden">
         <SectionLabel>Действия</SectionLabel>
         <PrimaryButton as="a" href={routeHref} target="_blank" rel="noopener noreferrer" className="w-full">
           Проложить маршрут

@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import OfferCard from './OfferCard';
+import { MobileOfferCard, MobileMiniCard, MobileEventCard } from './mobile/cards';
 import { RouteLoadingView, RouteEmptyState } from '../design/DottedPath';
 import { SectionLabel, Meta, Leader, PrimaryButton, TextButton, Rule, Rule2, VRule, hhmm } from './merchant/kit';
 import { distanceMeters, getKnownPosition, requestPosition } from '../utils/geo';
@@ -148,8 +149,127 @@ const Home = () => {
   const rows = [];
   for (let i = 0; i < visible.length; i += 3) rows.push(visible.slice(i, i + 3));
 
+  const mobile = (
+    <div className="md:hidden flex flex-col gap-5">
+      {user && (
+        <div className="flex justify-between font-mono text-[11px] tracking-[0.04em] text-ink-soft -mt-1">
+          <span>ЧЕК № {String(user.id || 0).padStart(6, '0')}</span>
+          <span className="whitespace-pre">
+            {now.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' })}  {hhmm(now)}
+          </span>
+        </div>
+      )}
+      <Rule2 />
+      {user && (
+        <>
+          <div className="flex flex-col gap-[10px]">
+            <span className="font-mono font-medium text-[11px] tracking-[0.08em] uppercase text-ink-soft">Вы сэкономили · {MONTHS[now.getMonth()]}</span>
+            <Link to="/savings" className="font-display font-bold text-[48px] leading-none tracking-[-0.03em] text-ink">{rubInt(savings.month)}</Link>
+            <div className="flex flex-col gap-2 pt-1">
+              <Leader label="Скидок использовано" value={savings.count} />
+              <Leader label="Бонусов на счёте" value={Math.floor(wallet?.bonus || 0)} />
+            </div>
+          </div>
+          <Rule />
+        </>
+      )}
+      <label className="flex items-center gap-[10px] pb-2">
+        <span className="font-mono font-bold text-[12px] tracking-[0.04em] text-ink">ПОИСК:</span>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="кофе, кино, спорт…"
+          className="flex-1 min-w-0 bg-transparent outline-none text-[15px] text-ink placeholder:text-ink-faint"
+        />
+      </label>
+      <div className="flex gap-4 items-start overflow-x-auto no-scrollbar -mx-5 px-5">
+        {[{ slug: '', name: 'все' }, ...categories].map((c) =>
+          (tag || '') === c.slug ? (
+            <span key={c.slug || 'all'} className="bg-ink text-white font-mono font-bold text-[12px] tracking-[0.04em] uppercase px-[6px] py-[2px] whitespace-nowrap">
+              #{c.name}
+            </span>
+          ) : (
+            <button key={c.slug} onClick={() => setTag(c.slug)} className="font-mono text-[12px] tracking-[0.04em] uppercase text-ink-soft whitespace-nowrap py-[2px]">
+              #{c.name}
+            </button>
+          )
+        )}
+      </div>
+      <Rule2 />
+      {offers === null ? (
+        <RouteLoadingView label="Загрузка предложений..." />
+      ) : filtered.length === 0 ? (
+        <RouteEmptyState
+          title={tag || search ? 'По выбранным условиям ничего нет' : 'Предложений пока нет'}
+          action={(tag || search) && <TextButton onClick={() => { setTag(''); setSearch(''); }}>Сбросить</TextButton>}
+        />
+      ) : (
+        <>
+          <div className="flex items-center justify-between font-mono text-[11px] whitespace-nowrap">
+            <span className="font-medium tracking-[0.08em] uppercase text-ink">{me ? 'Популярное рядом' : 'Популярное'}</span>
+            {!me && (
+              <button onClick={askLocation} className="tracking-[0.04em] uppercase text-ink-soft">Где я? →</button>
+            )}
+          </div>
+          <div className="flex gap-[14px] items-stretch overflow-x-auto no-scrollbar -mx-5 px-5">
+            {[...(me ? filtered : withDist)]
+              .sort((a, b) => (me ? (a.d ?? Infinity) - (b.d ?? Infinity) : (b.o.current_uses || 0) - (a.o.current_uses || 0)))
+              .slice(0, 6)
+              .map((x, i) => (
+                <React.Fragment key={x.o.id}>
+                  {i > 0 && <span className="w-px shrink-0 self-stretch border-l border-dashed border-line" />}
+                  <MobileMiniCard offer={x.o} distance={x.d} />
+                </React.Fragment>
+              ))}
+          </div>
+          <Rule2 />
+          <div className="flex items-center justify-between font-mono text-[11px] whitespace-nowrap">
+            <span className="font-medium tracking-[0.08em] uppercase text-ink">Все предложения</span>
+            <span className="tracking-[0.04em] text-ink-soft">{filtered.length} ПОЗ.</span>
+          </div>
+          {[...filtered]
+            .sort({ near: (a, b) => (a.d ?? Infinity) - (b.d ?? Infinity), benefit: (a, b) => benefit(b.o) - benefit(a.o), new: (a, b) => new Date(b.o.created_at) - new Date(a.o.created_at) }[sort])
+            .slice(0, shown)
+            .map((x, i) => (
+              <React.Fragment key={x.o.id}>
+                {i > 0 && <Rule />}
+                <MobileOfferCard offer={x.o} index={i} distance={x.d} onTake={take} />
+              </React.Fragment>
+            ))}
+          {user && events.length > 0 && (
+            <>
+              <Rule2 />
+              <div className="flex items-center justify-between font-mono text-[11px] whitespace-nowrap">
+                <span className="font-medium tracking-[0.08em] uppercase text-ink">Ивенты</span>
+                <Link to="/events" className="tracking-[0.04em] uppercase text-ink-soft">Неделя</Link>
+              </div>
+              {events.slice(0, 2).map((e, i) => (
+                <React.Fragment key={e.id}>
+                  {i > 0 && <Rule />}
+                  <MobileEventCard event={e} />
+                </React.Fragment>
+              ))}
+            </>
+          )}
+          <div className="flex flex-col items-center gap-[14px] py-2">
+            <Meta>
+              Показано {Math.min(shown, filtered.length)} из {filtered.length}
+            </Meta>
+            {shown < filtered.length && (
+              <PrimaryButton className="w-full" onClick={() => setShown(shown + PAGE)}>
+                Печатать дальше
+              </PrimaryButton>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+
   return (
-    <div className="flex flex-col lg:flex-row gap-10 items-start">
+    <>
+    {mobile}
+    <div className="hidden md:flex flex-col lg:flex-row gap-10 items-start">
       {/* Колонка 1 */}
       <aside className="w-full lg:w-[300px] shrink-0 flex flex-col gap-6">
         {user && (
@@ -289,6 +409,7 @@ const Home = () => {
       </div>
 
     </div>
+    </>
   );
 };
 

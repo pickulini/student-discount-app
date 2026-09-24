@@ -74,8 +74,8 @@ const SettingsNotifications = () => {
       <SettingRow title="Тихие часы" hint="23:00–09:00 — без звука" dim={!s.enabled}>
         <OnOff value={s.quiet} onChange={set('quiet')} disabled={!s.enabled} />
       </SettingRow>
-      <div className="flex flex-wrap gap-6 items-center">
-        <PrimaryButton onClick={save} disabled={saving}>{saving ? 'Сохраняем…' : 'Сохранить'}</PrimaryButton>
+      <div className="flex flex-col md:flex-row md:flex-wrap gap-4 md:gap-6 items-center">
+        <PrimaryButton className="w-full md:w-auto" onClick={save} disabled={saving}>{saving ? 'Сохраняем…' : 'Сохранить'}</PrimaryButton>
         <SavedMark at={savedAt}>Сохранено</SavedMark>
         <ErrorText>{error}</ErrorText>
       </div>

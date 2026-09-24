@@ -91,7 +91,7 @@ const SettingsAccount = () => {
           error={error}
           placeholder="••••••••"
         />
-        <OutlineButton type="submit" disabled={deleting} className="px-[22px]">
+        <OutlineButton type="submit" disabled={deleting} className="px-[22px] w-full md:w-auto">
           {deleting ? 'Удаляем…' : 'Удалить навсегда'}
         </OutlineButton>
       </form>

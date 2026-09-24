@@ -3,10 +3,12 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { PrimaryButton, TextButton, Rule, plural } from './merchant/kit';
-import { AuthLayout, AuthField } from './auth/AuthShared';
+import { AuthLayout, AuthField, AuthBrandMobile } from './auth/AuthShared';
+import { useMobileTop } from '../context/MobileChrome';
 
 /** D10 · Вход. */
 const Login = () => {
+  useMobileTop({ hidden: true });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null); // { field: 'email'|'password'|null, text }
@@ -43,7 +45,8 @@ const Login = () => {
 
   return (
     <AuthLayout>
-      <h1 className="font-display font-bold text-[36px] leading-none tracking-[-0.02em] uppercase text-ink">Вход</h1>
+      <AuthBrandMobile />
+      <h1 className="font-display font-bold text-[30px] md:text-[36px] leading-none tracking-[-0.02em] uppercase text-ink">Вход</h1>
       <form onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
         <AuthField
           label="Email"
@@ -80,7 +83,7 @@ const Login = () => {
         )}
       </div>
       <Rule />
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row items-center md:justify-between gap-3 md:gap-4">
         <span className="text-[15px] text-ink-soft">Ещё нет аккаунта?</span>
         <TextButton as={Link} to="/register">Регистрация</TextButton>
       </div>

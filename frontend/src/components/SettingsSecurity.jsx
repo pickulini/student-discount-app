@@ -141,8 +141,8 @@ const SettingsSecurity = () => {
             placeholder="—"
           />
         </div>
-        <div className="flex flex-wrap gap-6 items-center">
-          <PrimaryButton type="submit" disabled={changing}>
+        <div className="flex flex-col md:flex-row md:flex-wrap gap-4 md:gap-6 items-center">
+          <PrimaryButton className="w-full md:w-auto" type="submit" disabled={changing}>
             {changing ? 'Меняем…' : 'Изменить пароль'}
           </PrimaryButton>
           {changedAt ? (
@@ -150,7 +150,7 @@ const SettingsSecurity = () => {
           ) : pwError ? (
             <ErrorText>{pwError}</ErrorText>
           ) : (
-            <span className="text-[13px] text-ink-soft">После смены все сессии будут завершены.</span>
+            <span className="text-[13px] text-ink-soft text-center">После смены все сессии будут завершены.</span>
           )}
         </div>
       </form>
@@ -160,7 +160,7 @@ const SettingsSecurity = () => {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <SectionLabel>Активные сессии · {list.length}</SectionLabel>
         {hasOthers && (
-          <TextButton onClick={revokeOthers} disabled={busy !== null}>
+          <TextButton className="hidden md:inline-block" onClick={revokeOthers} disabled={busy !== null}>
             Отозвать все, кроме этой
           </TextButton>
         )}
@@ -196,6 +196,11 @@ const SettingsSecurity = () => {
             </div>
           </React.Fragment>
         ))
+      )}
+      {hasOthers && (
+        <TextButton className="md:hidden self-center" onClick={revokeOthers} disabled={busy !== null}>
+          Отозвать все, кроме этой
+        </TextButton>
       )}
     </>
   );

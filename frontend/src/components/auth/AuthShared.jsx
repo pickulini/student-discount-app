@@ -111,10 +111,28 @@ export const AuthField = ({ label, right, error, hint, mono = false, inputRef, c
 /** Двухколоночная раскладка входа/регистрации. */
 export const AuthLayout = ({ children }) => (
   <div className="flex flex-col lg:flex-row gap-10 lg:gap-20 items-start">
-    <div className="order-2 lg:order-1 flex-1 min-w-0 w-full">
+    <div className="hidden md:block order-2 lg:order-1 flex-1 min-w-0 w-full">
       <AuthAside />
     </div>
     <div className="hidden lg:block order-2 w-px self-stretch border-l border-dashed border-line" />
     <div className="order-1 lg:order-3 w-full lg:w-[440px] shrink-0 flex flex-col gap-6 pt-0 lg:pt-6">{children}</div>
   </div>
 );
+
+/** Телефон: шапка входа — логотип, «скидки для студентов · N мест», штрихкод. */
+export const AuthBrandMobile = () => {
+  const [places, setPlaces] = useState(0);
+  useEffect(() => {
+    api.get('/stats/public').then((r) => setPlaces(r.data?.places || 0)).catch(() => {});
+  }, []);
+  return (
+    <div className="md:hidden flex flex-col items-center gap-3 pt-4">
+      <div className="font-display font-bold text-[32px] leading-none tracking-[-0.03em] text-ink whitespace-nowrap">СТУДЕНТ−%</div>
+      <div className="font-mono text-[11px] tracking-[0.06em] uppercase text-ink-soft">
+        Скидки для студентов{places > 0 ? ` · ${num(places)} ${plural(places, 'место', 'места', 'мест')}` : ''}
+      </div>
+      <Barcode seed={2026} width={176} height={26} className="text-ink" />
+      <Rule2 className="w-full mt-2" />
+    </div>
+  );
+};

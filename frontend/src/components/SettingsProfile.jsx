@@ -162,8 +162,8 @@ const SettingsProfile = () => {
         <span className="text-[12px] leading-[18px] text-ink-soft">Меняется только через повторную верификацию.</span>
       </div>
 
-      <div className="flex flex-wrap gap-6 items-center">
-        <PrimaryButton type="submit" disabled={saving || uploading || check === 'checking' || !!usernameError}>
+      <div className="flex flex-col md:flex-row md:flex-wrap gap-4 md:gap-6 items-center">
+        <PrimaryButton className="w-full md:w-auto" type="submit" disabled={saving || uploading || check === 'checking' || !!usernameError}>
           {saving ? 'Сохраняем…' : 'Сохранить'}
         </PrimaryButton>
         <SavedMark at={savedAt}>Профиль обновлён</SavedMark>

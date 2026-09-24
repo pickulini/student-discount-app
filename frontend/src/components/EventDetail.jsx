@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { RouteLoadingView, RouteEmptyState } from '../design/DottedPath';
 import { Rule, Rule2, VRule, Leader, SectionLabel, PrimaryButton, OutlineButton, TextButton, AlertBlock, Photo, Avatar, plural } from './merchant/kit';
 import { yandexSearchUrl } from '../utils/mapLinks';
+import { useMobileTop } from '../context/MobileChrome';
 import { WEEKDAYS_SHORT, hhmm, ddmm, nextOccurrence, recurrenceLabel, eventPrice, loadEventMeta, goToEvent } from '../utils/events';
 
 /** D31 · Ивент: обложка, описание, детали, «Пойду / Может быть», друзья, организатор. */
@@ -40,6 +41,30 @@ const EventDetail = () => {
       setNotFound(true);
     }
   };
+
+  const [shared, setShared] = useState(false);
+  const share = async () => {
+    try {
+      if (navigator.share) await navigator.share({ title: document.title, url: window.location.href });
+      else await navigator.clipboard.writeText(window.location.href);
+      setShared(true);
+      setTimeout(() => setShared(false), 1500);
+    } catch {
+      /* отмена */
+    }
+  };
+  useMobileTop(
+    {
+      back: '/events',
+      label: 'Ивенты',
+      right: (
+        <button onClick={share} className="btn-bracket text-[11px]">
+          {shared ? 'Готово' : 'Поделиться'}
+        </button>
+      ),
+    },
+    [shared]
+  );
 
   useEffect(() => {
     load();
@@ -101,8 +126,113 @@ const EventDetail = () => {
   const endLabel = sameDay(occ.start, occ.end) ? hhmm(occ.end) : `${WEEKDAYS_SHORT[occ.end.getDay()]} ${ddmm(occ.end)} · ${hhmm(occ.end)}`;
   const tags = (event.tags || []).map((t) => `#${String(t.name).replace(/\s+/g, '').toUpperCase()}`);
 
+  const organizerName = meta.company_name || meta.organizer?.full_name || '';
+  const friendNames = friendsGoing.map((f) => (f.user.full_name || '').split(' ')[0]).filter(Boolean);
+  const friendsLine =
+    friendNames.length > 2 ? `${friendNames.slice(0, 2).join(', ')} и ещё ${friendNames.length - 2}` : friendNames.join(' и ');
+
+  const mobile = (
+    <div className="md:hidden flex flex-col gap-5">
+      <Photo src={event.image_url} className="w-full h-[240px] overflow-hidden">
+        {photoCaption && <span className="absolute left-3 bottom-[12px] font-mono text-[10px] tracking-[0.06em] uppercase text-white/85">{photoCaption}</span>}
+      </Photo>
+      <div className="flex items-center justify-between font-mono text-[11px] tracking-[0.04em] whitespace-nowrap">
+        <span className="text-ink-soft">ИВЕНТ № {String(event.id).padStart(4, '0')}</span>
+        {rec && <span className="font-bold text-ink uppercase">{rec}</span>}
+      </div>
+      <h1 className="font-display font-bold text-[30px] leading-[1.15] tracking-[-0.02em] uppercase text-ink break-words">{event.title}</h1>
+      {event.description && <p className="text-[15px] leading-[24px] text-ink-soft whitespace-pre-line">{event.description}</p>}
+      {!published && (
+        <AlertBlock title={event.status === 'pending_review' ? 'На модерации' : event.status === 'draft' ? 'Черновик' : 'Не опубликован'}>
+          {event.status === 'pending_review' ? 'Ивент появится в ленте после проверки модератором.' : 'Ивент пока видите только вы.'}
+        </AlertBlock>
+      )}
+      <Rule2 />
+      <div className="flex flex-col gap-[10px]">
+        <Leader label="Начало" value={`${WEEKDAYS_SHORT[occ.start.getDay()]} ${ddmm(occ.start)} · ${hhmm(occ.start)}`} />
+        <Leader label="Окончание" value={endLabel} />
+        {event.address && (
+          <a href={yandexSearchUrl(event.address)} target="_blank" rel="noopener noreferrer">
+            <Leader label="Место" value={`${event.address} →`} />
+          </a>
+        )}
+        {organizerName && <Leader label="Организатор" value={organizerName} />}
+        <Leader label={meta.max_uses ? 'Мест' : 'Идут'} value={meta.max_uses ? `${event.attendees_count || 0} / ${meta.max_uses}` : event.attendees_count || 0} />
+        <div className="flex items-end gap-2">
+          <span className="font-mono text-[12px] tracking-[0.03em] uppercase text-ink whitespace-nowrap">Вход студентам</span>
+          <span className="flex-1 min-w-[8px] border-t border-dashed border-ink-faint h-[4px]" />
+          <span className={`font-mono font-bold text-[12px] whitespace-nowrap ${price > 0 ? 'text-ink' : 'text-accent'}`}>
+            {price > 0 ? `${Math.round(price).toLocaleString('ru-RU')} ₽` : 'БЕСПЛАТНО'}
+          </span>
+        </div>
+      </div>
+      <Rule2 />
+      {user && friendsGoing.length > 0 && (
+        <div className="flex items-center gap-4">
+          <div className="flex -space-x-[10px] shrink-0">
+            {friendsGoing.slice(0, 3).map((f) => (
+              <span key={f.user.id} className="rounded-full ring-2 ring-bg">
+                <Avatar src={f.user.avatar_url} name={f.user.full_name} size={34} />
+              </span>
+            ))}
+          </div>
+          <div className="flex-1 min-w-0 flex flex-col gap-[2px]">
+            <span className="font-mono font-bold text-[11px] tracking-[0.06em] uppercase text-ink">Идут друзья</span>
+            <span className="text-[13px] text-ink-soft truncate">{friendsLine}</span>
+          </div>
+        </div>
+      )}
+      {published && !isOwner && (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            {going ? (
+              <PrimaryButton className="w-full px-2 pointer-events-none">✓ Вы идёте</PrimaryButton>
+            ) : (
+              <PrimaryButton className="w-full px-2" onClick={onGo} disabled={busy !== ''}>
+                {busy === 'go' ? '…' : price > 0 ? `Билет · ${Math.round(price).toLocaleString('ru-RU')} ₽` : '✓ Пойду'}
+              </PrimaryButton>
+            )}
+            {going ? (
+              price > 0 ? (
+                <OutlineButton as={Link} to="/order" className="w-full px-2">Мой билет</OutlineButton>
+              ) : (
+                <OutlineButton className="w-full px-2" onClick={onLeave} disabled={busy !== ''}>
+                  {busy === 'leave' ? '…' : 'Не пойду'}
+                </OutlineButton>
+              )
+            ) : (
+              <OutlineButton className="w-full px-2" onClick={onMaybe} disabled={busy !== ''}>
+                {busy === 'maybe' ? '…' : interested ? '✓ Может быть' : 'Может быть'}
+              </OutlineButton>
+            )}
+          </div>
+          {error && (
+            <AlertBlock title={error.title}>
+              {error.text}{' '}
+              {error.wallet && (
+                <Link to="/wallet" className="underline text-white">
+                  В кошелёк
+                </Link>
+              )}
+            </AlertBlock>
+          )}
+          <p className="text-[12px] text-ink-soft text-center">
+            {price > 0 && !going ? 'Оплата с кошелька. ' : ''}Напомним за 2 часа до начала.
+          </p>
+        </>
+      )}
+      {isOwner && (
+        <div className="text-[14px] text-ink-soft">
+          Это ваш ивент. <Link to="/events?tab=mine" className="underline hover:text-ink">Все мои ивенты</Link>
+        </div>
+      )}
+    </div>
+  );
+
   return (
-    <div className="flex flex-col gap-8">
+    <>
+    {mobile}
+    <div className="hidden md:flex flex-col gap-8">
       <div className="font-mono font-medium text-[11px] tracking-[0.06em] uppercase text-ink-soft whitespace-pre truncate">
         <Link to="/events" className="hover:text-ink">Ивенты</Link>
         {'  /  '}
@@ -256,6 +386,7 @@ const EventDetail = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

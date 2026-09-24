@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { RouteLoadingView } from '../design/DottedPath';
+import { useMobileTop } from '../context/MobileChrome';
 import { Rule, Rule2, VRule, Leader, SectionLabel, TextButton, Table, CellMono, CellText, ddmm, ddmmyy, num, plural } from './merchant/kit';
 import { loadOrdersWithOffers, savedOf, isSpent, MONTHS_NOM, MONTHS_SHORT, monthKey, downloadCSV } from '../utils/orders';
 
@@ -25,16 +26,16 @@ const Crumbs = ({ items }) => (
   </div>
 );
 
-const MonthChart = ({ months }) => {
+const MonthChart = ({ months, height = CHART_H, labelTop = true }) => {
   const max = Math.max(1, ...months.map((m) => m.saved));
   return (
     <div className="flex items-end gap-2 w-full">
       {months.map((m, i) => {
         const current = i === months.length - 1;
-        const h = m.saved > 0 ? Math.max(6, Math.round((m.saved / max) * CHART_H)) : 2;
+        const h = m.saved > 0 ? Math.max(6, Math.round((m.saved / max) * height)) : 2;
         return (
           <div key={m.key} className="flex-1 min-w-0 flex flex-col items-center gap-[6px]" title={`${MONTHS_NOM[m.month]}: ${rub(m.saved)}`}>
-            {current && <span className="font-mono font-bold text-[10px] text-ink whitespace-nowrap">{num(m.saved)}</span>}
+            {current && labelTop && <span className="font-mono font-bold text-[10px] text-ink whitespace-nowrap">{num(m.saved)}</span>}
             <div className={`w-full ${current ? 'bg-ink' : 'border border-dashed border-ink'}`} style={{ height: h }} />
             <span className={`font-mono text-[10px] tracking-[0.04em] uppercase whitespace-nowrap ${current ? 'font-bold text-ink' : 'text-ink-soft'}`}>
               {MONTHS_SHORT[m.month]}
@@ -65,6 +66,16 @@ const columns = [
 const Savings = () => {
   const [data, setData] = useState(null);
   const [open, setOpen] = useState({});
+  const exportRef = React.useRef(null);
+  useMobileTop({
+    back: '/wallet',
+    label: 'Кошелёк',
+    right: (
+      <button onClick={() => exportRef.current?.()} className="btn-bracket text-[11px]">
+        Экспорт
+      </button>
+    ),
+  });
 
   useEffect(() => {
     loadOrdersWithOffers()
@@ -117,20 +128,27 @@ const Savings = () => {
     ]);
 
   const count = stats.spent.length;
+  exportRef.current = exportCSV;
 
   return (
     <div className="flex flex-col gap-8">
-      <Crumbs items={[{ label: 'Профиль', to: '/profile' }, { label: 'Журнал экономии' }]} />
+      <div className="hidden md:block">
+        <Crumbs items={[{ label: 'Профиль', to: '/profile' }, { label: 'Журнал экономии' }]} />
+      </div>
       <div className="flex flex-col lg:flex-row gap-10 lg:gap-14 items-start">
         <div className="w-full lg:w-[440px] shrink-0 flex flex-col gap-6">
-          <h1 className="font-display font-bold text-[36px] leading-none tracking-[-0.02em] text-ink">ЖУРНАЛ</h1>
+          <h1 className="font-display font-bold text-[30px] md:text-[36px] leading-none tracking-[-0.02em] text-ink">ЖУРНАЛ</h1>
           <div className="font-mono font-medium text-[11px] tracking-[0.08em] uppercase text-ink-soft">Итого сэкономлено · всё время</div>
-          <div className="font-display font-bold text-[44px] sm:text-[56px] leading-none tracking-[0.01em] text-accent whitespace-nowrap">{rub(stats.total)}</div>
+          <div className="font-display font-bold text-[44px] md:text-[56px] leading-none tracking-[0.01em] text-accent whitespace-nowrap">{rub(stats.total)}</div>
           <div className="font-mono text-[11px] tracking-[0.03em] text-ink-soft uppercase">
             {stats.first ? `С ${ddmmyy(stats.first)} · ` : ''}
             {count} {plural(count, 'скидка', 'скидки', 'скидок')}
           </div>
           <Rule2 />
+          <div className="md:hidden">
+            <MonthChart months={stats.months.slice(-6)} height={80} labelTop={false} />
+          </div>
+          <div className="hidden md:flex flex-col gap-6">
           <SectionLabel>По месяцам</SectionLabel>
           <MonthChart months={stats.months} />
           <Rule />
@@ -147,6 +165,7 @@ const Savings = () => {
           <Rule />
           <div>
             <TextButton onClick={exportCSV} disabled={!count}>Экспорт в CSV</TextButton>
+          </div>
           </div>
         </div>
 
@@ -167,15 +186,30 @@ const Savings = () => {
                   <span className="font-mono font-bold text-[13px] tracking-[0.08em] uppercase text-ink">{g.title}</span>
                   <span className="font-mono text-[11px] tracking-[0.04em] text-ink-soft">{g.rows.length} ОПЕР.</span>
                 </div>
-                <Table columns={columns} rows={open[g.key] ? g.rows : g.rows.slice(0, MONTH_ROWS)} minWidth={520} />
+                <div className="md:hidden flex flex-col gap-[10px]">
+                  {(open[g.key] ? g.rows : g.rows.slice(0, MONTH_ROWS)).map((o) => (
+                    <Link key={o.id} to={`/orders/${o.id}`} className="flex items-end gap-2">
+                      <span className="font-mono text-[12px] text-ink-soft whitespace-nowrap">{ddmm(o.created_at)}</span>
+                      <span className="font-mono text-[12px] tracking-[0.03em] uppercase text-ink truncate max-w-[55%]">{o.company_name || o.offer_title}</span>
+                      <span className="flex-1 min-w-[8px] border-t border-dashed border-ink-faint h-[4px]" />
+                      <span className="font-mono text-[12px] text-ink whitespace-nowrap">−{rub(savedOf(o))}</span>
+                    </Link>
+                  ))}
+                </div>
+                <div className="hidden md:block">
+                  <Table columns={columns} rows={open[g.key] ? g.rows : g.rows.slice(0, MONTH_ROWS)} minWidth={520} />
+                </div>
                 {g.rows.length > MONTH_ROWS && !open[g.key] && (
                   <div className="flex justify-center">
                     <TextButton onClick={() => setOpen((x) => ({ ...x, [g.key]: true }))}>Показать все {g.rows.length}</TextButton>
                   </div>
                 )}
-                <div className="pt-1">
+                <div className="pt-1 flex flex-col gap-3">
+                  <Rule className="md:hidden" />
                   <div className="flex items-end gap-2">
-                    <span className="font-mono font-bold text-[13px] tracking-[0.03em] uppercase text-ink whitespace-nowrap">Сэкономлено за месяц</span>
+                    <span className="font-mono font-bold text-[13px] tracking-[0.03em] uppercase text-ink whitespace-nowrap">
+                      Сэкономлено<span className="hidden md:inline"> за месяц</span>
+                    </span>
                     <span className="flex-1 min-w-[8px] border-t border-dashed border-ink-faint h-[4px]" />
                     <span className="font-mono font-bold text-[13px] text-ink whitespace-nowrap">{rub(g.rows.reduce((s, o) => s + savedOf(o), 0))}</span>
                   </div>

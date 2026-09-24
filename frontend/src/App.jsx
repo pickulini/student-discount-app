@@ -19,7 +19,7 @@ import Profile from './components/Profile';
 import Wallet from './components/Wallet';
 import Referral from './components/Referral';
 import Friends from './components/Friends';
-import SettingsLayout from './components/SettingsLayout';
+import SettingsLayout, { SettingsIndex } from './components/SettingsLayout';
 import SettingsProfile from './components/SettingsProfile';
 import SettingsPrivacy from './components/SettingsPrivacy';
 import SettingsNotifications from './components/SettingsNotifications';
@@ -75,7 +75,7 @@ function App() {
             <Route path="referral" element={<Referral />} />
             <Route path="friends" element={<Friends />} />
             <Route path="settings" element={<SettingsLayout />}>
-              <Route index element={<Navigate to="/settings/profile" replace />} />
+              <Route index element={<SettingsIndex />} />
               <Route path="profile" element={<SettingsProfile />} />
               <Route path="privacy" element={<SettingsPrivacy />} />
               <Route path="notifications" element={<SettingsNotifications />} />

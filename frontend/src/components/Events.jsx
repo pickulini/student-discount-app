@@ -92,6 +92,37 @@ const EventRow = ({ occ, meta, friends, onGo, busy, mine }) => {
   );
 };
 
+/** Строка ленты на телефоне (макет 30): время · пунктир · название, место, цена/идут/«я иду» · обложка 64px. */
+const MobileEventRow = ({ occ, meta, mine }) => {
+  const e = occ.event;
+  const price = eventPrice(e, meta);
+  const status = meta?.my_status || e.my_attendee_status;
+  const place = [meta?.company_name || e.address, recurrenceLabel(e)].filter(Boolean).join(' · ');
+  return (
+    <Link to={`/events/${e.id}`} className="flex gap-4 items-start">
+      <span className="w-[46px] shrink-0 font-mono font-bold text-[14px] text-ink pt-[1px]">{hhmm(occ.start)}</span>
+      <span className="w-px self-stretch border-l border-dashed border-line" />
+      <span className="flex-1 min-w-0 flex flex-col gap-[6px]">
+        <span className="font-display font-bold text-[15px] leading-[1.2] tracking-[-0.01em] uppercase text-ink">{e.title}</span>
+        {place && <span className="text-[13px] text-ink-soft truncate">{place}</span>}
+        <span className="flex gap-[10px] items-center font-mono text-[11px] tracking-[0.02em] whitespace-nowrap pt-[2px]">
+          <span className={`font-bold ${price > 0 ? 'text-ink' : 'text-accent'}`}>{priceLabel(price)}</span>
+          {mine ? (
+            <span className="font-bold uppercase text-ink-soft">{STATUS_LABEL[e.status] || e.status}</span>
+          ) : (
+            <>
+              <span className="text-ink-soft uppercase">Идут {e.attendees_count || 0}</span>
+              {status === 'going' && <span className="font-bold text-ink">✓ Я ИДУ</span>}
+              {status === 'interested' && <span className="font-bold text-ink-soft">? ДУМАЮ</span>}
+            </>
+          )}
+        </span>
+      </span>
+      <Photo src={e.image_url} className="w-[64px] h-[64px] shrink-0" />
+    </Link>
+  );
+};
+
 const Events = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -204,8 +235,19 @@ const Events = () => {
   return (
     <div className="flex flex-col lg:flex-row gap-10 lg:gap-12 items-start">
       <div className="flex-1 min-w-0 w-full flex flex-col gap-6">
-        <h1 className="font-display font-bold text-[36px] leading-none tracking-[-0.02em] text-ink">ИВЕНТЫ</h1>
-        <div className="flex items-center justify-between gap-4 flex-wrap">
+        <h1 className="font-display font-bold text-[34px] md:text-[36px] leading-none tracking-[-0.02em] text-ink">ИВЕНТЫ</h1>
+        <Tabs
+          className="md:hidden"
+          value={tab}
+          onChange={setTab}
+          items={[
+            { key: 'all', label: 'Все' },
+            ...(user ? [{ key: 'going', label: goingCount ? `Я иду · ${goingCount}` : 'Я иду' }] : []),
+            ...(user ? [{ key: 'mine', label: 'Мои' }] : []),
+            ...(user ? [] : [{ key: 'free', label: 'Бесплатные' }]),
+          ]}
+        />
+        <div className="hidden md:flex items-center justify-between gap-4 flex-wrap">
           <Tabs
             value={tab}
             onChange={setTab}
@@ -225,7 +267,24 @@ const Events = () => {
           </div>
         </div>
 
-        <div className="flex items-start justify-between overflow-x-auto -mx-1">
+        <div className="md:hidden flex items-start overflow-x-auto no-scrollbar -mx-5 px-5">
+          {Array.from({ length: DAYS }, (_, i) => addDays(windowStart, i)).map((d) => {
+            const active = dayKey(d) === dayKey(selected);
+            const has = busyDays.has(dayKey(d));
+            return (
+              <button
+                key={dayKey(d)}
+                onClick={() => setSelected(d)}
+                className={`shrink-0 w-[50px] flex flex-col items-center gap-[2px] py-2 ${active ? 'bg-ink text-white' : ''}`}
+              >
+                <span className={`font-mono text-[10px] tracking-[0.04em] ${active ? '' : 'text-ink-soft'}`}>{WEEKDAYS_SHORT[d.getDay()]}</span>
+                <span className="font-display font-bold text-[20px] leading-tight">{d.getDate()}</span>
+                <span className="font-mono text-[10px] leading-none h-[10px]">{has ? '•' : ' '}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="hidden md:flex items-start justify-between overflow-x-auto -mx-1">
           {Array.from({ length: DAYS }, (_, i) => addDays(windowStart, i)).map((d) => {
             const active = dayKey(d) === dayKey(selected);
             const has = busyDays.has(dayKey(d));
@@ -261,17 +320,26 @@ const Events = () => {
               {g.items.map((o, i) => (
                 <React.Fragment key={`${o.event.id}-${o.start.getTime()}`}>
                   {i > 0 && <Rule />}
-                  <EventRow occ={o} meta={meta[o.event.id]} friends={friendsBy[o.event.id] || 0} onGo={go} busy={busyId === o.event.id} mine={tab === 'mine'} />
+                  <div className="md:hidden">
+                    <MobileEventRow occ={o} meta={meta[o.event.id]} mine={tab === 'mine'} />
+                  </div>
+                  <div className="hidden md:block">
+                    <EventRow occ={o} meta={meta[o.event.id]} friends={friendsBy[o.event.id] || 0} onGo={go} busy={busyId === o.event.id} mine={tab === 'mine'} />
+                  </div>
                 </React.Fragment>
               ))}
             </React.Fragment>
           ))
         )}
+        <div className="md:hidden flex flex-col gap-6 pt-1">
+          <Rule />
+          <Link to={user ? '/events/new' : '/login'} className="btn-bracket self-center">+ Предложить ивент</Link>
+        </div>
       </div>
 
       <VRule className="hidden lg:block" />
 
-      <div className="w-full lg:w-[340px] shrink-0 flex flex-col gap-6">
+      <div className="hidden md:flex w-full lg:w-[340px] shrink-0 flex-col gap-6">
         {user && (
           <>
             <SectionLabel>Я иду · {goingList.length}</SectionLabel>

@@ -5,8 +5,8 @@ import { Rule2, Segmented, hhmm } from '../merchant/kit';
 export const PanelHead = ({ title, subtitle }) => (
   <>
     <div className="flex flex-col gap-2">
-      <h2 className="font-display font-bold text-[28px] sm:text-[32px] leading-none tracking-[-0.02em] text-ink uppercase">{title}</h2>
-      {subtitle && <p className="text-[16px] leading-[24px] text-ink-soft">{subtitle}</p>}
+      <h2 className="font-display font-bold text-[30px] md:text-[32px] leading-none tracking-[-0.02em] text-ink uppercase">{title}</h2>
+      {subtitle && <p className="text-[14px] md:text-[16px] leading-[21px] md:leading-[24px] text-ink-soft">{subtitle}</p>}
     </div>
     <Rule2 />
   </>

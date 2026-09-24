@@ -4,6 +4,7 @@ import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { PrimaryButton, Leader } from './merchant/kit';
 import { AuthLayout, AuthField } from './auth/AuthShared';
+import { useMobileTop } from '../context/MobileChrome';
 
 /**
  * D11 · Регистрация (шаг 1 из 2). Вуз определяем по домену почты;
@@ -18,6 +19,11 @@ const ERRORS = {
 };
 
 const Register = () => {
+  useMobileTop({
+    back: '/login',
+    label: 'Вход',
+    right: <span className="font-mono font-medium text-[11px] tracking-[0.06em] uppercase text-ink">Шаг 1 из 2</span>,
+  });
   const [params] = useSearchParams();
   const [form, setForm] = useState({ full_name: '', email: '', password: '', referral_code: params.get('ref') || '' });
   const [touched, setTouched] = useState({});
@@ -74,11 +80,12 @@ const Register = () => {
 
   return (
     <AuthLayout>
-      <div className="font-mono text-[11px] tracking-[0.04em] text-ink-soft">ШАГ 1 ИЗ 2</div>
+      <div className="hidden md:block font-mono text-[11px] tracking-[0.04em] text-ink-soft">ШАГ 1 ИЗ 2</div>
       <div className="flex flex-col gap-[10px]">
         <h1 className="font-display font-bold text-[30px] sm:text-[36px] leading-none tracking-[-0.02em] uppercase text-ink">Регистрация</h1>
         <p className="text-[16px] leading-[24px] text-ink-soft">Через почту вуза — мы сразу определим, где вы учитесь.</p>
       </div>
+      <div className="md:hidden h-[5px] border-y border-dashed border-ink" />
       <form onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
         <AuthField
           label="Полное имя"

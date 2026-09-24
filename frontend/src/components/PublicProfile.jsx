@@ -4,6 +4,7 @@ import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { RouteLoadingView, RouteEmptyState } from '../design/DottedPath';
 import { Rule, Rule2, VRule, Leader, SectionLabel, PrimaryButton, OutlineButton, TextButton, Photo, Avatar, num } from './merchant/kit';
+import { useMobileTop } from '../context/MobileChrome';
 import { WEEKDAYS_SHORT, hhmm, ddmm, nextOccurrence, eventPrice, priceLabel } from '../utils/events';
 
 /** D51 · Публичный профиль: слева человек и действия, справа — куда идёт и на что подписан. */
@@ -15,7 +16,8 @@ const Stat = ({ value, label }) => (
   </div>
 );
 
-const Menu = ({ items }) => {
+const Menu = ({ items: given, getItems, bracket = false }) => {
+  const items = getItems ? getItems() : given;
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -26,9 +28,15 @@ const Menu = ({ items }) => {
   if (!items.length) return null;
   return (
     <div ref={ref} className="relative">
-      <button onClick={() => setOpen((v) => !v)} className="font-mono font-bold text-[14px] text-ink px-2 py-2 hover:text-accent" aria-label="Ещё">
-        ···
-      </button>
+      {bracket ? (
+        <button onClick={() => setOpen((v) => !v)} className="btn-bracket text-[11px]" aria-label="Ещё">
+          ···
+        </button>
+      ) : (
+        <button onClick={() => setOpen((v) => !v)} className="font-mono font-bold text-[14px] text-ink px-2 py-2 hover:text-accent" aria-label="Ещё">
+          ···
+        </button>
+      )}
       {open && (
         <div className="absolute right-0 top-full mt-1 z-20 bg-surface border border-ink min-w-[200px] py-1">
           {items.map((it) => (
@@ -62,6 +70,8 @@ const PublicProfile = () => {
   const [notFound, setNotFound] = useState(!username);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const menuRef = useRef([]);
+  useMobileTop({ back: -1, label: 'Назад', right: <Menu getItems={() => menuRef.current} bracket /> }, [status?.status, profile?.id]);
 
   const loadStatus = (id) => {
     if (!me || !id || me.id === id) return;
@@ -153,6 +163,8 @@ const PublicProfile = () => {
     );
   }
 
+  menuRef.current = menu;
+
   const upcoming = events
     .map((e) => ({ e, next: nextOccurrence(e) }))
     .filter((x) => x.next.end >= new Date())
@@ -161,8 +173,70 @@ const PublicProfile = () => {
 
   const handleLine = [`@${profile.username}`, extras.university].filter(Boolean).join(' · ');
 
+  const subsNames = (extras.subscriptions || []).map((x) => x.name);
+  const mobile = (
+    <div className="md:hidden flex flex-col gap-5">
+      <Avatar src={extras.avatar_url} name={name} size={88} />
+      <div className="flex flex-col gap-2">
+        <h1 className="font-display font-bold text-[26px] leading-tight tracking-[-0.01em] text-ink break-words">{name}</h1>
+        <div className="font-mono text-[12px] tracking-[0.02em] text-ink-soft">{handleLine}</div>
+      </div>
+      <div className="flex">{primary}</div>
+      {error && <div className="font-mono text-[12px] text-accent uppercase -mt-2">{error}</div>}
+      <div className="flex gap-4 items-stretch">
+        <Stat value={extras.friends_count != null ? num(extras.friends_count) : '—'} label="Друзей" />
+        <VRule />
+        <Stat value={isSelf ? '—' : num(extras.mutual_count || 0)} label="Общих" />
+        <VRule />
+        <Stat value={extras.subscriptions_count != null ? num(extras.subscriptions_count) : '—'} label="Подписок" />
+      </div>
+      <Rule2 />
+      <SectionLabel>Планирует посетить</SectionLabel>
+      {upcoming.length === 0 ? (
+        <div className="text-[13px] text-ink-soft -mt-1">
+          {profile.attending_events_visible === false ? 'Список скрыт настройками приватности.' : 'Пока никуда не собирается.'}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-[10px] -mt-1">
+          {upcoming.map(({ e, next }) => (
+            <Link key={e.id} to={`/events/${e.id}`} className="flex items-end gap-2 font-mono text-[12px] tracking-[0.02em] uppercase text-ink">
+              <span className="truncate">{e.title}</span>
+              <span className="flex-1 min-w-[8px] border-t border-dashed border-ink-faint h-[4px]" />
+              <span className="whitespace-nowrap">{WEEKDAYS_SHORT[next.start.getDay()]} {ddmm(next.start)}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+      <Rule />
+      <SectionLabel>Подписки</SectionLabel>
+      <div className="font-mono text-[12px] leading-[22px] tracking-[0.02em] uppercase text-ink -mt-1">
+        {extras.subscriptions_count == null ? (
+          <span className="normal-case font-sans text-[13px] text-ink-soft">Подписки скрыты настройками приватности.</span>
+        ) : subsNames.length === 0 ? (
+          <span className="normal-case font-sans text-[13px] text-ink-soft">Пока ни на кого не подписан(а).</span>
+        ) : (
+          <>
+            {subsNames.slice(0, 5).join('  ·  ')}
+            {extras.subscriptions_count > 5 ? `  +${extras.subscriptions_count - 5}` : ''}
+          </>
+        )}
+      </div>
+      <Rule />
+      {extras.saved_hidden ? (
+        <>
+          <Leader label="Сэкономлено" value={<span className="text-ink-soft">СКРЫТО</span>} />
+          <p className="text-[13px] leading-[19px] text-ink-soft -mt-3">{firstName} скрыл(а) это в настройках приватности.</p>
+        </>
+      ) : (
+        <Leader label="Сэкономлено" value={<b>{num(extras.saved_total || 0)} ₽</b>} />
+      )}
+    </div>
+  );
+
   return (
-    <div className="flex flex-col gap-8">
+    <>
+    {mobile}
+    <div className="hidden md:flex flex-col gap-8">
       <div className="font-mono font-medium text-[11px] tracking-[0.06em] uppercase text-ink-soft whitespace-pre">
         <Link to="/friends" className="hover:text-ink">Друзья</Link>
         {'  /  '}@{profile.username}
@@ -293,6 +367,7 @@ const PublicProfile = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

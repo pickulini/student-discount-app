@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../api/client';
 import { RouteLoadingView } from '../design/DottedPath';
 import { Rule, Rule2, VRule, SectionLabel, PrimaryButton, TextButton, Avatar, num } from './merchant/kit';
+import { useMobileTop } from '../context/MobileChrome';
 
 /** D41 · Рефералы: код и ссылка, как это работает, статистика и список приглашённых. */
 
@@ -25,7 +26,7 @@ const copyText = async (text) => {
 
 const Stat = ({ value, label, accent }) => (
   <div className="flex-1 min-w-0 flex flex-col gap-1">
-    <span className={`font-display font-bold text-[22px] tracking-[-0.01em] ${accent ? 'text-accent' : 'text-ink'}`}>{value}</span>
+    <span className={`font-display font-bold text-[20px] md:text-[22px] tracking-[-0.01em] ${accent ? 'text-accent' : 'text-ink'}`}>{value}</span>
     <span className="font-mono text-[10px] tracking-[0.04em] uppercase text-ink-soft">{label}</span>
   </div>
 );
@@ -35,6 +36,7 @@ const Referral = () => {
   const [stats, setStats] = useState(null);
   const [invitees, setInvitees] = useState([]);
   const [copied, setCopied] = useState('');
+  useMobileTop({ back: '/wallet', label: 'Кошелёк' });
 
   useEffect(() => {
     api.get('/referral/code').then((r) => setCode(r.data.code || '')).catch(() => setCode(''));
@@ -72,12 +74,33 @@ const Referral = () => {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="font-mono font-medium text-[11px] tracking-[0.06em] uppercase text-ink-soft whitespace-pre">
+      <div className="md:hidden flex flex-col gap-5">
+        <div className="flex flex-col gap-[10px]">
+          <h1 className="font-display font-bold text-[30px] leading-none tracking-[-0.02em] uppercase text-ink">Приглашай друзей</h1>
+          <p className="text-[14px] leading-[21px] text-ink-soft">Друг регистрируется по вашей ссылке и проходит верификацию — вы оба получаете по 100 бонусов.</p>
+        </div>
+        <Rule2 />
+        <div className="flex flex-col items-center gap-4 py-1">
+          <span className="font-mono font-medium text-[11px] tracking-[0.08em] uppercase text-ink-soft">Ваш код</span>
+          <span className="font-display font-bold text-[40px] leading-none tracking-[0.01em] uppercase text-ink break-all text-center">{code}</span>
+          <TextButton onClick={() => copy('code')}>{copied === 'code' ? '✓ Скопировано' : 'Копировать код'}</TextButton>
+        </div>
+        <Rule />
+        <div className="flex gap-3 items-center">
+          <span className="flex-1 min-w-0 font-mono text-[13px] text-ink truncate">{shortLink}</span>
+          <button onClick={() => copy('link')} className="font-mono font-bold text-[11px] tracking-[0.04em] text-ink whitespace-nowrap">
+            {copied === 'link' ? '✓ СКОПИРОВАНО' : 'КОПИРОВАТЬ'}
+          </button>
+        </div>
+        <Rule />
+        <PrimaryButton onClick={share} className="w-full">Поделиться ссылкой</PrimaryButton>
+      </div>
+      <div className="hidden md:block font-mono font-medium text-[11px] tracking-[0.06em] uppercase text-ink-soft whitespace-pre">
         <Link to="/wallet" className="hover:text-ink">Кошелёк</Link>
         {'  /  '}Рефералы
       </div>
-      <div className="flex flex-col lg:flex-row gap-10 lg:gap-14 items-start">
-        <div className="flex-1 min-w-0 w-full flex flex-col gap-6">
+      <div className="flex flex-col lg:flex-row gap-10 lg:gap-14 items-start -mt-3 md:mt-0">
+        <div className="hidden md:flex flex-1 min-w-0 w-full flex-col gap-6">
           <div className="flex flex-col gap-[10px]">
             <h1 className="font-display font-bold text-[28px] sm:text-[36px] leading-none tracking-[-0.02em] uppercase text-ink">Приглашай друзей</h1>
             <p className="text-[16px] leading-[24px] text-ink-soft">
@@ -118,6 +141,7 @@ const Referral = () => {
         <VRule className="hidden lg:block" />
 
         <div className="flex-1 min-w-0 w-full flex flex-col gap-6">
+          <Rule2 className="md:hidden" />
           <div className="flex gap-4 items-stretch">
             <Stat value={num(stats?.total_invites ?? invitees.length)} label="Приглашено" />
             <VRule />
@@ -145,7 +169,7 @@ const Referral = () => {
                 else right = <span className="font-mono text-[11px] tracking-[0.04em] text-ink-soft whitespace-nowrap">{p.verified ? 'НАЧИСЛЯЕМ' : 'ЖДЁТ ВЕРИФ.'}</span>;
                 return (
                   <React.Fragment key={p.user_id}>
-                    {i > 0 && <Rule />}
+                    {i > 0 && <Rule className="hidden md:block" />}
                     <Link to={p.username ? `/@${p.username}` : '#'} className="flex gap-3 items-center hover:opacity-80">
                       <Avatar src={p.avatar_url} name={p.full_name} size={40} />
                       <span className="flex-1 min-w-0 flex flex-col gap-[2px]">

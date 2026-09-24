@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { RouteLoadingView } from '../design/DottedPath';
 import { Rule, Rule2, VRule, SectionLabel, SmallButton, TextButton } from './merchant/kit';
 import { useNotifications } from '../context/NotificationContext';
+import { useMobileTop } from '../context/MobileChrome';
 
 /**
  * D54 · Уведомления: слева категории со счётчиками новых,
@@ -74,6 +75,35 @@ const Row = ({ n, onOpen, onAccept, onReject, requestState }) => {
   );
 };
 
+/** Строка на телефоне (макет 54): время и точка слева, категория, текст, кнопки заявки. */
+const MobileRow = ({ n, onOpen, onAccept, onReject, requestState }) => {
+  const unread = !n.read_at;
+  const text = [n.title, n.body].filter(Boolean).join('. ').replace(/\.\./g, '.');
+  const isRequest = n.type === 'friend_request' && n.reference_id;
+  return (
+    <div className="flex gap-4 items-start">
+      <div className="w-[42px] shrink-0 flex flex-col gap-[6px]">
+        <span className={`font-mono font-bold text-[13px] ${unread ? 'text-ink' : 'text-ink-soft'}`}>{hhmm(n.created_at)}</span>
+        {unread && <span className="w-[5px] h-[5px] rounded-full bg-ink" />}
+      </div>
+      <div className="flex-1 min-w-0 flex flex-col gap-[6px]">
+        <span className="font-mono font-medium text-[10px] tracking-[0.06em] uppercase text-ink-soft truncate">{catLabel(n)}</span>
+        <button onClick={() => onOpen(n)} className="text-left">
+          <span className={`block text-[15px] leading-[22px] ${unread ? 'text-ink' : 'text-ink-soft'}`}>{text}</span>
+        </button>
+        {isRequest && requestState !== 'done' && (
+          <div className="flex gap-[14px] items-center pt-1">
+            <SmallButton onClick={() => onAccept(n)} disabled={requestState === 'busy'}>Принять</SmallButton>
+            <button onClick={() => onReject(n)} disabled={requestState === 'busy'} className="font-mono text-[11px] tracking-[0.04em] text-ink-soft">
+              ОТКЛОНИТЬ
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const Notifications = () => {
   const navigate = useNavigate();
   const { refreshCount } = useNotifications();
@@ -82,6 +112,16 @@ const Notifications = () => {
   const [cat, setCat] = useState('all');
   const [req, setReq] = useState({});
   const [error, setError] = useState('');
+  const readAllRef = useRef(null);
+  useMobileTop({
+    back: '/profile',
+    label: 'Профиль',
+    right: (
+      <button onClick={() => readAllRef.current?.()} className="btn-bracket text-[11px]">
+        Прочитать все
+      </button>
+    ),
+  });
 
   const load = async (offset = 0) => {
     const r = await api.get('/notifications', { params: { limit: PAGE, offset } }).catch(() => ({ data: [] }));
@@ -141,6 +181,8 @@ const Notifications = () => {
     refreshCount();
   };
 
+  readAllRef.current = readAll;
+
   const visible = cat === 'all' ? items : items.filter((n) => catOf(n) === cat);
   const groups = [];
   visible.forEach((n) => {
@@ -166,8 +208,25 @@ const Notifications = () => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-10 lg:gap-14 items-start">
-      <div className="w-full lg:w-[280px] shrink-0 flex flex-col gap-6">
+    <div className="flex flex-col lg:flex-row gap-6 md:gap-10 lg:gap-14 items-start">
+      <div className="md:hidden w-full flex flex-col gap-6">
+        <h1 className="font-display font-bold text-[34px] leading-none tracking-[-0.02em] text-ink">УВЕДОМЛЕНИЯ</h1>
+        <div className="flex items-center gap-4 overflow-x-auto no-scrollbar -mx-5 px-5">
+          {[{ key: 'all', label: unreadBy.all ? `Все · ${unreadBy.all}` : 'Все' }, ...CATS].map((c) =>
+            c.key === cat ? (
+              <span key={c.key} className="shrink-0 bg-ink text-white font-mono font-bold text-[12px] tracking-[0.04em] uppercase px-[6px] py-[2px] whitespace-nowrap">
+                {c.label}
+              </span>
+            ) : (
+              <button key={c.key} onClick={() => setCat(c.key)} className="shrink-0 font-mono text-[12px] tracking-[0.04em] uppercase text-ink-soft whitespace-nowrap">
+                {c.label}
+              </button>
+            )
+          )}
+        </div>
+        <Rule2 />
+      </div>
+      <div className="hidden md:flex w-full lg:w-[280px] shrink-0 flex-col gap-6">
         <h1 className="font-display font-bold text-[26px] leading-none tracking-[-0.02em] text-ink">УВЕДОМЛЕНИЯ</h1>
         <div className="flex flex-col gap-[10px]">
           <CatRow k="all" label="Все" />
@@ -197,7 +256,12 @@ const Notifications = () => {
                 {g.items.map((n, i) => (
                   <React.Fragment key={n.id}>
                     {i > 0 && <Rule />}
-                    <Row n={n} onOpen={open} onAccept={(x) => respond(x, true)} onReject={(x) => respond(x, false)} requestState={req[n.id]} />
+                    <div className="md:hidden">
+                      <MobileRow n={n} onOpen={open} onAccept={(x) => respond(x, true)} onReject={(x) => respond(x, false)} requestState={req[n.id]} />
+                    </div>
+                    <div className="hidden md:block">
+                      <Row n={n} onOpen={open} onAccept={(x) => respond(x, true)} onReject={(x) => respond(x, false)} requestState={req[n.id]} />
+                    </div>
                   </React.Fragment>
                 ))}
               </div>

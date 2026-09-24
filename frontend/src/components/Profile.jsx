@@ -4,7 +4,9 @@ import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { Eyebrow, LeaderRow } from '../design/UI';
 import { RouteLoadingView, RuleDashed, RuleDouble } from '../design/DottedPath';
-import { Avatar } from './merchant/kit';
+import { Avatar, Rule, Rule2, plural } from './merchant/kit';
+import { useMobileTop } from '../context/MobileChrome';
+import { useNotifications } from '../context/NotificationContext';
 
 /**
  * Профиль — точная структура Figma «Концепция «Чек», D50 · Профиль»
@@ -55,6 +57,8 @@ const Profile = () => {
   const [subs, setSubs] = useState([]);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { unreadCount } = useNotifications();
+  useMobileTop({ tabRight: <Link to="/settings" className="btn-bracket text-[11px]">Настройки</Link> });
 
   useEffect(() => {
     Promise.all([
@@ -127,8 +131,82 @@ const Profile = () => {
     { to: '/settings', label: 'Настройки' },
   ];
 
+  const mobileLinks = [
+    { to: '/order', label: 'Заказы', sub: activeOrders.length ? `${activeOrders.length} ${plural(activeOrders.length, 'активный чек', 'активных чека', 'активных чеков')}` : 'Активных чеков нет' },
+    { to: '/savings', label: 'Журнал экономии' },
+    { to: '/friends', label: 'Друзья', sub: incoming.length ? `${incoming.length} ${plural(incoming.length, 'новая заявка', 'новые заявки', 'новых заявок')}` : null, badge: incoming.length || null },
+    { to: '/subscriptions', label: 'Подписки', sub: 'Компании, за которыми вы следите' },
+    { to: '/notifications', label: 'Уведомления', badge: unreadCount || null },
+    { to: '/referral', label: 'Рефералы', sub: '+100 бонусов за друга' },
+    { to: '/support', label: 'Поддержка' },
+  ];
+
+  const mobile = (
+    <div className="md:hidden flex flex-col gap-5">
+      <div className="flex gap-5 items-center">
+        <Avatar src={user.avatar_url} name={displayName} size={88} />
+        <div className="flex-1 min-w-0 flex flex-col gap-[6px]">
+          <h1 className="font-display font-bold text-[22px] leading-[1.15] tracking-[-0.01em] text-ink break-words">{displayName}</h1>
+          {user.username && <span className="text-[13px] text-ink-soft truncate">@{user.username}</span>}
+          {(user.university_short || user.course) && (
+            <span className="text-[13px] text-ink-soft truncate">{[user.university_short, user.course && `${user.course} курс`].filter(Boolean).join(' · ')}</span>
+          )}
+        </div>
+      </div>
+      <div className="flex items-end gap-2 font-mono text-[12px] tracking-[0.03em] uppercase">
+        <span className="text-ink whitespace-nowrap">Статус студента</span>
+        <span className="flex-1 min-w-[8px] border-t border-dashed border-ink-faint h-[4px]" />
+        {isVerified ? (
+          <span className="font-bold text-ink whitespace-nowrap">✓ до {verifiedUntil || '—'}</span>
+        ) : (
+          <Link to="/verification" className="font-bold text-accent whitespace-nowrap">Подтвердить →</Link>
+        )}
+      </div>
+      <div className="flex items-stretch gap-4">
+        {[
+          [friends.length, 'Друзей', false, '/friends'],
+          [subs.length, 'Подписок', false, '/subscriptions'],
+          [`${Math.round(totalSaved).toLocaleString('ru-RU')} ₽`, 'Сэкономлено', true, '/savings'],
+        ].map(([v, l, accent, to], i) => (
+          <React.Fragment key={l}>
+            {i > 0 && <span className="w-px self-stretch border-l border-dashed border-line" />}
+            <Link to={to} className={`${accent ? 'flex-[1.4]' : 'flex-1'} min-w-0 flex flex-col gap-1`}>
+              <span className={`font-display font-bold text-[20px] tracking-[-0.01em] whitespace-nowrap ${accent ? 'text-accent' : 'text-ink'}`}>{v}</span>
+              <span className="font-mono text-[10px] tracking-[0.04em] uppercase text-ink-soft">{l}</span>
+            </Link>
+          </React.Fragment>
+        ))}
+      </div>
+      <Rule2 />
+      <nav className="flex flex-col -mt-1">
+        {mobileLinks.map((l, i) => (
+          <React.Fragment key={l.to}>
+            {i > 0 && <Rule />}
+            <Link to={l.to} className="py-[14px] flex items-center justify-between gap-3">
+              <span className="min-w-0 flex flex-col gap-[4px]">
+                <span className="font-mono font-bold text-[12px] tracking-[0.04em] uppercase text-ink">{l.label}</span>
+                {l.sub && <span className="text-[13px] text-ink-soft">{l.sub}</span>}
+              </span>
+              <span className="flex items-center gap-2 shrink-0 font-mono font-bold text-[12px] text-ink">
+                {l.badge && <span>{l.badge}</span>}
+                <span className="font-normal">→</span>
+              </span>
+            </Link>
+          </React.Fragment>
+        ))}
+      </nav>
+      <Rule2 className="-mt-1" />
+      <div className="flex items-center justify-between">
+        <Link to={publicProfileUrl} className="btn-bracket">Мой публичный профиль</Link>
+        <button onClick={logout} className="btn-bracket uppercase">Выйти</button>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="lg:flex lg:items-start lg:gap-10">
+    <>
+    {mobile}
+    <div className="hidden md:block lg:flex lg:items-start lg:gap-10">
       {/* Col 1 — карточка пользователя. */}
       <aside className="lg:w-[340px] lg:shrink-0">
         <Avatar src={user.avatar_url} name={displayName} size={120} />
@@ -326,6 +404,7 @@ const Profile = () => {
 
       </div>
     </div>
+    </>
   );
 };
 

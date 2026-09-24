@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useLocation } from 'react-router-dom';
 import api from '../api/client';
+import { useMobileTop } from '../context/MobileChrome';
 import { useAuth } from '../context/AuthContext';
 import { RouteLoadingView } from '../design/DottedPath';
 import { PrimaryButton, TextButton, Leader, Rule, Rule2, VRule, AlertBlock, SectionLabel, pad6, ddmm, ddmmyy, hhmm } from './merchant/kit';
@@ -14,7 +15,7 @@ import { PrimaryButton, TextButton, Leader, Rule, Rule2, VRule, AlertBlock, Sect
 const OTHER = 'other';
 
 const Crumbs = ({ step }) => (
-  <div className="font-mono font-medium text-[11px] tracking-[0.06em] uppercase text-ink-soft whitespace-pre">
+  <div className="hidden md:block font-mono font-medium text-[11px] tracking-[0.06em] uppercase text-ink-soft whitespace-pre">
     <Link to="/settings" className="hover:text-ink">Настройки</Link>
     {'  /  '}Верификация{step ? '  ·  шаг 2 из 2' : ''}
   </div>
@@ -199,14 +200,20 @@ const VerificationStatus = ({ user, last }) => {
       <div className="flex-1 min-w-0 w-full flex flex-col gap-6">
         <Crumbs />
         {last && (
-          <div className="font-mono text-[11px] tracking-[0.04em] text-ink-soft">
-            ЗАЯВКА № {pad6(last.id).slice(-5)} · {ddmmyy(created)} {hhmm(created)}
+          <div className="font-mono text-[11px] tracking-[0.04em] text-ink-soft text-center md:text-left">
+            ЗАЯВКА № {pad6(last.id).slice(-5)}
+            <span className="hidden md:inline"> · {ddmmyy(created)} {hhmm(created)}</span>
           </div>
         )}
-        <h1 className="font-display font-bold text-[34px] sm:text-[44px] leading-none tracking-[-0.02em] text-ink">
+        <h1 className="font-display font-bold text-[26px] sm:text-[44px] leading-none tracking-[-0.02em] text-ink text-center md:text-left -mt-2 md:mt-0">
           {verified ? 'ВЕРИФИЦИРОВАН' : 'НА ПРОВЕРКЕ'}
         </h1>
-        <p className="text-[17px] leading-[26px] text-ink-soft max-w-[560px]">
+        {last && (
+          <div className="md:hidden -mt-2 font-mono text-[11px] tracking-[0.04em] text-ink-soft text-center uppercase">
+            Отправлено {ddmmyy(created)} · {hhmm(created)}
+          </div>
+        )}
+        <p className="hidden md:block text-[17px] leading-[26px] text-ink-soft max-w-[560px]">
           {verified
             ? 'Все скидки доступны. За месяц до конца срока напомним обновить статус.'
             : 'Обычно проверяем за несколько часов. Пришлём уведомление, как только всё будет готово.'}
@@ -253,6 +260,15 @@ const Verification = () => {
   const location = useLocation();
   const { user, loading, fetchUser } = useAuth();
   const [last, setLast] = useState(undefined);
+  const formStep = last !== undefined && (!last || ['rejected', 'expired'].includes(last?.status)) && user?.student_status !== 'verified';
+  useMobileTop(
+    {
+      back: '/settings',
+      label: 'Настройки',
+      right: formStep ? <span className="font-mono font-medium text-[11px] tracking-[0.06em] uppercase text-ink">Шаг 2 из 2</span> : null,
+    },
+    [formStep]
+  );
 
   const load = () =>
     api

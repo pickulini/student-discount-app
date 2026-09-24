@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { Avatar } from './merchant/kit';
+import { MobileChromeProvider, MobileBackRow, useMobileChrome } from '../context/MobileChrome';
 
 /**
  * Каркас студенческой части по макету «Концепция «Чек», Студент · desktop»:
@@ -28,7 +29,23 @@ const MENU = [
   { to: '/settings', label: 'Настройки' },
 ];
 
-const Layout = () => {
+// Вкладки нижнего меню на телефоне.
+const TABS = [
+  { to: '/', label: 'Главная' },
+  { to: '/events', label: 'Ивенты' },
+  { to: '/wallet', label: 'Кошелёк' },
+  { to: '/profile', label: 'Профиль' },
+];
+const isTabRoot = (p) => TABS.some((t) => t.to === p);
+
+const Layout = () => (
+  <MobileChromeProvider>
+    <LayoutInner />
+  </MobileChromeProvider>
+);
+
+const LayoutInner = () => {
+  const { top } = useMobileChrome();
   const { user, logout } = useAuth();
   const { unreadCount } = useNotifications();
   const navigate = useNavigate();
@@ -57,7 +74,32 @@ const Layout = () => {
 
   return (
     <div className={`min-h-screen flex flex-col text-ink ${onDesk ? 'bg-desk' : 'bg-bg'}`}>
-      <header className={`${onDesk ? 'bg-desk' : 'bg-bg'} sticky top-0 z-30`}>
+      {/* Телефон: на вкладках — логотип и вуз, на внутренних экранах — «← назад». */}
+      <div className="md:hidden px-5 pt-6">
+        {isTabRoot(pathname) ? (
+          <div className="flex items-center justify-between gap-4">
+            <Link to="/" className="font-display font-bold text-[18px] tracking-[-0.02em] text-ink whitespace-nowrap">
+              СТУДЕНТ−%
+            </Link>
+            {top?.tabRight ? (
+              top.tabRight
+            ) : user ? (
+              <Link to="/profile" className="font-mono font-medium text-[11px] tracking-[0.06em] uppercase text-ink whitespace-nowrap">
+                {uni || firstName}
+                {verified && ' ✓'}
+              </Link>
+            ) : (
+              <Link to="/login" className="font-mono font-bold text-[11px] tracking-[0.06em] uppercase text-ink whitespace-nowrap">
+                Войти
+              </Link>
+            )}
+          </div>
+        ) : top?.hidden ? null : (
+          <MobileBackRow {...(top || {})} />
+        )}
+      </div>
+
+      <header className={`hidden md:block ${onDesk ? 'bg-desk' : 'bg-bg'} sticky top-0 z-30`}>
         <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-8 xl:px-14 pt-5 sm:pt-7">
           <div className="flex items-center justify-between gap-4">
             <Link to="/" className="font-display font-bold text-[20px] sm:text-[22px] tracking-[-0.02em] text-ink whitespace-nowrap">
@@ -162,11 +204,37 @@ const Layout = () => {
         </div>
       </header>
 
-      <main className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-8 xl:px-14 pt-8">
+      <main className="flex-1 w-full max-w-[1440px] mx-auto px-5 md:px-8 xl:px-14 pt-5 md:pt-8">
         <Outlet />
       </main>
 
-      <footer className="w-full max-w-[1440px] mx-auto px-4 sm:px-8 xl:px-14 pt-8 pb-8">
+      {/* Телефон: линия отрыва и нижнее меню на вкладках. */}
+      <div className="md:hidden px-5 pt-8 pb-6">
+        <div className="tear-edge" />
+      </div>
+      {isTabRoot(pathname) && (
+        <>
+          <div className="md:hidden h-[64px]" />
+          <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-bg px-5">
+            <div className="border-t border-dashed border-ink pt-[14px] pb-[max(18px,env(safe-area-inset-bottom))] flex items-start justify-between">
+              {TABS.map((t) => {
+                const active = t.to === pathname;
+                return (
+                  <Link
+                    key={t.to}
+                    to={t.to}
+                    className={`font-mono text-[11px] tracking-[0.04em] uppercase whitespace-nowrap ${active ? 'font-bold text-ink' : 'text-ink-soft'}`}
+                  >
+                    {t.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </nav>
+        </>
+      )}
+
+      <footer className="hidden md:block w-full max-w-[1440px] mx-auto px-4 sm:px-8 xl:px-14 pt-8 pb-8">
         <div className="tear-edge" />
         <div className="mt-4 flex items-start justify-between gap-4 flex-wrap font-mono text-[11px] tracking-[0.04em]">
           <span className="text-ink-faint">

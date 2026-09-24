@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
 import { RouteLoadingView } from '../design/DottedPath';
+import { useMobileTop } from '../context/MobileChrome';
 import { Tabs, Rule, Rule2, VRule, SectionLabel, SmallButton, TextButton, Avatar, plural } from './merchant/kit';
 
 /** D52 · Друзья: список с активностью, поиск, заявки и «возможно, знакомы». */
@@ -41,6 +42,7 @@ const Friends = () => {
   const [busy, setBusy] = useState(null);
   const [sent, setSent] = useState(new Set());
   const [error, setError] = useState('');
+  useMobileTop({ back: '/profile', label: 'Профиль' });
 
   const load = () =>
     api
@@ -110,6 +112,20 @@ const Friends = () => {
     list.length === 0 ? (
       <div className="text-[15px] text-ink-soft">{empty}</div>
     ) : (
+      <>
+        <div className="md:hidden flex flex-col gap-4">
+          {list.map((p, i) => (
+            <React.Fragment key={p.id}>
+              {i > 0 && <Rule />}
+              <FriendCell p={p} />
+            </React.Fragment>
+          ))}
+        </div>
+        <div className="hidden md:flex flex-col gap-6">{renderPairs(list)}</div>
+      </>
+    );
+
+  const renderPairs = (list) =>
       pairs(list).map((pair, i) => (
         <React.Fragment key={pair[0].id}>
           {i > 0 && <Rule />}
@@ -119,8 +135,7 @@ const Friends = () => {
             {pair[1] ? <FriendCell p={pair[1]} /> : <div className="hidden sm:block flex-1" />}
           </div>
         </React.Fragment>
-      ))
-    );
+      ));
 
   const requestRow = (p, kind) => (
     <div className="flex gap-[14px] items-center">
@@ -167,7 +182,7 @@ const Friends = () => {
   return (
     <div className="flex flex-col lg:flex-row gap-10 lg:gap-14 items-start">
       <div className="flex-1 min-w-0 w-full flex flex-col gap-6">
-        <h1 className="font-display font-bold text-[36px] leading-none tracking-[-0.02em] text-ink">ДРУЗЬЯ</h1>
+        <h1 className="font-display font-bold text-[34px] md:text-[36px] leading-none tracking-[-0.02em] text-ink">ДРУЗЬЯ</h1>
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <Tabs
             value={tab}
@@ -182,7 +197,7 @@ const Friends = () => {
             ]}
           />
           {tab === 'friends' && !results && (
-            <div className="flex items-center gap-3 font-mono text-[11px] tracking-[0.04em] text-ink-soft uppercase whitespace-nowrap">
+            <div className="hidden md:flex items-center gap-3 font-mono text-[11px] tracking-[0.04em] text-ink-soft uppercase whitespace-nowrap">
               <span>Сорт:</span>
               {SORTS.map((s) =>
                 s.key === sort ? (
@@ -246,7 +261,25 @@ const Friends = () => {
             )}
           </>
         ) : tab === 'friends' ? (
-          renderGrid(friends, 'Пока нет друзей. Найдите знакомых по @username или примите заявки.')
+          <>
+            <div className="md:hidden flex flex-col gap-6">
+              <Rule2 />
+              {data.incoming.length > 0 && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <SectionLabel>Новые заявки</SectionLabel>
+                    <button onClick={() => setTab('incoming')} className="font-mono text-[11px] tracking-[0.04em] uppercase text-ink-soft">
+                      Все {data.incoming.length} →
+                    </button>
+                  </div>
+                  {requestRow(data.incoming[0], 'incoming')}
+                  <Rule2 />
+                </>
+              )}
+              <SectionLabel>Все друзья · {data.friends.length}</SectionLabel>
+            </div>
+            {renderGrid(friends, 'Пока нет друзей. Найдите знакомых по @username или примите заявки.')}
+          </>
         ) : tab === 'incoming' ? (
           stack(data.incoming, 'incoming', 'Новых заявок нет.')
         ) : (
@@ -256,7 +289,7 @@ const Friends = () => {
 
       <VRule className="hidden lg:block" />
 
-      <div className="w-full lg:w-[380px] shrink-0 flex flex-col gap-6">
+      <div className="hidden md:flex w-full lg:w-[380px] shrink-0 flex-col gap-6">
         <SectionLabel>Заявки · {data.incoming.length}</SectionLabel>
         {stack(data.incoming.slice(0, 5), 'incoming', 'Новых заявок нет.')}
         <Rule2 />

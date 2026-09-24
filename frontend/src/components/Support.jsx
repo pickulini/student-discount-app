@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import { RouteLoadingView } from '../design/DottedPath';
+import { useMobileTop } from '../context/MobileChrome';
 import { Rule, Rule2, VRule, SectionLabel, PrimaryButton, SmallButton, TextButton } from './merchant/kit';
 
 /** D55 · Поддержка: слева обращения, справа переписка или новое обращение. */
@@ -40,7 +41,7 @@ const TicketItem = ({ t, active, onClick }) => {
   const open = isOpen(t);
   const fresh = open && t.last_from_staff;
   return (
-    <button onClick={onClick} className={`w-full text-left flex flex-col gap-[6px] ${active ? 'border-l-[3px] border-ink pl-[14px]' : ''}`}>
+    <button onClick={onClick} className={`w-full text-left flex flex-col gap-[6px] ${active ? 'md:border-l-[3px] md:border-ink md:pl-[14px]' : ''}`}>
       <span className={`flex items-center justify-between font-mono text-[11px] tracking-[0.04em] whitespace-nowrap ${open ? '' : 'text-ink-soft'}`}>
         <span className="text-ink-soft">№ {pad4(t.id)}</span>
         <span className={`font-bold ${open ? 'text-ink' : ''}`}>{open ? 'ОТКРЫТО' : 'ЗАКРЫТО'}</span>
@@ -76,6 +77,24 @@ const Support = () => {
   const [error, setError] = useState('');
   const fileRef = useRef(null);
   const bottomRef = useRef(null);
+  // Телефон: список обращений и переписка — отдельные экраны (макеты 55 и 56).
+  const [chatOpen, setChatOpen] = useState(false);
+  const activeStatus = tickets?.find((t) => t.id === activeId)?.status;
+  const chatShown = chatOpen && !creating && activeStatus;
+  useMobileTop(
+    chatShown
+      ? {
+          label: 'Обращения',
+          onBack: () => setChatOpen(false),
+          right: (
+            <span className="font-mono font-medium text-[11px] tracking-[0.06em] uppercase text-ink">
+              {activeStatus === 'open' || activeStatus === 'in_progress' ? 'Открыто' : 'Закрыто'}
+            </span>
+          ),
+        }
+      : { back: '/profile', label: 'Профиль' },
+    [chatShown, activeStatus]
+  );
 
   const loadTickets = () =>
     api
@@ -194,9 +213,9 @@ const Support = () => {
   let lastDay = null;
 
   return (
-    <div className="flex flex-col lg:flex-row gap-10 lg:gap-12 items-start">
-      <div className="w-full lg:w-[400px] shrink-0 flex flex-col gap-6">
-        <h1 className="font-display font-bold text-[30px] leading-none tracking-[-0.02em] text-ink">ПОДДЕРЖКА</h1>
+    <div className="flex flex-col lg:flex-row gap-6 md:gap-10 lg:gap-12 items-start">
+      <div className={`${chatShown ? 'hidden md:flex' : 'flex'} w-full lg:w-[400px] shrink-0 flex-col gap-6`}>
+        <h1 className="font-display font-bold text-[34px] md:text-[30px] leading-none tracking-[-0.02em] text-ink">ПОДДЕРЖКА</h1>
         <p className="text-[14px] text-ink-soft -mt-2">Отвечаем с 9:00 до 23:00, обычно за 15 минут.</p>
         <PrimaryButton
           className="w-full"
@@ -221,7 +240,9 @@ const Support = () => {
                 onClick={() => {
                   setCreating(false);
                   setActiveId(t.id);
+                  setChatOpen(true);
                   setError('');
+                  window.scrollTo(0, 0);
                 }}
               />
             </React.Fragment>
@@ -231,10 +252,13 @@ const Support = () => {
 
       <VRule className="hidden lg:block" />
 
-      <div className="flex-1 min-w-0 w-full flex flex-col gap-6">
+      <div className={`${chatShown || creating || !active ? 'flex' : 'hidden md:flex'} flex-1 min-w-0 w-full flex-col gap-6`}>
         {creating || !active ? (
           <form onSubmit={create} className="flex flex-col gap-6">
-            <div className="font-mono text-[11px] tracking-[0.04em] text-ink-soft">НОВОЕ ОБРАЩЕНИЕ</div>
+            <Rule2 className="md:hidden" />
+            <div className="font-mono text-[11px] tracking-[0.04em] text-ink-soft">
+              НОВОЕ ОБРАЩЕНИЕ<span className="md:hidden"> — ФОРМА</span>
+            </div>
             <label className="flex flex-col gap-2">
               <span className="font-mono font-medium text-[11px] tracking-[0.06em] uppercase text-ink-soft">Тема</span>
               <input
@@ -250,15 +274,20 @@ const Support = () => {
               <textarea
                 value={first}
                 onChange={(e) => setFirst(e.target.value)}
-                rows={5}
+                rows={3}
                 placeholder="Опишите проблему: номер заказа, место, что пошло не так"
                 className="bg-transparent pb-[10px] border-b border-dashed border-line focus:border-solid focus:border-ink outline-none text-[16px] leading-[24px] text-ink placeholder:text-ink-faint resize-y"
               />
             </label>
             {error && <div className="font-mono text-[12px] text-accent uppercase">{error}</div>}
             <div className="flex items-center gap-6">
-              <PrimaryButton type="submit" disabled={busy}>
-                {busy ? 'Отправляем…' : 'Отправить'}
+              <PrimaryButton type="submit" disabled={busy} className="flex-1 md:flex-none">
+                {busy ? 'Отправляем…' : (
+                  <>
+                    <span className="md:hidden">Создать</span>
+                    <span className="hidden md:inline">Отправить</span>
+                  </>
+                )}
               </PrimaryButton>
               {tickets.length > 0 && (
                 <TextButton type="button" onClick={() => setCreating(false)}>
@@ -271,11 +300,11 @@ const Support = () => {
           <>
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <span className="font-mono text-[11px] tracking-[0.04em] text-ink-soft">
-                ОБРАЩЕНИЕ № {pad4(active.id)} · {isOpen(active) ? 'ОТКРЫТО' : 'ЗАКРЫТО'}
+                ОБРАЩЕНИЕ № {pad4(active.id)}<span className="hidden md:inline"> · {isOpen(active) ? 'ОТКРЫТО' : 'ЗАКРЫТО'}</span>
               </span>
-              {isOpen(active) && <TextButton onClick={close} disabled={busy}>Вопрос решён — закрыть</TextButton>}
+              {isOpen(active) && <TextButton className="hidden md:inline-flex" onClick={close} disabled={busy}>Вопрос решён — закрыть</TextButton>}
             </div>
-            <h2 className="font-display font-bold text-[20px] sm:text-[24px] leading-tight tracking-[-0.01em] text-ink">{active.subject}</h2>
+            <h2 className="font-display font-bold text-[20px] md:text-[24px] leading-tight -mt-3 md:mt-0 tracking-[-0.01em] text-ink">{active.subject}</h2>
             <Rule2 />
             <div className="flex flex-col gap-6">
               {thread.map((m) => {
@@ -286,24 +315,24 @@ const Support = () => {
                   <React.Fragment key={m.id}>
                     {sep && <div className="text-center font-mono text-[11px] tracking-[0.04em] text-ink-faint whitespace-pre">{`- - -  ${ddmm(m.created_at)}  - - -`}</div>}
                     {m.mine ? (
-                      <div className="flex justify-end pl-10 sm:pl-[120px] xl:pl-[240px]">
+                      <div className="flex justify-end pl-8 md:pl-[120px] xl:pl-[240px]">
                         <div className="flex flex-col items-end gap-[6px] min-w-0">
                           <span className="font-mono font-bold text-[10px] tracking-[0.06em] text-ink-soft whitespace-nowrap">
                             ВЫ · {ddmm(m.created_at)} {hhmm(m.created_at)}
                           </span>
-                          <p className="text-[16px] leading-[24px] text-ink text-right whitespace-pre-line break-words">
+                          <p className="text-[15px] md:text-[16px] leading-[22px] md:leading-[24px] text-ink text-right whitespace-pre-line break-words">
                             <MessageText text={m.message} />
                           </p>
                         </div>
                       </div>
                     ) : (
-                      <div className="flex gap-[14px] pr-10 sm:pr-[120px] xl:pr-[240px]">
+                      <div className="flex gap-[14px] pr-6 md:pr-[120px] xl:pr-[240px]">
                         <div className="w-px self-stretch border-l border-dashed border-ink" />
                         <div className="flex-1 min-w-0 flex flex-col gap-[6px]">
                           <span className="font-mono font-bold text-[10px] tracking-[0.06em] text-ink uppercase whitespace-nowrap">
                             Поддержка{m.author_name ? ` · ${m.author_name}` : ''} · {ddmm(m.created_at)} {hhmm(m.created_at)}
                           </span>
-                          <p className="text-[16px] leading-[24px] text-ink whitespace-pre-line break-words">
+                          <p className="text-[15px] md:text-[16px] leading-[22px] md:leading-[24px] text-ink whitespace-pre-line break-words">
                             <MessageText text={m.message} />
                           </p>
                         </div>
@@ -327,14 +356,19 @@ const Support = () => {
                   type="button"
                   onClick={() => fileRef.current?.click()}
                   disabled={busy}
-                  className="font-mono text-[11px] tracking-[0.04em] text-ink-soft hover:text-ink whitespace-nowrap"
+                  className="hidden md:inline font-mono text-[11px] tracking-[0.04em] text-ink-soft hover:text-ink whitespace-nowrap"
                 >
                   + ФАЙЛ
                 </button>
                 <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={attach} />
-                <SmallButton type="submit" disabled={busy || !text.trim()}>
-                  {busy ? '…' : 'Отправить'}
-                </SmallButton>
+                <span className="hidden md:inline-flex">
+                  <SmallButton type="submit" disabled={busy || !text.trim()}>
+                    {busy ? '…' : 'Отправить'}
+                  </SmallButton>
+                </span>
+                <button type="submit" disabled={busy || !text.trim()} className="md:hidden font-mono font-bold text-[11px] tracking-[0.04em] uppercase text-ink whitespace-nowrap disabled:text-ink-soft">
+                  {busy ? '…' : 'Отправить →'}
+                </button>
               </form>
             ) : (
               <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -343,6 +377,11 @@ const Support = () => {
               </div>
             )}
             {error && <div className="font-mono text-[12px] text-accent uppercase">{error}</div>}
+            {isOpen(active) && (
+              <TextButton className="md:hidden self-center" onClick={close} disabled={busy}>
+                Вопрос решён — закрыть
+              </TextButton>
+            )}
           </>
         )}
       </div>

@@ -45,6 +45,7 @@ const Wallet = () => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [totalSaved, setTotalSaved] = useState(null);
+  const [allOps, setAllOps] = useState(false);
 
   useEffect(() => {
     api.get('/wallet').then((r) => setWallet(r.data)).catch(() => setWallet({ balance: 0, bonus: 0 }));
@@ -128,9 +129,9 @@ const Wallet = () => {
   return (
     <div className="flex flex-col lg:flex-row gap-10 lg:gap-14 items-start">
       <div className="w-full lg:w-[420px] shrink-0 flex flex-col gap-6">
-        <h1 className="font-display font-bold text-[36px] leading-none tracking-[-0.02em] text-ink">КОШЕЛЁК</h1>
+        <h1 className="font-display font-bold text-[34px] md:text-[36px] leading-none tracking-[-0.02em] text-ink">КОШЕЛЁК</h1>
         <div className="font-mono font-medium text-[11px] tracking-[0.08em] uppercase text-ink-soft">Денежный баланс</div>
-        <div className="font-display font-bold text-[44px] sm:text-[56px] leading-none tracking-[-0.03em] text-ink whitespace-nowrap">
+        <div className="font-display font-bold text-[48px] sm:text-[56px] leading-none tracking-[-0.03em] text-ink whitespace-nowrap">
           {num(wallet.balance)} ₽
         </div>
         <Leader label="Бонусные баллы" value={<b>{num(wallet.bonus)} Б</b>} />
@@ -170,6 +171,38 @@ const Wallet = () => {
         <PrimaryButton className="w-full" onClick={topUp} disabled={busy || !amountOk}>
           {busy ? 'Переходим к оплате…' : `Пополнить на ${num(amount)} ₽`}
         </PrimaryButton>
+        <div className="md:hidden flex flex-col gap-[14px]">
+          <Rule2 className="mb-[6px]" />
+          <div className="flex items-center justify-between font-mono text-[11px] whitespace-nowrap">
+            <span className="font-medium tracking-[0.08em] uppercase text-ink">Последние операции</span>
+            {(ops || []).length > 4 && (
+              <button onClick={() => setAllOps((v) => !v)} className="tracking-[0.04em] uppercase text-ink-soft">
+                {allOps ? 'Свернуть ↑' : 'Все →'}
+              </button>
+            )}
+          </div>
+          {ops === null ? (
+            <div className="font-mono text-[11px] text-ink-soft uppercase">Загружаем…</div>
+          ) : ops.length === 0 ? (
+            <div className="text-[13px] text-ink-soft">В этом месяце операций не было.</div>
+          ) : (
+            (allOps ? ops : ops.slice(0, 4)).map((o, i) => {
+              const row = (
+                <span className="flex items-end gap-2 font-mono text-[12px] tracking-[0.02em] uppercase text-ink">
+                  <span className="text-ink-soft whitespace-nowrap">{ddmm(o.created_at)}</span>
+                  <span className="truncate">{String(o.title).split(' · ')[0]}</span>
+                  <span className="flex-1 min-w-[8px] border-t border-dashed border-ink-faint h-[4px]" />
+                  <span className="whitespace-nowrap">{signed(o.amount, o.unit)}</span>
+                </span>
+              );
+              return o.order_id ? (
+                <Link key={i} to={`/orders/${o.order_id}`}>{row}</Link>
+              ) : (
+                <div key={i}>{row}</div>
+              );
+            })
+          )}
+        </div>
         <Rule />
         <div className="flex flex-col gap-[14px]">
           <LinkRow to="/savings" title="Журнал экономии" sub={totalSaved === null ? '…' : `${num(totalSaved)} ₽ за всё время`} />
@@ -179,7 +212,7 @@ const Wallet = () => {
 
       <VRule className="hidden lg:block" />
 
-      <div className="flex-1 min-w-0 w-full flex flex-col gap-6">
+      <div className="hidden md:flex flex-1 min-w-0 w-full flex-col gap-6">
         <SectionLabel>Операции</SectionLabel>
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <Tabs
