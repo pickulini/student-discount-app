@@ -1,6 +1,7 @@
 package handlers
 
 import (
+    "your-project/internal/journal"
     "encoding/json"
     "errors"
     "log"
@@ -45,7 +46,7 @@ func (h *AdminHandler) UpdateUserRole(w http.ResponseWriter, r *http.Request) {
         writeError(w, http.StatusBadRequest, "invalid request")
         return
     }
-    if err := h.adminUsecase.UpdateUserRole(r.Context(), req.UserID, req.Role); err != nil {
+    if err := h.adminUsecase.UpdateUserRoleBy(r.Context(), adminID(r), req.UserID, req.Role); err != nil {
         writeError(w, http.StatusInternalServerError, "failed to update role")
         return
     }
@@ -72,6 +73,7 @@ func (h *AdminHandler) CreateCompany(w http.ResponseWriter, r *http.Request) {
         writeError(w, http.StatusInternalServerError, "failed to create company")
         return
     }
+    journal.Log(r.Context(), adminID(r), journal.CompanyCreate, "company", company.ID, "{Создал|Создала} компанию «"+company.Name+"»")
     writeJSON(w, http.StatusCreated, company)
 }
 
@@ -94,6 +96,7 @@ func (h *AdminHandler) DeleteCompany(w http.ResponseWriter, r *http.Request) {
         writeError(w, http.StatusInternalServerError, "failed to delete company")
         return
     }
+    journal.Log(r.Context(), adminID(r), journal.CompanyDelete, "company", id, "{Удалил|Удалила} компанию")
     writeJSON(w, http.StatusOK, map[string]string{"message": "company deleted"})
 }
 
@@ -291,7 +294,8 @@ func (h *AdminHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
         updated.CompanyID = &companyID
     }
 
-    if err := h.adminUsecase.AdminEditOffer(r.Context(), id, updated, req.Comment); err != nil {
+    editorID, _ := r.Context().Value(middleware.UserIDKey).(int64)
+    if err := h.adminUsecase.AdminEditOffer(r.Context(), id, updated, req.Comment, editorID); err != nil {
         writeError(w, http.StatusInternalServerError, "failed to update offer: "+err.Error())
         return
     }
@@ -337,7 +341,7 @@ func (h *AdminHandler) ModerateOffer(w http.ResponseWriter, r *http.Request) {
         writeError(w, http.StatusBadRequest, "invalid request")
         return
     }
-    if err := h.adminUsecase.ModerateOffer(r.Context(), id, req.Action, req.Reason); err != nil {
+    if err := h.adminUsecase.ModerateOffer(r.Context(), id, req.Action, req.Reason, adminID(r)); err != nil {
         writeError(w, http.StatusInternalServerError, "failed to moderate offer")
         return
     }
@@ -351,7 +355,7 @@ func (h *AdminHandler) ArchiveOffer(w http.ResponseWriter, r *http.Request) {
         writeError(w, http.StatusBadRequest, "invalid id")
         return
     }
-    if err := h.adminUsecase.ArchiveOffer(r.Context(), id); err != nil {
+    if err := h.adminUsecase.ArchiveOffer(r.Context(), id, adminID(r)); err != nil {
         writeError(w, http.StatusInternalServerError, "failed to archive offer")
         return
     }
@@ -379,6 +383,7 @@ func (h *AdminHandler) UpdateVerification(w http.ResponseWriter, r *http.Request
     var req struct {
         Status          string `json:"status"`
         RejectionReason string `json:"rejection_reason,omitempty"`
+        ExpiresAt       string `json:"expires_at,omitempty"` // 2006-01-02, «Действует до»
     }
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
         writeError(w, http.StatusBadRequest, "invalid request")
@@ -390,7 +395,11 @@ func (h *AdminHandler) UpdateVerification(w http.ResponseWriter, r *http.Request
         writeError(w, http.StatusUnauthorized, "unauthorized")
         return
     }
-    if err := h.adminUsecase.UpdateVerification(r.Context(), id, req.Status, req.RejectionReason, adminID); err != nil {
+    var override []time.Time
+    if t, err := time.ParseInLocation("2006-01-02", req.ExpiresAt, time.FixedZone("MSK", 3*3600)); err == nil {
+        override = append(override, t.Add(23*time.Hour+59*time.Minute))
+    }
+    if err := h.adminUsecase.UpdateVerification(r.Context(), id, req.Status, req.RejectionReason, adminID, override...); err != nil {
         log.Printf("UpdateVerification error: %v", err)
         writeError(w, http.StatusInternalServerError, "failed to update verification")
         return
@@ -461,5 +470,6 @@ func (h *AdminHandler) SetUserUniversity(w http.ResponseWriter, r *http.Request)
         writeError(w, http.StatusInternalServerError, err.Error())
         return
     }
+    journal.Log(r.Context(), adminID(r), journal.UserUniversity, "user", id, "{Сменил|Сменила} вуз")
     writeJSON(w, http.StatusOK, map[string]string{"message": "university updated"})
 }

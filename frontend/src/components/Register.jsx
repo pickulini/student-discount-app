@@ -1,83 +1,136 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
-import { Button, Input, Card, ErrorText } from '../design/UI';
-import { RouteMark, DottedDivider } from '../design/DottedPath';
+import { useAuth } from '../context/AuthContext';
+import { PrimaryButton, Leader } from './merchant/kit';
+import { AuthLayout, AuthField } from './auth/AuthShared';
+
+/**
+ * D11 · Регистрация (шаг 1 из 2). Вуз определяем по домену почты;
+ * после регистрации сразу входим и ведём на верификацию (шаг 2).
+ */
+
+const ERRORS = {
+  'email already exists': { field: 'email', text: 'Этот email уже зарегистрирован' },
+  'invalid email': { field: 'email', text: 'Проверьте email' },
+  'password must be at least 8 characters': { field: 'password', text: 'Минимум 8 символов' },
+  'full name is required': { field: 'full_name', text: 'Укажите имя' },
+};
 
 const Register = () => {
-  const [form, setForm] = useState({ email: '', password: '', full_name: '', referral_code: '' });
-  const [error, setError] = useState('');
+  const [params] = useSearchParams();
+  const [form, setForm] = useState({ full_name: '', email: '', password: '', referral_code: params.get('ref') || '' });
+  const [touched, setTouched] = useState({});
+  const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [universities, setUniversities] = useState([]);
   const navigate = useNavigate();
+  const { login } = useAuth();
+
+  useEffect(() => {
+    api.get('/universities').then((r) => setUniversities(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+  }, []);
+
+  const domain = form.email.includes('@') ? form.email.split('@').pop().trim().toLowerCase() : '';
+  const university = useMemo(() => {
+    if (!domain) return null;
+    return universities.find((u) => (u.domains || []).some((d) => domain === d.toLowerCase() || domain.endsWith(`.${d.toLowerCase()}`))) || null;
+  }, [domain, universities]);
+
+  const set = (k) => (e) => {
+    setForm({ ...form, [k]: e.target.value });
+    if (error?.field === k) setError(null);
+  };
+  const blur = (k) => () => setTouched({ ...touched, [k]: true });
+
+  const passwordError =
+    error?.field === 'password' ? error.text : touched.password && form.password && form.password.length < 8 ? 'Минимум 8 символов' : null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(null);
+    if (!form.full_name.trim()) return setError(ERRORS['full name is required']);
+    if (form.password.length < 8) {
+      setTouched({ ...touched, password: true });
+      return setError(ERRORS['password must be at least 8 characters']);
+    }
     setLoading(true);
-    setError('');
     try {
-      await api.post('/auth/register', form);
-      navigate('/login');
+      const res = await api.post('/auth/register', {
+        full_name: form.full_name.trim(),
+        email: form.email.trim(),
+        password: form.password,
+        referral_code: form.referral_code.trim(),
+      });
+      await login(res.data.token);
+      navigate('/verification', { replace: true, state: { afterRegister: true } });
     } catch (err) {
-      setError(err.response?.data?.error || 'Ошибка регистрации');
+      const msg = err.response?.data?.error || '';
+      setError(ERRORS[msg] || { field: null, text: msg || 'Не удалось зарегистрироваться' });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-[calc(100vh-64px)] flex items-center justify-center px-4 py-16">
-      <div className="w-full max-w-sm">
-        <div className="flex flex-col items-center gap-4 mb-8">
-          <RouteMark />
-          <h2 className="text-editorial text-xl text-ink uppercase">Регистрация</h2>
-        </div>
-
-        <Card className="p-6">
-          <ErrorText>{error}</ErrorText>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-            <Input
-              type="email"
-              placeholder="Email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              required
-            />
-            <Input
-              type="password"
-              placeholder="Пароль"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              required
-            />
-            <Input
-              type="text"
-              placeholder="Полное имя"
-              value={form.full_name}
-              onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-              required
-            />
-            <Input
-              type="text"
-              placeholder="Реферальный код (опционально)"
-              value={form.referral_code}
-              onChange={(e) => setForm({ ...form, referral_code: e.target.value })}
-            />
-            <Button type="submit" disabled={loading} className="w-full mt-2">
-              {loading ? 'Регистрация...' : 'Зарегистрироваться'}
-            </Button>
-          </form>
-        </Card>
-
-        <DottedDivider className="my-6" />
-
-        <div className="text-center text-sm text-ink-soft">
-          Уже есть аккаунт?{' '}
-          <Link to="/login" className="text-accent hover:underline">
-            Войти
-          </Link>
-        </div>
+    <AuthLayout>
+      <div className="font-mono text-[11px] tracking-[0.04em] text-ink-soft">ШАГ 1 ИЗ 2</div>
+      <div className="flex flex-col gap-[10px]">
+        <h1 className="font-display font-bold text-[30px] sm:text-[36px] leading-none tracking-[-0.02em] uppercase text-ink">Регистрация</h1>
+        <p className="text-[16px] leading-[24px] text-ink-soft">Через почту вуза — мы сразу определим, где вы учитесь.</p>
       </div>
-    </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
+        <AuthField
+          label="Полное имя"
+          autoComplete="name"
+          placeholder="Имя Фамилия"
+          value={form.full_name}
+          onChange={set('full_name')}
+          error={error?.field === 'full_name' ? error.text : null}
+        />
+        <AuthField
+          label="Email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@university.ru"
+          value={form.email}
+          onChange={set('email')}
+          onBlur={blur('email')}
+          error={error?.field === 'email' ? error.text : null}
+        >
+          {domain && domain.includes('.') && (
+            university ? (
+              <Leader label="Вуз определён" value={<b>{university.short_name || university.name} ✓</b>} />
+            ) : (
+              <span className="text-[12px] leading-[18px] text-ink-soft">Вуз по этой почте не определили — выберете его при верификации.</span>
+            )
+          )}
+        </AuthField>
+        <AuthField
+          label="Пароль"
+          type="password"
+          autoComplete="new-password"
+          value={form.password}
+          onChange={set('password')}
+          onBlur={blur('password')}
+          error={passwordError}
+        />
+        <AuthField
+          label="Реферальный код"
+          right="НЕОБЯЗ."
+          mono
+          placeholder="например, 9a6c9829"
+          value={form.referral_code}
+          onChange={set('referral_code')}
+          hint="Если вас пригласил друг — он получит 100 бонусов, когда вы подтвердите статус студента."
+        />
+        {error && !error.field && <div className="font-mono text-[12px] text-accent uppercase">{error.text}</div>}
+        <PrimaryButton type="submit" disabled={loading || !form.email || !form.password || !form.full_name} className="w-full">
+          {loading ? 'Регистрируем…' : 'Зарегистрироваться'}
+        </PrimaryButton>
+      </form>
+      <p className="text-[12px] leading-[18px] text-ink-soft">Нажимая кнопку, вы соглашаетесь с условиями и политикой конфиденциальности.</p>
+    </AuthLayout>
   );
 };
 

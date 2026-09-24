@@ -1,75 +1,90 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { Button, Input, Card, ErrorText } from '../design/UI';
-import { RouteMark, DottedDivider } from '../design/DottedPath';
+import { PrimaryButton, TextButton, Rule, plural } from './merchant/kit';
+import { AuthLayout, AuthField } from './auth/AuthShared';
 
+/** D10 · Вход. */
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(null); // { field: 'email'|'password'|null, text }
   const [loading, setLoading] = useState(false);
+  const [forgot, setForgot] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError(null);
     try {
-      const res = await api.post('/auth/login', { email, password });
-      const { access_token } = res.data;
-      await login(access_token);
-      navigate('/');
+      const res = await api.post('/auth/login', { email: email.trim(), password });
+      await login(res.data.access_token);
+      const from = location.state?.from?.pathname;
+      navigate(from && from !== '/login' ? from : '/', { replace: true });
     } catch (err) {
-      setError(err.response?.data?.error || 'Ошибка входа');
+      const status = err.response?.status;
+      const left = Number(err.response?.headers?.['x-ratelimit-remaining']);
+      if (status === 429) {
+        setError({ field: 'password', text: 'Слишком много попыток. Подождите минуту' });
+      } else if (status === 401) {
+        const tail = Number.isFinite(left) && left <= 3 ? `. Осталось ${left} ${plural(left, 'попытка', 'попытки', 'попыток')}` : '';
+        setError({ field: 'password', text: `Неверный email или пароль${tail}` });
+      } else {
+        setError({ field: null, text: err.response?.data?.error || 'Не удалось войти. Попробуйте ещё раз' });
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-[calc(100vh-64px)] flex items-center justify-center px-4 py-16">
-      <div className="w-full max-w-sm">
-        <div className="flex flex-col items-center gap-4 mb-8">
-          <RouteMark />
-          <h2 className="text-editorial text-xl text-ink uppercase">Вход</h2>
-        </div>
-
-        <Card className="p-6">
-          <ErrorText>{error}</ErrorText>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-            <Input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-            <Input
-              type="password"
-              placeholder="Пароль"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-            <Button type="submit" disabled={loading} className="w-full mt-2">
-              {loading ? 'Вход...' : 'Войти'}
-            </Button>
-          </form>
-        </Card>
-
-        <DottedDivider className="my-6" />
-
-        <div className="text-center text-sm text-ink-soft">
-          Нет аккаунта?{' '}
-          <Link to="/register" className="text-accent hover:underline">
-            Зарегистрироваться
-          </Link>
-        </div>
+    <AuthLayout>
+      <h1 className="font-display font-bold text-[36px] leading-none tracking-[-0.02em] uppercase text-ink">Вход</h1>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
+        <AuthField
+          label="Email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@university.ru"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <AuthField
+          label="Пароль"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            if (error?.field === 'password') setError(null);
+          }}
+          error={error?.field === 'password' ? error.text : null}
+          required
+        />
+        {error && !error.field && <div className="font-mono text-[12px] text-accent uppercase">{error.text}</div>}
+        <PrimaryButton type="submit" disabled={loading || !email || !password} className="w-full">
+          {loading ? 'Входим…' : 'Войти'}
+        </PrimaryButton>
+      </form>
+      <div className="flex flex-col items-center gap-2 -mt-2">
+        <TextButton type="button" onClick={() => setForgot((v) => !v)}>Забыли пароль?</TextButton>
+        {forgot && (
+          <p className="text-[13px] leading-[20px] text-ink-soft text-center">
+            Сброс пароля по почте пока не подключён. Если вы вошли на другом устройстве — смените пароль в настройках безопасности.
+          </p>
+        )}
       </div>
-    </div>
+      <Rule />
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-[15px] text-ink-soft">Ещё нет аккаунта?</span>
+        <TextButton as={Link} to="/register">Регистрация</TextButton>
+      </div>
+    </AuthLayout>
   );
 };
 

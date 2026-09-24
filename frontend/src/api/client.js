@@ -20,9 +20,13 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
+    const url = error.config?.url || '';
+    // Неверный пароль на входе — это тоже 401, но его показываем в форме,
+    // а не перезагружаем страницу.
+    const isAuthCall = url.startsWith('/auth/');
+    if (error.response && error.response.status === 401 && !isAuthCall) {
       localStorage.removeItem('access_token');
-      window.location.href = '/login';
+      if (window.location.pathname !== '/login') window.location.href = '/login';
     }
     return Promise.reject(error);
   }

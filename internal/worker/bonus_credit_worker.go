@@ -1,6 +1,8 @@
 package worker
 
 import (
+    "fmt"
+    "your-project/internal/journal"
     "context"
     "log"
     "time"
@@ -11,11 +13,18 @@ import (
 
 // StartBonusCreditWorker раз в 30 минут зачисляет реферальные награды,
 // у которых истёк refund window (available_at <= NOW()).
+// BonusNotifier — чем сообщить пользователю о начисленном бонусе (может быть nil).
+type BonusNotifier func(ctx context.Context, rw domain.ReferralReward)
+
+var bonusNotify BonusNotifier
+
 func StartBonusCreditWorker(
     ctx context.Context,
     referralRepo repository.ReferralRepository,
     bonusRepo repository.BonusRepository,
+    notify BonusNotifier,
 ) {
+    bonusNotify = notify
     log.Println("[BONUS_WORKER] start")
     go func() {
         // первый прогон сразу
@@ -57,6 +66,8 @@ func runBonusCredit(
         }
         log.Printf("[BONUS_WORKER] credited reward %d (referrer=%d amount=%.2f)",
             rw.ID, rw.ReferrerID, rw.Amount)
+        journal.Log(ctx, 0, journal.BonusRef, "user", rw.ReferrerID,
+            fmt.Sprintf("Начислено %.0f Б за реферала", rw.Amount))
     }
 }
 
@@ -91,5 +102,11 @@ func creditReward(
     }
 
     // 4. Помечаем reward как credited
-    return referralRepo.MarkCredited(ctx, rw.ID)
+    if err := referralRepo.MarkCredited(ctx, rw.ID); err != nil {
+        return err
+    }
+    if bonusNotify != nil {
+        bonusNotify(ctx, rw)
+    }
+    return nil
 }

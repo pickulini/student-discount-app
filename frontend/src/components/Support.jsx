@@ -1,179 +1,350 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../api/client';
-import { useAuth } from '../context/AuthContext';
-import { useNotifications } from '../context/NotificationContext';
-import { Card, Button, Input, Textarea, Eyebrow } from '../design/UI';
 import { RouteLoadingView } from '../design/DottedPath';
+import { Rule, Rule2, VRule, SectionLabel, PrimaryButton, SmallButton, TextButton } from './merchant/kit';
+
+/** D55 · Поддержка: слева обращения, справа переписка или новое обращение. */
+
+const pad4 = (n) => String(n).padStart(4, '0');
+const ddmm = (d) => new Date(d).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+const hhmm = (d) => new Date(d).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+const isOpen = (t) => t.status === 'open' || t.status === 'in_progress';
+
+const ago = (d) => {
+  const min = Math.max(0, Math.round((Date.now() - new Date(d)) / 60000));
+  if (min < 1) return 'ТОЛЬКО ЧТО';
+  if (min < 60) return `${min} МИН НАЗАД`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `${h} Ч НАЗАД`;
+  return ddmm(d);
+};
+
+// Ссылки на загруженные файлы показываем кликабельными.
+const FILE_RE = /(\/uploads\/[^\s]+|https?:\/\/[^\s]+)/g;
+const IS_FILE = /^(\/uploads\/[^\s]+|https?:\/\/[^\s]+)$/;
+const MessageText = ({ text }) =>
+  String(text)
+    .split(FILE_RE)
+    .map((part, i) =>
+      IS_FILE.test(part) ? (
+        <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="underline break-all">
+          {part.startsWith('/uploads/') ? 'Файл' : part}
+        </a>
+      ) : (
+        <React.Fragment key={i}>{part}</React.Fragment>
+      )
+    );
+
+const TicketItem = ({ t, active, onClick }) => {
+  const open = isOpen(t);
+  const fresh = open && t.last_from_staff;
+  return (
+    <button onClick={onClick} className={`w-full text-left flex flex-col gap-[6px] ${active ? 'border-l-[3px] border-ink pl-[14px]' : ''}`}>
+      <span className={`flex items-center justify-between font-mono text-[11px] tracking-[0.04em] whitespace-nowrap ${open ? '' : 'text-ink-soft'}`}>
+        <span className="text-ink-soft">№ {pad4(t.id)}</span>
+        <span className={`font-bold ${open ? 'text-ink' : ''}`}>{open ? 'ОТКРЫТО' : 'ЗАКРЫТО'}</span>
+      </span>
+      <span className={`text-[15px] font-semibold ${open ? 'text-ink' : 'text-ink-soft'}`}>{t.subject}</span>
+      <span className="flex gap-[10px] font-mono text-[11px] tracking-[0.02em] whitespace-nowrap">
+        {open ? (
+          <>
+            <span className="text-ink-soft">
+              {t.last_from_staff ? 'ОТВЕТ' : 'ОТПРАВЛЕНО'} {ago(t.last_message_at || t.updated_at)}
+            </span>
+            {fresh && <span className="font-bold text-ink">● НОВЫЙ ОТВЕТ</span>}
+          </>
+        ) : (
+          <span className="text-ink-soft">{ddmm(t.closed_at || t.updated_at)} · РЕШЕНО</span>
+        )}
+      </span>
+    </button>
+  );
+};
 
 const Support = () => {
-  const { user } = useAuth();
-  const { events, reconnectCount } = useNotifications(!!user);
-  const [tickets, setTickets] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
-  const [subject, setSubject] = useState('');
-  const [message, setMessage] = useState('');
-  const [selectedTicket, setSelectedTicket] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [params, setParams] = useSearchParams();
+  const orderRef = params.get('order');
+  const [tickets, setTickets] = useState(null);
+  const [activeId, setActiveId] = useState(null);
+  const [creating, setCreating] = useState(Boolean(orderRef));
+  const [thread, setThread] = useState([]);
+  const [text, setText] = useState('');
+  const [subject, setSubject] = useState(orderRef ? `Проблема с заказом № ${String(orderRef).padStart(6, '0')}` : '');
+  const [first, setFirst] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const fileRef = useRef(null);
+  const bottomRef = useRef(null);
 
-  const fetchTickets = async () => {
-    try {
-      const res = await api.get('/support/tickets');
-      setTickets(res.data || []);
-    } catch (err) {
-      console.error('Failed to load tickets:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loadTickets = () =>
+    api
+      .get('/support/overview')
+      .then((r) => {
+        const list = r.data || [];
+        setTickets(list);
+        setActiveId((cur) => cur ?? (orderRef ? null : list[0]?.id ?? null));
+        if (!list.length) setCreating(true);
+        return list;
+      })
+      .catch(() => setTickets([]));
 
-  const fetchMessages = async (ticketId) => {
-    try {
-      const res = await api.get(`/support/tickets/${ticketId}/messages`);
-      setMessages(res.data || []);
-    } catch (err) {
-      console.error('Failed to load messages:', err);
-    }
-  };
+  const loadThread = (id) =>
+    id &&
+    api
+      .get(`/support/tickets/${id}/thread`)
+      .then((r) => setThread(r.data || []))
+      .catch(() => setThread([]));
 
   useEffect(() => {
-    fetchTickets();
+    loadTickets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // realtime: при новом сообщении по нашему тикету перечитываем
   useEffect(() => {
-    if (!events.support_message) return;
-    const payload = events.support_message.payload;
-    if (selectedTicket && payload.ticket_id === selectedTicket.id) {
-      fetchMessages(selectedTicket.id);
-    }
-    fetchTickets();
-  }, [events.support_message]);
+    if (!activeId || creating) return undefined;
+    loadThread(activeId);
+    const t = setInterval(() => {
+      loadThread(activeId);
+      loadTickets();
+    }, 20000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId, creating]);
 
-  // При переподключении SSE — перечитываем всё
   useEffect(() => {
-    if (reconnectCount === 0) return;
-    fetchTickets();
-    if (selectedTicket) {
-      fetchMessages(selectedTicket.id);
-    }
-  }, [reconnectCount]);
+    bottomRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [thread.length]);
 
-  const handleCreateTicket = async (e) => {
-    e.preventDefault();
+  if (!tickets) return <RouteLoadingView label="Загружаем обращения..." />;
+
+  const active = tickets.find((t) => t.id === activeId);
+
+  const send = async (e) => {
+    e?.preventDefault();
+    const msg = text.trim();
+    if (!msg || !active) return;
+    setBusy(true);
+    setError('');
     try {
-      await api.post('/support/tickets', { subject, first_message: message });
+      await api.post(`/support/tickets/${active.id}/messages`, { message: msg });
+      setText('');
+      await loadThread(active.id);
+      loadTickets();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Не отправилось');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const attach = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !active) return;
+    if (file.size > 5 * 1024 * 1024) return setError('Файл больше 5 МБ');
+    setBusy(true);
+    setError('');
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const r = await api.post('/users/upload-avatar', fd);
+      await api.post(`/support/tickets/${active.id}/messages`, { message: `${text.trim() ? `${text.trim()}\n` : ''}${r.data.url}` });
+      setText('');
+      await loadThread(active.id);
+      loadTickets();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Не удалось прикрепить файл');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const create = async (e) => {
+    e.preventDefault();
+    if (!subject.trim() || !first.trim()) return setError('Заполните тему и сообщение');
+    setBusy(true);
+    setError('');
+    try {
+      const r = await api.post('/support/tickets', { subject: subject.trim(), first_message: first.trim() });
+      setCreating(false);
       setSubject('');
-      setMessage('');
-      setShowCreate(false);
-      fetchTickets();
+      setFirst('');
+      if (orderRef) setParams({}, { replace: true });
+      await loadTickets();
+      setActiveId(r.data.id);
     } catch (err) {
-      alert('Ошибка создания тикета');
+      setError(err.response?.data?.error || 'Не удалось создать обращение');
+    } finally {
+      setBusy(false);
     }
   };
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !selectedTicket) return;
+  const close = async () => {
+    if (!active) return;
+    setBusy(true);
     try {
-      await api.post(`/support/tickets/${selectedTicket.id}/messages`, { message: newMessage });
-      setNewMessage('');
-      fetchMessages(selectedTicket.id);
-    } catch (err) {
-      alert('Ошибка отправки сообщения');
+      await api.post(`/support/tickets/${active.id}/close`);
+      await loadTickets();
+    } finally {
+      setBusy(false);
     }
   };
 
-  const openTicket = (ticket) => {
-    setSelectedTicket(ticket);
-    fetchMessages(ticket.id);
-  };
-
-  if (loading) return <RouteLoadingView label="Загрузка..." />;
+  let lastDay = null;
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-editorial text-2xl text-ink uppercase">Поддержка</h2>
-        <Button onClick={() => setShowCreate(true)}>Создать обращение</Button>
+    <div className="flex flex-col lg:flex-row gap-10 lg:gap-12 items-start">
+      <div className="w-full lg:w-[400px] shrink-0 flex flex-col gap-6">
+        <h1 className="font-display font-bold text-[30px] leading-none tracking-[-0.02em] text-ink">ПОДДЕРЖКА</h1>
+        <p className="text-[14px] text-ink-soft -mt-2">Отвечаем с 9:00 до 23:00, обычно за 15 минут.</p>
+        <PrimaryButton
+          className="w-full"
+          onClick={() => {
+            setCreating(true);
+            setError('');
+          }}
+        >
+          + Новое обращение
+        </PrimaryButton>
+        <Rule2 />
+        <SectionLabel>Ваши обращения</SectionLabel>
+        {tickets.length === 0 ? (
+          <div className="text-[14px] text-ink-soft">Обращений пока не было.</div>
+        ) : (
+          tickets.map((t, i) => (
+            <React.Fragment key={t.id}>
+              {i > 0 && <Rule />}
+              <TicketItem
+                t={t}
+                active={!creating && t.id === activeId}
+                onClick={() => {
+                  setCreating(false);
+                  setActiveId(t.id);
+                  setError('');
+                }}
+              />
+            </React.Fragment>
+          ))
+        )}
       </div>
 
-      {showCreate && (
-        <Card className="p-4 mb-4">
-          <Eyebrow className="mb-2">Новое обращение</Eyebrow>
-          <form onSubmit={handleCreateTicket} className="space-y-2">
-            <Input
-              type="text"
-              placeholder="Тема"
-              value={subject}
-              onChange={e => setSubject(e.target.value)}
-              required
-            />
-            <Textarea
-              placeholder="Сообщение"
-              value={message}
-              onChange={e => setMessage(e.target.value)}
-              rows="3"
-              required
-            />
-            <div className="flex gap-2">
-              <Button type="submit">Отправить</Button>
-              <Button type="button" variant="ghost" onClick={() => setShowCreate(false)}>Отмена</Button>
+      <VRule className="hidden lg:block" />
+
+      <div className="flex-1 min-w-0 w-full flex flex-col gap-6">
+        {creating || !active ? (
+          <form onSubmit={create} className="flex flex-col gap-6">
+            <div className="font-mono text-[11px] tracking-[0.04em] text-ink-soft">НОВОЕ ОБРАЩЕНИЕ</div>
+            <label className="flex flex-col gap-2">
+              <span className="font-mono font-medium text-[11px] tracking-[0.06em] uppercase text-ink-soft">Тема</span>
+              <input
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                maxLength={200}
+                placeholder="Коротко: что случилось"
+                className="bg-transparent pb-[10px] border-b border-dashed border-line focus:border-solid focus:border-ink outline-none text-[16px] text-ink placeholder:text-ink-faint"
+              />
+            </label>
+            <label className="flex flex-col gap-2">
+              <span className="font-mono font-medium text-[11px] tracking-[0.06em] uppercase text-ink-soft">Сообщение</span>
+              <textarea
+                value={first}
+                onChange={(e) => setFirst(e.target.value)}
+                rows={5}
+                placeholder="Опишите проблему: номер заказа, место, что пошло не так"
+                className="bg-transparent pb-[10px] border-b border-dashed border-line focus:border-solid focus:border-ink outline-none text-[16px] leading-[24px] text-ink placeholder:text-ink-faint resize-y"
+              />
+            </label>
+            {error && <div className="font-mono text-[12px] text-accent uppercase">{error}</div>}
+            <div className="flex items-center gap-6">
+              <PrimaryButton type="submit" disabled={busy}>
+                {busy ? 'Отправляем…' : 'Отправить'}
+              </PrimaryButton>
+              {tickets.length > 0 && (
+                <TextButton type="button" onClick={() => setCreating(false)}>
+                  Отмена
+                </TextButton>
+              )}
             </div>
           </form>
-        </Card>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="md:col-span-1 p-3">
-          <Eyebrow className="mb-2">Ваши обращения</Eyebrow>
-          {tickets.length === 0 ? (
-            <p className="text-ink-soft text-sm">Нет обращений</p>
-          ) : (
-            <ul className="divide-y divide-line">
-              {tickets.map(t => (
-                <li
-                  key={t.id}
-                  onClick={() => openTicket(t)}
-                  className={`py-2 cursor-pointer hover:bg-surface-2 px-2 rounded-[var(--radius-sm)] transition ${selectedTicket?.id === t.id ? 'bg-surface-2' : ''}`}
-                >
-                  <div className="font-medium text-sm text-ink">{t.subject}</div>
-                  <div className="text-xs text-ink-faint">Статус: {t.status}</div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-        <Card className="md:col-span-2 p-3">
-          {selectedTicket ? (
-            <>
-              <h4 className="font-semibold text-ink mb-2">{selectedTicket.subject}</h4>
-              <div className="border border-line rounded-[var(--radius-sm)] p-3 h-64 overflow-y-auto bg-surface-2">
-                {messages.map(m => (
-                  <div key={m.id} className={`mb-2 ${m.user_id === user.id ? 'text-right' : ''}`}>
-                    <div className={`inline-block p-2 rounded-[var(--radius-sm)] ${m.user_id === user.id ? 'bg-accent/10 text-ink' : 'bg-surface text-ink'}`}>
-                      <div className="text-sm">{m.message}</div>
-                      <div className="text-xs text-ink-faint">{new Date(m.created_at).toLocaleString()}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <form onSubmit={handleSendMessage} className="mt-3 flex gap-2">
-                <Input
-                  type="text"
-                  value={newMessage}
-                  onChange={e => setNewMessage(e.target.value)}
-                  placeholder="Введите сообщение..."
-                  className="flex-1"
+        ) : (
+          <>
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <span className="font-mono text-[11px] tracking-[0.04em] text-ink-soft">
+                ОБРАЩЕНИЕ № {pad4(active.id)} · {isOpen(active) ? 'ОТКРЫТО' : 'ЗАКРЫТО'}
+              </span>
+              {isOpen(active) && <TextButton onClick={close} disabled={busy}>Вопрос решён — закрыть</TextButton>}
+            </div>
+            <h2 className="font-display font-bold text-[20px] sm:text-[24px] leading-tight tracking-[-0.01em] text-ink">{active.subject}</h2>
+            <Rule2 />
+            <div className="flex flex-col gap-6">
+              {thread.map((m) => {
+                const day = new Date(m.created_at).toDateString();
+                const sep = lastDay && day !== lastDay;
+                lastDay = day;
+                return (
+                  <React.Fragment key={m.id}>
+                    {sep && <div className="text-center font-mono text-[11px] tracking-[0.04em] text-ink-faint whitespace-pre">{`- - -  ${ddmm(m.created_at)}  - - -`}</div>}
+                    {m.mine ? (
+                      <div className="flex justify-end pl-10 sm:pl-[120px] xl:pl-[240px]">
+                        <div className="flex flex-col items-end gap-[6px] min-w-0">
+                          <span className="font-mono font-bold text-[10px] tracking-[0.06em] text-ink-soft whitespace-nowrap">
+                            ВЫ · {ddmm(m.created_at)} {hhmm(m.created_at)}
+                          </span>
+                          <p className="text-[16px] leading-[24px] text-ink text-right whitespace-pre-line break-words">
+                            <MessageText text={m.message} />
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex gap-[14px] pr-10 sm:pr-[120px] xl:pr-[240px]">
+                        <div className="w-px self-stretch border-l border-dashed border-ink" />
+                        <div className="flex-1 min-w-0 flex flex-col gap-[6px]">
+                          <span className="font-mono font-bold text-[10px] tracking-[0.06em] text-ink uppercase whitespace-nowrap">
+                            Поддержка{m.author_name ? ` · ${m.author_name}` : ''} · {ddmm(m.created_at)} {hhmm(m.created_at)}
+                          </span>
+                          <p className="text-[16px] leading-[24px] text-ink whitespace-pre-line break-words">
+                            <MessageText text={m.message} />
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+              <div ref={bottomRef} />
+            </div>
+            <Rule2 />
+            {isOpen(active) ? (
+              <form onSubmit={send} className="flex gap-4 items-center border-b border-ink pb-3">
+                <input
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder="Введите сообщение…"
+                  className="flex-1 min-w-0 bg-transparent outline-none text-[16px] text-ink placeholder:text-ink-faint"
                 />
-                <Button type="submit">Отправить</Button>
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={busy}
+                  className="font-mono text-[11px] tracking-[0.04em] text-ink-soft hover:text-ink whitespace-nowrap"
+                >
+                  + ФАЙЛ
+                </button>
+                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={attach} />
+                <SmallButton type="submit" disabled={busy || !text.trim()}>
+                  {busy ? '…' : 'Отправить'}
+                </SmallButton>
               </form>
-            </>
-          ) : (
-            <p className="text-ink-soft text-center py-8">Выберите обращение</p>
-          )}
-        </Card>
+            ) : (
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <span className="text-[14px] text-ink-soft">Обращение закрыто. Если вопрос остался — напишите новое.</span>
+                <TextButton onClick={() => setCreating(true)}>Новое обращение</TextButton>
+              </div>
+            )}
+            {error && <div className="font-mono text-[12px] text-accent uppercase">{error}</div>}
+          </>
+        )}
       </div>
     </div>
   );

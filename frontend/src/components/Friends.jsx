@@ -1,255 +1,268 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api/client';
-import UserLink from './UserLink';
-import { Button, Input } from '../design/UI';
 import { RouteLoadingView } from '../design/DottedPath';
+import { Tabs, Rule, Rule2, VRule, SectionLabel, SmallButton, TextButton, Avatar, plural } from './merchant/kit';
 
-const Avatar = ({ user }) => {
-  const letter = (user.nickname || user.full_name || '?')[0].toUpperCase();
-  if (user.avatar_url) {
-    return <img src={user.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />;
-  }
-  return (
-    <div className="w-10 h-10 rounded-full bg-surface-2 border border-line flex items-center justify-center text-accent font-bold">
-      {letter}
-    </div>
-  );
-};
+/** D52 · Друзья: список с активностью, поиск, заявки и «возможно, знакомы». */
 
-const Row = ({ user, actionLabel, onAction, danger = false }) => (
-  <div className="flex items-center gap-3 border-b border-line py-2">
-    <Avatar user={user} />
-    <div className="flex-1 min-w-0">
-      <div className="font-semibold truncate">
-        <UserLink
-          username={user.username}
-          label={user.nickname || user.full_name}
-          className="text-ink hover:text-accent"
-        />
-      </div>
-      {user.username && (
-        <div className="text-xs text-ink-faint truncate">
-          <UserLink username={user.username} />
-        </div>
-      )}
-      {user.university && <div className="text-xs text-ink-faint truncate">{user.university}</div>}
-    </div>
-    {actionLabel && (
-      <Button
-        onClick={() => onAction(user)}
-        variant={danger ? 'ghost' : 'primary'}
-        className="px-3 py-1 text-sm"
-      >
-        {actionLabel}
-      </Button>
-    )}
-  </div>
+const mutualLabel = (n) => (n > 0 ? `${n} ${plural(n, 'общий', 'общих', 'общих')}` : '');
+
+const PersonLine = ({ p, extra }) => (
+  <span className="font-mono text-[11px] tracking-[0.02em] text-ink-soft truncate">
+    {[p.username ? `@${p.username}` : null, p.university || null, extra || null].filter(Boolean).join(' · ')}
+  </span>
 );
 
+const FriendCell = ({ p }) => (
+  <Link to={p.username ? `/@${p.username}` : '#'} className="flex-1 min-w-0 flex gap-[14px] items-center group">
+    <Avatar src={p.avatar_url} name={p.full_name} size={48} />
+    <span className="flex-1 min-w-0 flex flex-col gap-[2px]">
+      <span className="text-[16px] font-semibold text-ink truncate group-hover:text-accent transition">{p.full_name}</span>
+      <PersonLine p={p} />
+      {p.activity && <span className="text-[13px] text-ink-soft truncate">{p.activity}</span>}
+    </span>
+    <span className="font-mono text-[13px] text-ink">→</span>
+  </Link>
+);
+
+const SORTS = [
+  { key: 'active', label: 'Активные' },
+  { key: 'name', label: 'Имя' },
+  { key: 'uni', label: 'Вуз' },
+];
+
 const Friends = () => {
+  const [data, setData] = useState(null);
   const [tab, setTab] = useState('friends');
-  const [friends, setFriends] = useState([]);
-  const [incoming, setIncoming] = useState([]);
-  const [outgoing, setOutgoing] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [sort, setSort] = useState('active');
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState(null);
+  const [busy, setBusy] = useState(null);
+  const [sent, setSent] = useState(new Set());
   const [error, setError] = useState('');
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const [f, inc, out] = await Promise.all([
-        api.get('/friends'),
-        api.get('/friends/requests/incoming'),
-        api.get('/friends/requests/outgoing'),
-      ]);
-      setFriends(f.data || []);
-      setIncoming(inc.data || []);
-      setOutgoing(out.data || []);
-    } catch (err) {
-      console.error(err);
-      setError('Не удалось загрузить данные');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const load = () =>
+    api
+      .get('/friends/overview')
+      .then((r) => setData(r.data))
+      .catch(() => setData({ friends: [], incoming: [], outgoing: [], suggestions: [] }));
 
   useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
+    load();
+  }, []);
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (searchQuery.trim().length < 2) return;
+  const run = async (key, fn) => {
+    setBusy(key);
+    setError('');
     try {
-      const res = await api.get(`/friends/search?q=${encodeURIComponent(searchQuery.trim())}`);
-      setSearchResults(res.data || []);
-    } catch (err) {
-      console.error(err);
-      setSearchResults([]);
+      await fn();
+      await load();
+    } catch (e) {
+      setError(e.response?.data?.error || 'Не получилось');
+    } finally {
+      setBusy(null);
     }
   };
 
-  const sendRequest = async (targetUser) => {
+  const addFriend = (id) =>
+    run(`add-${id}`, async () => {
+      await api.post('/friends/requests', { user_id: id });
+      setSent((s) => new Set(s).add(id));
+    });
+  const accept = (p) => run(`acc-${p.request_id}`, () => api.post(`/friends/requests/${p.request_id}/accept`));
+  const reject = (p) => run(`rej-${p.request_id}`, () => api.post(`/friends/requests/${p.request_id}/reject`));
+  const cancel = (p) => run(`can-${p.request_id}`, () => api.post(`/friends/requests/${p.request_id}/cancel`));
+
+  const search = async (e) => {
+    e?.preventDefault();
+    const q = query.trim();
+    if (!q) return setResults(null);
     try {
-      await api.post('/friends/requests', { user_id: targetUser.id });
-      await fetchAll();
-    } catch (err) {
-      alert(err.response?.data?.error || 'Ошибка отправки заявки');
+      const r = await api.get('/friends/search', { params: { q: q.replace(/^@/, '') } });
+      setResults(r.data || []);
+    } catch {
+      setResults([]);
     }
   };
 
-  const acceptRequest = async (friendshipId) => {
-    try {
-      await api.post(`/friends/requests/${friendshipId}/accept`);
-      await fetchAll();
-    } catch (err) {
-      alert(err.response?.data?.error || 'Ошибка');
-    }
+  const friends = useMemo(() => {
+    const list = [...(data?.friends || [])];
+    if (sort === 'name') list.sort((a, b) => a.full_name.localeCompare(b.full_name, 'ru'));
+    else if (sort === 'uni') list.sort((a, b) => (a.university || 'я').localeCompare(b.university || 'я', 'ru') || a.full_name.localeCompare(b.full_name, 'ru'));
+    else list.sort((a, b) => (b.activity ? 1 : 0) - (a.activity ? 1 : 0) || a.full_name.localeCompare(b.full_name, 'ru'));
+    return list;
+  }, [data, sort]);
+
+  if (!data) return <RouteLoadingView label="Собираем друзей..." />;
+
+  const friendIds = new Set(data.friends.map((f) => f.id));
+  const outIds = new Set(data.outgoing.map((f) => f.id));
+  const inIds = new Set(data.incoming.map((f) => f.id));
+
+  const pairs = (list) => {
+    const out = [];
+    for (let i = 0; i < list.length; i += 2) out.push(list.slice(i, i + 2));
+    return out;
   };
 
-  const rejectRequest = async (friendshipId) => {
-    try {
-      await api.post(`/friends/requests/${friendshipId}/reject`);
-      await fetchAll();
-    } catch (err) {
-      alert(err.response?.data?.error || 'Ошибка');
-    }
-  };
+  const renderGrid = (list, empty) =>
+    list.length === 0 ? (
+      <div className="text-[15px] text-ink-soft">{empty}</div>
+    ) : (
+      pairs(list).map((pair, i) => (
+        <React.Fragment key={pair[0].id}>
+          {i > 0 && <Rule />}
+          <div className="flex flex-col sm:flex-row gap-6 sm:gap-8 items-stretch">
+            <FriendCell p={pair[0]} />
+            <VRule className="hidden sm:block" />
+            {pair[1] ? <FriendCell p={pair[1]} /> : <div className="hidden sm:block flex-1" />}
+          </div>
+        </React.Fragment>
+      ))
+    );
 
-  const cancelRequest = async (friendshipId) => {
-    try {
-      await api.post(`/friends/requests/${friendshipId}/cancel`);
-      await fetchAll();
-    } catch (err) {
-      alert(err.response?.data?.error || 'Ошибка');
-    }
-  };
-
-  const removeFriend = async (friendId) => {
-    if (!confirm('Удалить из друзей?')) return;
-    try {
-      await api.delete(`/friends/${friendId}`);
-      await fetchAll();
-    } catch (err) {
-      alert(err.response?.data?.error || 'Ошибка');
-    }
-  };
-
-  const tabs = [
-    { id: 'friends', label: `Друзья (${friends.length})` },
-    { id: 'incoming', label: `Входящие (${incoming.length})` },
-    { id: 'outgoing', label: `Исходящие (${outgoing.length})` },
-    { id: 'search', label: 'Поиск' },
-  ];
-
-  return (
-    <div className="max-w-2xl mx-auto p-4">
-      <h1 className="text-editorial text-2xl text-ink uppercase mb-4">Друзья</h1>
-
-      <div className="flex gap-1 mb-4 border-b border-line overflow-x-auto">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`px-3 py-2 text-sm whitespace-nowrap transition ${
-              tab === t.id ? 'border-b-2 border-accent text-accent font-semibold' : 'text-ink-soft hover:text-ink'
-            }`}
-          >
-            {t.label}
+  const requestRow = (p, kind) => (
+    <div className="flex gap-[14px] items-center">
+      <Link to={p.username ? `/@${p.username}` : '#'} className="flex-1 min-w-0 flex gap-[14px] items-center group">
+        <Avatar src={p.avatar_url} name={p.full_name} size={48} />
+        <span className="flex-1 min-w-0 flex flex-col gap-[2px]">
+          <span className="text-[16px] font-semibold text-ink truncate group-hover:text-accent">{p.full_name}</span>
+          <PersonLine p={{ ...p, university: kind === 'incoming' ? '' : p.university }} extra={mutualLabel(p.mutual)} />
+        </span>
+      </Link>
+      {kind === 'incoming' ? (
+        <span className="flex gap-[10px] items-center shrink-0">
+          <SmallButton onClick={() => accept(p)} disabled={busy !== null}>Принять</SmallButton>
+          <button onClick={() => reject(p)} disabled={busy !== null} className="font-mono font-bold text-[13px] text-ink-soft hover:text-accent" aria-label="Отклонить">
+            ✕
           </button>
+        </span>
+      ) : kind === 'outgoing' ? (
+        <TextButton onClick={() => cancel(p)} disabled={busy !== null}>Отменить</TextButton>
+      ) : sent.has(p.id) || outIds.has(p.id) ? (
+        <span className="font-mono text-[11px] tracking-[0.04em] text-ink-soft whitespace-nowrap">ЗАЯВКА ОТПРАВЛЕНА</span>
+      ) : (
+        <button onClick={() => addFriend(p.id)} disabled={busy !== null} className="font-mono font-bold text-[11px] tracking-[0.04em] text-ink hover:text-accent whitespace-nowrap">
+          + ДОБАВИТЬ
+        </button>
+      )}
+    </div>
+  );
+
+  const stack = (list, kind, empty) =>
+    list.length === 0 ? (
+      <div className="text-[14px] text-ink-soft">{empty}</div>
+    ) : (
+      <div className="flex flex-col gap-4">
+        {list.map((p, i) => (
+          <React.Fragment key={`${kind}-${p.id}`}>
+            {i > 0 && <Rule />}
+            {requestRow(p, kind)}
+          </React.Fragment>
         ))}
       </div>
+    );
 
-      {error && <div className="text-danger mb-3">{error}</div>}
-
-      {tab === 'search' && (
-        <form onSubmit={handleSearch} className="flex gap-2 mb-4">
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="@username или никнейм"
-            className="flex-1 border rounded-[var(--radius-sm)] px-3 py-2"
+  return (
+    <div className="flex flex-col lg:flex-row gap-10 lg:gap-14 items-start">
+      <div className="flex-1 min-w-0 w-full flex flex-col gap-6">
+        <h1 className="font-display font-bold text-[36px] leading-none tracking-[-0.02em] text-ink">ДРУЗЬЯ</h1>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <Tabs
+            value={tab}
+            onChange={(k) => {
+              setTab(k);
+              setResults(null);
+            }}
+            items={[
+              { key: 'friends', label: `Друзья · ${data.friends.length}` },
+              { key: 'incoming', label: `Заявки · ${data.incoming.length}` },
+              { key: 'outgoing', label: `Исходящие · ${data.outgoing.length}` },
+            ]}
           />
-          <Button type="submit">Найти</Button>
+          {tab === 'friends' && !results && (
+            <div className="flex items-center gap-3 font-mono text-[11px] tracking-[0.04em] text-ink-soft uppercase whitespace-nowrap">
+              <span>Сорт:</span>
+              {SORTS.map((s) =>
+                s.key === sort ? (
+                  <span key={s.key} className="text-ink font-bold">[ {s.label} ]</span>
+                ) : (
+                  <button key={s.key} onClick={() => setSort(s.key)} className="uppercase hover:text-ink">
+                    {s.label}
+                  </button>
+                )
+              )}
+            </div>
+          )}
+        </div>
+        <form onSubmit={search} className="flex gap-[10px] items-center border-b border-ink pb-[10px]">
+          <span className="font-mono font-bold text-[12px] tracking-[0.04em] text-ink">ПОИСК:</span>
+          <input
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              if (!e.target.value) setResults(null);
+            }}
+            placeholder="@username или имя"
+            className="flex-1 min-w-0 bg-transparent outline-none text-[15px] text-ink placeholder:text-ink-faint"
+          />
+          <button type="submit" className="font-mono font-bold text-[11px] tracking-[0.04em] text-ink hover:text-accent">НАЙТИ</button>
         </form>
-      )}
+        {error && <div className="font-mono text-[12px] text-accent uppercase">{error}</div>}
 
-      {loading ? (
-        <RouteLoadingView label="Загрузка…" />
-      ) : (
-        <>
-          {tab === 'friends' &&
-            (friends.length === 0 ? (
-              <div className="text-ink-soft">Пока нет друзей</div>
+        {results ? (
+          <>
+            <div className="flex items-center justify-between">
+              <SectionLabel>Найдено · {results.length}</SectionLabel>
+              <TextButton
+                onClick={() => {
+                  setResults(null);
+                  setQuery('');
+                }}
+              >
+                Сбросить
+              </TextButton>
+            </div>
+            {results.length === 0 ? (
+              <div className="text-[15px] text-ink-soft">Никого не нашли. Проверьте @username.</div>
             ) : (
-              friends.map((u) => (
-                <Row
-                  key={u.id}
-                  user={u}
-                  actionLabel="Удалить"
-                  danger
-                  onAction={() => removeFriend(u.id)}
-                />
-              ))
-            ))}
+              <div className="flex flex-col gap-4">
+                {results.map((p, i) => (
+                  <React.Fragment key={p.id}>
+                    {i > 0 && <Rule />}
+                    {friendIds.has(p.id) ? (
+                      <div className="flex gap-3 items-center">
+                        <FriendCell p={p} />
+                      </div>
+                    ) : inIds.has(p.id) ? (
+                      requestRow(data.incoming.find((x) => x.id === p.id), 'incoming')
+                    ) : (
+                      requestRow(p, 'suggest')
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
+            )}
+          </>
+        ) : tab === 'friends' ? (
+          renderGrid(friends, 'Пока нет друзей. Найдите знакомых по @username или примите заявки.')
+        ) : tab === 'incoming' ? (
+          stack(data.incoming, 'incoming', 'Новых заявок нет.')
+        ) : (
+          stack(data.outgoing, 'outgoing', 'Вы никому не отправляли заявок.')
+        )}
+      </div>
 
-          {tab === 'incoming' &&
-            (incoming.length === 0 ? (
-              <div className="text-ink-soft">Входящих заявок нет</div>
-            ) : (
-              incoming.map((u) => (
-                <div key={u.friendship_id || u.id} className="flex items-center gap-3 border-b border-line py-2">
-                  <Avatar user={u} />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-ink truncate">{u.nickname || u.full_name}</div>
-                    {u.username && <div className="text-xs text-ink-faint">@{u.username}</div>}
-                  </div>
-                  <Button onClick={() => acceptRequest(u.friendship_id)} className="px-3 py-1 text-sm">
-                    Принять
-                  </Button>
-                  <Button variant="danger" onClick={() => rejectRequest(u.friendship_id)} className="px-3 py-1 text-sm border border-danger/30">
-                    Отклонить
-                  </Button>
-                </div>
-              ))
-            ))}
+      <VRule className="hidden lg:block" />
 
-          {tab === 'outgoing' &&
-            (outgoing.length === 0 ? (
-              <div className="text-ink-soft">Исходящих заявок нет</div>
-            ) : (
-              outgoing.map((u) => (
-                <div key={u.friendship_id || u.id} className="flex items-center gap-3 border-b border-line py-2">
-                  <Avatar user={u} />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-ink truncate">{u.nickname || u.full_name}</div>
-                    {u.username && <div className="text-xs text-ink-faint">@{u.username}</div>}
-                  </div>
-                  <Button variant="ghost" onClick={() => cancelRequest(u.friendship_id)} className="px-3 py-1 text-sm">
-                    Отменить
-                  </Button>
-                </div>
-              ))
-            ))}
-
-          {tab === 'search' &&
-            (searchResults.length === 0 ? (
-              <div className="text-ink-soft">Ничего не найдено</div>
-            ) : (
-              searchResults.map((u) => (
-                <Row
-                  key={u.id}
-                  user={u}
-                  actionLabel="Добавить"
-                  onAction={() => sendRequest(u)}
-                />
-              ))
-            ))}
-        </>
-      )}
+      <div className="w-full lg:w-[380px] shrink-0 flex flex-col gap-6">
+        <SectionLabel>Заявки · {data.incoming.length}</SectionLabel>
+        {stack(data.incoming.slice(0, 5), 'incoming', 'Новых заявок нет.')}
+        <Rule2 />
+        <SectionLabel>Возможно, знакомы</SectionLabel>
+        {stack(data.suggestions, 'suggest', 'Подсказок пока нет — добавьте пару друзей, и мы найдём общих знакомых.')}
+      </div>
     </div>
   );
 };

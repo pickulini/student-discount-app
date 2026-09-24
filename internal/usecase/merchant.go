@@ -1,6 +1,7 @@
 package usecase
 
 import (
+    "your-project/internal/journal"
     "context"
     "errors"
     "log"
@@ -186,6 +187,7 @@ func (u *MerchantUsecase) SubmitForReview(ctx context.Context, userID, offerID i
             "title":    offer.Title,
         })
     }
+    journal.Log(ctx, userID, journal.OfferSubmit, "offer", offerID, "Предложение отправлено на модерацию")
     return nil
 }
 
@@ -288,6 +290,8 @@ func (u *MerchantUsecase) UpdateOffer(ctx context.Context, userID, offerID int64
     // Обновляем поля
     offer.Title = updated.Title
     offer.Description = updated.Description
+    offer.BasePrice = updated.BasePrice
+    offer.MaxUses = updated.MaxUses
     offer.DiscountType = updated.DiscountType
     offer.DiscountValue = updated.DiscountValue
     offer.StartAt = updated.StartAt
@@ -302,12 +306,20 @@ func (u *MerchantUsecase) UpdateOffer(ctx context.Context, userID, offerID int64
     offer.Phone = updated.Phone
     offer.Website = updated.Website
     offer.WorkingHours = updated.WorkingHours
+    offer.Gallery = updated.Gallery
 
     // Если было опубликовано или отклонено — уходит на повторную модерацию
+    resubmitted := false
     if offer.Status == "published" || offer.Status == "rejected" || offer.Status == "archived" {
         offer.Status = "pending_review"
         offer.RejectionReason = nil
+        resubmitted = true
     }
+    defer func() {
+        if resubmitted {
+            journal.Log(ctx, userID, journal.OfferSubmit, "offer", offerID, "Изменённое предложение отправлено на модерацию")
+        }
+    }()
 
     if err := u.offerRepo.Update(ctx, offer); err != nil {
         return err
@@ -355,6 +367,7 @@ func (u *MerchantUsecase) AcceptAdminEdits(ctx context.Context, userID, offerID 
     if err := u.offerRepo.ApplyAdminEdits(ctx, offerID); err != nil {
         return err
     }
+    journal.Log(ctx, userID, journal.OfferPublish, "offer", offerID, "Партнёр принял правки — предложение опубликовано")
 
     // Уведомление админам
     if u.notifUC != nil {
@@ -402,6 +415,7 @@ func (u *MerchantUsecase) RejectAdminEdits(ctx context.Context, userID, offerID 
     if err := u.offerRepo.ClearAdminEdits(ctx, offerID, comment); err != nil {
         return err
     }
+    journal.Log(ctx, userID, journal.OfferSubmit, "offer", offerID, "Партнёр отклонил правки и вернул на модерацию")
 
     if u.notifUC != nil {
         _ = u.notifUC.NotifyAdmins(ctx, CreateNotificationInput{

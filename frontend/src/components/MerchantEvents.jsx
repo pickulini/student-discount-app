@@ -1,113 +1,181 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import api from '../api/client';
-import { Card, Button, PageTitle, Badge } from '../design/UI';
-import { RouteLoadingView, RouteEmptyState } from '../design/DottedPath';
+import {
+  PageHead, PrimaryButton, Tabs, Table, CellMono, CellText, StatusMark, Photo, Loading, ErrorLine, ddmm, hhmm, plural,
+} from './merchant/kit';
+
+/** P06 · Ивенты */
+
+const WEEKDAY_ACC = ['КАЖДОЕ ВОСКРЕСЕНЬЕ', 'КАЖДЫЙ ПОНЕДЕЛЬНИК', 'КАЖДЫЙ ВТОРНИК', 'КАЖДУЮ СРЕДУ', 'КАЖДЫЙ ЧЕТВЕРГ', 'КАЖДУЮ ПЯТНИЦУ', 'КАЖДУЮ СУББОТУ'];
+
+const bucket = (e) => {
+  switch (e.status) {
+    case 'published':
+      return 'published';
+    case 'pending_review':
+    case 'pending_partner_approval':
+      return 'pending';
+    case 'draft':
+      return 'draft';
+    case 'rejected':
+      return 'rejected';
+    default:
+      return 'archive';
+  }
+};
+
+const STATUS = {
+  published: ['ok', 'Опубликовано'],
+  pending: ['progress', 'На модерации'],
+  draft: ['draft', 'Черновик'],
+  rejected: ['reject', 'Отклонён'],
+  archive: ['archive', 'Завершён'],
+};
+
+const subline = (e) => {
+  const b = bucket(e);
+  if (b === 'pending') return `Отправлено ${ddmm(e.updated_at)}`;
+  if (b === 'draft' && !e.address) return 'Не заполнено место';
+  if (b === 'rejected') return e.rejection_reason || 'Отклонён';
+  const rule = e.recurrence_rule || '';
+  if (rule.includes('WEEKLY')) return WEEKDAY_ACC[new Date(e.start_at).getDay()];
+  if (rule.includes('DAILY')) return 'Каждый день';
+  if (rule.includes('MONTHLY')) return 'Каждый месяц';
+  const price = e.special_price ?? e.discount_value ?? 0;
+  if (!price) return 'Бесплатно';
+  return 'Одноразовый';
+};
+
+const whoSees = (e, unis) => {
+  switch (e.event_privacy) {
+    case 'subscribers':
+      return 'Подписчики';
+    case 'friends':
+      return 'Друзья';
+    case 'university': {
+      const u = unis.find((x) => x.id === e.event_university_id);
+      return `Студенты ${u?.short_name || u?.name || 'вуза'}`;
+    }
+    case 'invite_only':
+      return 'По приглашению';
+    default:
+      return 'Все';
+  }
+};
+
+const dayLabel = (d) => {
+  const x = new Date(d);
+  return `${x.toLocaleDateString('ru-RU', { weekday: 'short' }).replace('.', '').toUpperCase()} ${ddmm(x)} ${hhmm(x)}`;
+};
 
 const MerchantEvents = () => {
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState('all');
-
-  const fetchEvents = () => {
-    setLoading(true);
-    const params = {};
-    if (filterStatus !== 'all') params.status = filterStatus;
-    api.get('/merchant/events', { params })
-      .then(res => setEvents(res.data || []))
-      .catch(err => {
-        console.error(err);
-        setEvents([]);
-      })
-      .finally(() => setLoading(false));
-  };
+  const { scope, companies } = useOutletContext();
+  const navigate = useNavigate();
+  const [events, setEvents] = useState(null);
+  const [goingMonth, setGoingMonth] = useState(0);
+  const [unis, setUnis] = useState([]);
+  const [tab, setTab] = useState('all');
+  const [past, setPast] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchEvents();
-  }, [filterStatus]);
+    api
+      .get('/merchant/events')
+      .then((r) => setEvents(r.data || []))
+      .catch((e) => setError(e.response?.data?.error || 'Не удалось загрузить ивенты'));
+    api.get('/universities').then((r) => setUnis(r.data || [])).catch(() => {});
+  }, []);
 
-  const submitForReview = async (id) => {
-    try {
-      await api.post(`/events/${id}/submit`);
-      fetchEvents();
-    } catch (err) {
-      alert(err.response?.data?.error || 'Ошибка');
-    }
-  };
+  useEffect(() => {
+    api
+      .get('/merchant/cabinet/stats', { params: { ...scope, period: 30 } })
+      .then((r) => setGoingMonth(r.data.events?.going || 0))
+      .catch(() => {});
+  }, [scope.company_id]);
+
+  const scoped = useMemo(
+    () => (events || []).filter((e) => !scope.company_id || String(e.company_id) === String(scope.company_id)),
+    [events, scope.company_id]
+  );
+  const visible = useMemo(
+    () => scoped.filter((e) => past || !e.end_at || new Date(e.end_at) >= new Date() || e.recurrence_rule),
+    [scoped, past]
+  );
+  const counts = useMemo(() => {
+    const c = { all: visible.length, published: 0, pending: 0, draft: 0, rejected: 0, archive: 0 };
+    visible.forEach((e) => (c[bucket(e)] += 1));
+    return c;
+  }, [visible]);
+  const rows = visible.filter((e) => tab === 'all' || bucket(e) === tab).sort((a, b) => new Date(a.start_at) - new Date(b.start_at));
+
+  if (error) return <ErrorLine>{error}</ErrorLine>;
+  if (!events) return <Loading />;
+
+  const companyName = (id) => companies.find((c) => c.id === id)?.name || '—';
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
-        <PageTitle className="mb-0">Мои ивенты</PageTitle>
-        <Link to="/events/new">
-          <Button>+ Создать ивент</Button>
-        </Link>
+    <div className="flex flex-col gap-7">
+      <PageHead
+        title="Ивенты"
+        subtitle={`${scoped.length} ${plural(scoped.length, 'ивент', 'ивента', 'ивентов')} · ${goingMonth} ${plural(goingMonth, 'студент отметил', 'студента отметили', 'студентов отметили')} «Пойду» за месяц`}
+        right={<PrimaryButton onClick={() => navigate('/merchant/events/new')}>+ Создать ивент</PrimaryButton>}
+      />
+
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <Tabs
+          value={tab}
+          onChange={setTab}
+          items={[
+            { key: 'all', label: `Все · ${counts.all}` },
+            { key: 'published', label: `Опубликованные · ${counts.published}` },
+            { key: 'pending', label: `На модерации · ${counts.pending}` },
+            { key: 'draft', label: `Черновики · ${counts.draft}` },
+            { key: 'rejected', label: counts.rejected ? `Отклонённые · ${counts.rejected}` : 'Отклонённые' },
+          ]}
+        />
+        <button onClick={() => setPast((v) => !v)} className="font-mono font-medium text-[11px] tracking-[0.04em] uppercase text-ink">
+          Прошедшие {past ? '↑' : '↓'}
+        </button>
       </div>
 
-      <div className="mb-4 flex items-center gap-2">
-        <label className="text-sm text-ink-soft">Фильтр:</label>
-        <select
-          value={filterStatus}
-          onChange={e => setFilterStatus(e.target.value)}
-          className="bg-transparent border-b border-line focus:border-accent outline-none py-1.5 text-sm text-ink transition"
-        >
-          <option value="all">Все</option>
-          <option value="draft">Черновики</option>
-          <option value="pending_review">На модерации</option>
-          <option value="published">Опубликованные</option>
-          <option value="rejected">Отклонённые</option>
-        </select>
-      </div>
-
-      {loading ? (
-        <RouteLoadingView label="Загрузка..." />
-      ) : events.length === 0 ? (
-        <RouteEmptyState title="У вас пока нет ивентов" />
-      ) : (
-        <Card className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-line">
-                <th className="p-2 text-left text-eyebrow">Дата</th>
-                <th className="p-2 text-left text-eyebrow">Название</th>
-                <th className="p-2 text-left text-eyebrow">Компания</th>
-                <th className="p-2 text-left text-eyebrow">Приватность</th>
-                <th className="p-2 text-left text-eyebrow">Статус</th>
-                <th className="p-2 text-left text-eyebrow">Действия</th>
-              </tr>
-            </thead>
-            <tbody>
-              {events.map(e => (
-                <tr key={e.id} className="border-b border-line last:border-0">
-                  <td className="p-2 whitespace-nowrap text-caption text-ink">
-                    {new Date(e.start_at).toLocaleDateString('ru-RU', {
-                      day: 'numeric', month: 'short', year: '2-digit',
-                    })}
-                  </td>
-                  <td className="p-2 max-w-xs truncate text-ink">{e.title}</td>
-                  <td className="p-2 text-ink-soft">{e.company_id || '—'}</td>
-                  <td className="p-2 text-xs text-ink-soft">{e.event_privacy}</td>
-                  <td className="p-2">
-                    <Badge filled={e.status === 'published'}>{e.status}</Badge>
-                  </td>
-                  <td className="p-2 space-x-2">
-                    {e.status === 'draft' && (
-                      <Button variant="ghost" onClick={() => submitForReview(e.id)} className="px-2 py-1 text-xs">
-                        На модерацию
-                      </Button>
-                    )}
-                    {e.status === 'published' && (
-                      <Link to="/events" className="text-accent hover:underline text-xs">
-                        Смотреть
-                      </Link>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-      )}
+      <Table
+        columns={[
+          {
+            key: 'e',
+            label: 'Ивент',
+            render: (e) => (
+              <div className="flex items-center gap-3 min-w-0">
+                <Photo src={e.image_url} className="w-10 h-10 shrink-0" />
+                <div className="min-w-0">
+                  <CellText>{e.title}</CellText>
+                  <div className="font-mono text-[11px] tracking-[0.02em] uppercase text-ink-soft truncate mt-[2px]">{subline(e)}</div>
+                </div>
+              </div>
+            ),
+          },
+          { key: 'd', label: 'Дата', width: 130, render: (e) => <CellText className="font-mono text-[13px] font-normal">{bucket(e) === 'draft' && !e.address ? '—' : dayLabel(e.start_at)}</CellText> },
+          { key: 'c', label: 'Компания', width: 120, render: (e) => <CellText className="font-normal">{e.company_id ? companyName(e.company_id) : 'Лично'}</CellText> },
+          { key: 'w', label: 'Кто видит', width: 130, render: (e) => <CellText className="font-normal">{whoSees(e, unis)}</CellText> },
+          {
+            key: 'g',
+            label: 'Идут / ?',
+            width: 110,
+            render: (e) => <CellMono>{bucket(e) === 'published' ? `${e.attendees_count} / ${e.interested_count}` : '—'}</CellMono>,
+          },
+          {
+            key: 's',
+            label: 'Статус',
+            width: 150,
+            render: (e) => {
+              const [k, l] = STATUS[bucket(e)];
+              return <StatusMark kind={k}>{l}</StatusMark>;
+            },
+          },
+        ]}
+        rows={rows}
+        empty={scoped.length === 0 ? 'Ивентов пока нет — создайте первый.' : 'В этом разделе пусто.'}
+      />
     </div>
   );
 };

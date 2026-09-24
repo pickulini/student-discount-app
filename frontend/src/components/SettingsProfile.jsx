@@ -1,105 +1,175 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api/client';
-import ImageUpload from './ImageUpload';
 import { useAuth } from '../context/AuthContext';
-import { Card, Button, Input, Label } from '../design/UI';
 import { RouteLoadingView } from '../design/DottedPath';
+import { Avatar, Field, FieldLabel, PrimaryButton, TextButton } from './merchant/kit';
+import { PanelHead, SavedMark, ErrorText } from './settings/shared';
+
+/** D60 · Настройки → Профиль: фото, никнейм, @username, вуз (только через верификацию). */
+
+const USERNAME_RE = /^[a-z0-9_]{3,30}$/;
+const MAX_PHOTO = 5 * 1024 * 1024;
 
 const SettingsProfile = () => {
   const { fetchUser } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const [me, setMe] = useState(null);
+  const [form, setForm] = useState({ nickname: '', username: '', avatar_url: '' });
+  const [check, setCheck] = useState(null); // null | 'checking' | 'free' | 'taken' | 'invalid'
+  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState(null);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [form, setForm] = useState({
-    nickname: '',
-    username: '',
-    avatar_url: '',
-  });
+  const fileRef = useRef(null);
 
   useEffect(() => {
-    api.get('/users/me')
-      .then((res) => {
-        setForm({
-          nickname: res.data.nickname || '',
-          username: res.data.username || '',
-          avatar_url: res.data.avatar_url || '',
-        });
+    api
+      .get('/users/me')
+      .then((r) => {
+        setMe(r.data);
+        setForm({ nickname: r.data.nickname || '', username: r.data.username || '', avatar_url: r.data.avatar_url || '' });
       })
-      .catch(() => setError('Не удалось загрузить'))
-      .finally(() => setLoading(false));
+      .catch(() => setError('Не удалось загрузить профиль'));
   }, []);
 
-  const handleSubmit = async (e) => {
+  // Проверяем, свободен ли @username, пока человек печатает.
+  useEffect(() => {
+    if (!me) return undefined;
+    const u = form.username.trim();
+    if (!u || u === (me.username || '')) {
+      setCheck(null);
+      return undefined;
+    }
+    if (!USERNAME_RE.test(u)) {
+      setCheck('invalid');
+      return undefined;
+    }
+    setCheck('checking');
+    const t = setTimeout(() => {
+      api
+        .get('/users/username-available', { params: { u } })
+        .then((r) => setCheck(r.data.available ? 'free' : 'taken'))
+        .catch(() => setCheck(null));
+    }, 350);
+    return () => clearTimeout(t);
+  }, [form.username, me]);
+
+  if (!me) return error ? <ErrorText>{error}</ErrorText> : <RouteLoadingView label="Загрузка..." />;
+
+  const pickPhoto = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setError('');
+    if (!/^image\/(jpeg|png)$/.test(file.type)) return setError('Нужен JPG или PNG');
+    if (file.size > MAX_PHOTO) return setError('Файл больше 5 МБ');
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const r = await api.post('/users/upload-avatar', fd);
+      setForm((f) => ({ ...f, avatar_url: r.data.url }));
+      setSavedAt(null);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Не удалось загрузить фото');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const save = async (e) => {
     e.preventDefault();
+    if (check === 'taken' || check === 'invalid') return;
     setSaving(true);
     setError('');
-    setSuccess('');
     try {
-      await api.patch('/users/me', {
-        nickname: form.nickname || null,
-        username: form.username || null,
-        avatar_url: form.avatar_url || null,
+      const r = await api.patch('/users/me', {
+        nickname: form.nickname.trim(),
+        username: form.username.trim(),
+        avatar_url: form.avatar_url || '',
       });
-      setSuccess('Профиль обновлён');
-      if (fetchUser) fetchUser();
+      setMe((m) => ({ ...m, ...r.data }));
+      setCheck(null);
+      setSavedAt(new Date());
+      fetchUser?.();
     } catch (err) {
-      setError(err.response?.data?.error || 'Ошибка сохранения');
+      setError(err.response?.data?.error || 'Не удалось сохранить');
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) return <RouteLoadingView label="Загрузка..." />;
+  const set = (k) => (e) => {
+    const v = k === 'username' ? e.target.value.toLowerCase().replace(/^@/, '') : e.target.value;
+    setForm((f) => ({ ...f, [k]: v }));
+    setSavedAt(null);
+  };
+
+  const usernameRight =
+    check === 'free' ? '✓ Свободен' : check === 'checking' ? 'Проверяем…' : null;
+  const usernameError =
+    check === 'taken' ? 'Этот username уже занят' : check === 'invalid' ? '3–30 символов: латиница, цифры, _' : '';
+  const displayName = form.nickname || me.full_name;
 
   return (
-    <Card className="p-6">
-      <h2 className="text-editorial text-xl text-ink uppercase mb-4">Профиль</h2>
+    <form onSubmit={save} className="flex flex-col gap-6">
+      <PanelHead title="Профиль" />
 
-      {error && <div className="bg-danger/10 text-danger p-3 rounded-[var(--radius-sm)] mb-3 text-sm">{error}</div>}
-      {success && <div className="bg-accent/10 text-accent p-3 rounded-[var(--radius-sm)] mb-3 text-sm">{success}</div>}
+      <div className="flex gap-6 items-center">
+        <Avatar src={form.avatar_url} name={displayName} size={88} />
+        <div className="flex flex-col items-start gap-2">
+          <TextButton type="button" onClick={() => fileRef.current?.click()} disabled={uploading}>
+            {uploading ? 'Загружаем…' : 'Сменить фото'}
+          </TextButton>
+          <span className="text-[13px] text-ink-soft">JPG или PNG, до 5 МБ</span>
+          <input ref={fileRef} type="file" accept="image/jpeg,image/png" className="hidden" onChange={pickPhoto} />
+        </div>
+      </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <ImageUpload
-          value={form.avatar_url}
-          onChange={(url) => setForm({ ...form, avatar_url: url })}
-          uploadEndpoint="/users/upload-avatar"
+      <div className="flex flex-col sm:flex-row gap-6 sm:gap-8 items-start">
+        <Field
+          className="flex-1 w-full"
+          label="Никнейм"
+          value={form.nickname}
+          onChange={set('nickname')}
+          placeholder={me.full_name}
+          maxLength={50}
         />
+        <Field
+          className="flex-1 w-full"
+          label="Username (@тег)"
+          right={usernameRight}
+          active={check === 'free'}
+          error={usernameError}
+          hint="3–30 символов: латиница, цифры, _"
+          value={form.username}
+          onChange={set('username')}
+          placeholder="anna_p"
+          maxLength={30}
+          autoComplete="off"
+          spellCheck={false}
+        />
+      </div>
 
-        <div>
-          <Label className="mb-1">Никнейм</Label>
-          <Input
-            type="text"
-            value={form.nickname}
-            onChange={(e) => setForm({ ...form, nickname: e.target.value })}
-            placeholder="Артём"
-            maxLength={50}
-          />
+      <div className="flex flex-col gap-2">
+        <FieldLabel>Вуз</FieldLabel>
+        <div className="flex items-center gap-3 border-b border-dashed border-line pb-[10px]">
+          <span className="flex-1 min-w-0 text-[16px] text-ink-soft truncate">{me.university_name || 'Не указан'}</span>
+          <Link to="/verification" className="font-mono font-bold text-[11px] tracking-[0.04em] uppercase text-ink hover:text-accent whitespace-nowrap">
+            Через верификацию
+          </Link>
         </div>
+        <span className="text-[12px] leading-[18px] text-ink-soft">Меняется только через повторную верификацию.</span>
+      </div>
 
-        <div>
-          <Label className="mb-1">Username (@тег)</Label>
-          <div className="flex items-center gap-1">
-            <span className="text-ink-faint">@</span>
-            <Input
-              type="text"
-              value={form.username}
-              onChange={(e) => setForm({ ...form, username: e.target.value.toLowerCase() })}
-              placeholder="artem_2005"
-              pattern="[a-z0-9_]{3,30}"
-              title="3-30 символов: латиница, цифры, _"
-            />
-          </div>
-          <p className="text-xs text-ink-faint mt-1">3-30 символов: латиница, цифры, _</p>
-        </div>
-
-        <div className="flex gap-2 pt-2">
-          <Button type="submit" disabled={saving} className="px-6">
-            {saving ? 'Сохранение...' : 'Сохранить'}
-          </Button>
-        </div>
-      </form>
-    </Card>
+      <div className="flex flex-wrap gap-6 items-center">
+        <PrimaryButton type="submit" disabled={saving || uploading || check === 'checking' || !!usernameError}>
+          {saving ? 'Сохраняем…' : 'Сохранить'}
+        </PrimaryButton>
+        <SavedMark at={savedAt}>Профиль обновлён</SavedMark>
+        <ErrorText>{error}</ErrorText>
+      </div>
+    </form>
   );
 };
 

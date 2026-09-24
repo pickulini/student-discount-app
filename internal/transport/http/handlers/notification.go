@@ -201,12 +201,14 @@ func (h *NotificationHandler) UpdateSettings(w http.ResponseWriter, r *http.Requ
         Friends *bool `json:"friends,omitempty"`
         Events  *bool `json:"events,omitempty"`
         Offers  *bool `json:"offers,omitempty"`
+        Orders  *bool `json:"orders,omitempty"`
+        Quiet   *bool `json:"quiet,omitempty"`
     }
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
         writeError(w, http.StatusBadRequest, "invalid request")
         return
     }
-    if err := h.uc.UpdateSettings(r.Context(), userID, req.Enabled, req.Friends, req.Events, req.Offers); err != nil {
+    if err := h.uc.UpdateSettings(r.Context(), userID, req.Enabled, req.Friends, req.Events, req.Offers, req.Orders, req.Quiet); err != nil {
         writeError(w, http.StatusInternalServerError, "failed")
         return
     }

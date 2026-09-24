@@ -25,8 +25,9 @@ func OptionalAuth(jwtManager *crypto.JWTManager) func(http.Handler) http.Handler
                 tokenString = r.URL.Query().Get("token")
             }
             if tokenString != "" {
-                if claims, err := jwtManager.Verify(tokenString); err == nil {
+                if claims, err := jwtManager.Verify(tokenString); err == nil && sessionOK(r.Context(), claims.SessionID, claims.UserID) {
                     ctx := context.WithValue(r.Context(), UserIDKey, claims.UserID)
+                    ctx = context.WithValue(ctx, SessionIDKey, claims.SessionID)
                     r = r.WithContext(ctx)
                 }
             }

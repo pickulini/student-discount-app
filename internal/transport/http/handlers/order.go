@@ -1,6 +1,8 @@
 package handlers
 
 import (
+    "fmt"
+    "your-project/internal/journal"
     "encoding/json"
     "net/http"
     "strconv"
@@ -127,10 +129,17 @@ func (h *OrderHandler) RefundOrder(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    amount := h.orderUsecase.OrderAmount(r.Context(), id)
     if err := h.orderUsecase.RefundOrder(r.Context(), id, req.Reason); err != nil {
         writeError(w, http.StatusBadRequest, err.Error())
         return
     }
+    actor, _ := r.Context().Value(middleware.UserIDKey).(int64)
+    txt := fmt.Sprintf("Возврат %s ₽", fmtRub(amount))
+    if req.Reason != "" {
+        txt += " · «" + req.Reason + "»"
+    }
+    journal.Log(r.Context(), actor, journal.OrderRefund, "order", id, txt)
     writeJSON(w, http.StatusOK, map[string]string{"message": "order refunded"})
 }
 

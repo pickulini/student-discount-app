@@ -1,182 +1,293 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import OfferCard from './OfferCard';
-import EventCard from './EventCard';
-import OfferDetailModal from './OfferDetailModal';
-import EventDetailModal from './EventDetailModal';
-import { PageTitle, Eyebrow } from '../design/UI';
-import { RouteLoadingView, RouteEmptyState, DottedDivider, TrailDivider, TrailDividerV } from '../design/DottedPath';
+import { RouteLoadingView, RouteEmptyState } from '../design/DottedPath';
+import { SectionLabel, Meta, Leader, PrimaryButton, TextButton, Rule, Rule2, VRule, hhmm } from './merchant/kit';
+import { distanceMeters, getKnownPosition, requestPosition } from '../utils/geo';
 
 /**
- * Главная в духе Яндекс.Афиши: лента в основном вертикальная, с крупными
- * немногочисленными карточками, и лишь один-два горизонтальных «заезда»
- * для подборок — а не сплошной горизонтальный скролл повсюду.
+ * D01 · Главная (Figma «Концепция «Чек»»).
+ * Слева: «Вы сэкономили», поиск, категории, «Рядом», ближайшие ивенты.
+ * Справа: «Популярное рядом» (2 крупные карточки) и «Все предложения»
+ * (сетка по 3, сортировка Ближе / Выгоднее / Новые, «Печатать дальше»).
  */
 
-/** Компактная горизонтальная карусель — используется точечно, один раз. */
-const Carousel = ({ title, items, renderItem }) => {
-  if (!items || items.length === 0) return null;
-  return (
-    <div>
-      <Eyebrow className="mb-3 px-1">{title}</Eyebrow>
-      <div className="flex overflow-x-auto no-scrollbar gap-4 pb-1 -mx-1 px-1">
-        {items.map((item, i) => (
-          <React.Fragment key={item.id}>
-            {i > 0 && <TrailDividerV animated />}
-            <div
-              className="fade-in-up flex-shrink-0 w-64 sm:w-72"
-              style={{ animationDelay: `${i * 70}ms` }}
-            >
-              {renderItem(item)}
-            </div>
-          </React.Fragment>
-        ))}
-      </div>
-    </div>
-  );
-};
+const MONTHS = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
+const MONTHS_GEN = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+const PAGE = 6;
 
-/** Основная вертикальная лента — крупные карточки, 1 колонка на мобильном,
-    2 на широком экране. Каждая карточка отделена штриховой «тропинкой». */
-const VerticalFeed = ({ title, items, renderItem }) => {
-  if (!items || items.length === 0) return null;
-  return (
-    <div>
-      {title && <Eyebrow className="mb-3 px-1">{title}</Eyebrow>}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-8">
-        {items.map((item, i) => (
-          <div
-            key={item.id}
-            className="fade-in-up pb-8"
-            style={{ animationDelay: `${Math.min(i, 6) * 70}ms` }}
-          >
-            {renderItem(item)}
-            <TrailDivider className="mt-8" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+const benefit = (o) => {
+  const base = o.base_price || 0;
+  return o.discount_type === 'percentage' ? (base * o.discount_value) / 100 : o.discount_value;
 };
+const weekdayTime = (d) => {
+  const x = new Date(d);
+  return `${x.toLocaleDateString('ru-RU', { weekday: 'short' }).replace('.', '').toUpperCase()} ${hhmm(x)}`;
+};
+const rubInt = (v) => `${Math.round(v || 0).toLocaleString('ru-RU')} ₽`;
+
+const Row = ({ label, value, active, onClick }) => (
+  <button onClick={onClick} className="w-full flex items-end gap-2 text-left group">
+    <span className={`font-mono text-[12px] tracking-[0.03em] uppercase whitespace-nowrap truncate ${active ? 'font-bold text-ink' : 'text-ink group-hover:text-accent'}`}>
+      {label}
+    </span>
+    <span className="flex-1 min-w-[8px] border-t border-dashed border-ink-faint h-[4px]" />
+    <span className="font-mono text-[12px] text-ink whitespace-nowrap">{value}</span>
+  </button>
+);
 
 const Home = () => {
-  const [offers, setOffers] = useState([]);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const tag = params.get('tag') || '';
+  const [offers, setOffers] = useState(null);
   const [events, setEvents] = useState([]);
-  const [tags, setTags] = useState([]);
-  const [selectedTags, setSelectedTags] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedOffer, setSelectedOffer] = useState(null);
-  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [orders, setOrders] = useState([]);
+  const [wallet, setWallet] = useState(null);
+  const [search, setSearch] = useState(() => params.get('q') || '');
+  const [sort, setSort] = useState('benefit');
+  const [radius, setRadius] = useState(null);
+  const [me, setMe] = useState(null);
+  const [shown, setShown] = useState(PAGE);
+  const [loadedAt] = useState(new Date());
 
   useEffect(() => {
-    api.get('/tags/popular?limit=15').then(res => setTags(res.data || [])).catch(console.error);
-    api.get('/events?limit=4').then(res => setEvents((res.data || []).slice(0, 4))).catch(() => setEvents([]));
+    api.get('/offers').then((r) => setOffers(Array.isArray(r.data) ? r.data : [])).catch(() => setOffers([]));
+    getKnownPosition().then((p) => {
+      if (p) {
+        setMe(p);
+        setSort('near');
+      }
+    });
   }, []);
 
   useEffect(() => {
-    setLoading(true);
-    const params = {};
-    if (selectedTags.length > 0) {
-      params.tags = selectedTags.join(',');
-    }
-    api.get('/offers', { params })
-      .then(res => setOffers(Array.isArray(res.data) ? res.data : []))
-      .catch(err => {
-        console.error('Failed to load offers:', err);
-        setOffers([]);
-      })
-      .finally(() => setLoading(false));
-  }, [selectedTags]);
+    if (!user) return;
+    api.get('/events?limit=10').then((r) => setEvents((r.data || []).filter((e) => new Date(e.start_at) > new Date()).slice(0, 3))).catch(() => {});
+    api.get('/orders').then((r) => setOrders(r.data || [])).catch(() => {});
+    api.get('/wallet').then((r) => setWallet(r.data)).catch(() => {});
+  }, [user]);
 
-  const toggleTag = (slug) => {
-    setSelectedTags(prev =>
-      prev.includes(slug) ? prev.filter(s => s !== slug) : [...prev, slug]
-    );
-  };
+  useEffect(() => setShown(PAGE), [tag, search, sort, radius]);
 
-  const clearFilters = () => setSelectedTags([]);
-
-  const handleCardClick = (offer) => setSelectedOffer(offer);
-  const handleCloseModal = () => setSelectedOffer(null);
-
-  // Один горизонтальный «заезд» — топ по скидке, немного карточек.
-  // Остальное — обычная вертикальная лента крупных карточек.
-  const popular = useMemo(
-    () => [...offers].sort((a, b) => (b.discount_value || 0) - (a.discount_value || 0)).slice(0, 4),
-    [offers]
+  const withDist = useMemo(
+    () =>
+      (offers || []).map((o) => ({
+        o,
+        d: me && o.latitude && o.longitude ? distanceMeters(me, { lat: o.latitude, lng: o.longitude }) : null,
+      })),
+    [offers, me]
   );
-  const popularIds = useMemo(() => new Set(popular.map(o => o.id)), [popular]);
-  const rest = useMemo(() => offers.filter(o => !popularIds.has(o.id)), [offers, popularIds]);
 
-  const renderOfferMd = (offer) => <OfferCard offer={offer} onClick={handleCardClick} size="md" />;
-  const renderOfferLg = (offer) => <OfferCard offer={offer} onClick={handleCardClick} size="lg" />;
-  const renderEventLg = (event) => <EventCard event={event} onClick={setSelectedEvent} size="lg" />;
+  const categories = useMemo(() => {
+    const m = new Map();
+    (offers || []).forEach((o) => (o.tags || []).forEach((t) => m.set(t.slug, { ...t, n: (m.get(t.slug)?.n || 0) + 1 })));
+    return [...m.values()].sort((a, b) => b.n - a.n).slice(0, 8);
+  }, [offers]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return withDist.filter(({ o, d }) => {
+      if (tag && !(o.tags || []).some((t) => t.slug === tag)) return false;
+      if (radius && (d == null || d > radius)) return false;
+      if (!q) return true;
+      return [o.title, o.description, o.company_name, o.address, ...(o.tags || []).map((t) => t.name)].some((s) => (s || '').toLowerCase().includes(q));
+    });
+  }, [withDist, tag, search, radius]);
+
+  const popular = useMemo(() => {
+    const pool = me ? filtered.filter((x) => x.d != null && x.d <= 2000) : filtered;
+    return [...(pool.length >= 2 ? pool : filtered)].sort((a, b) => (b.o.current_uses || 0) - (a.o.current_uses || 0) || benefit(b.o) - benefit(a.o)).slice(0, 2);
+  }, [filtered, me]);
+
+  const rest = useMemo(() => {
+    const ids = new Set(popular.map((x) => x.o.id));
+    const list = filtered.filter((x) => !ids.has(x.o.id));
+    const by = {
+      near: (a, b) => (a.d ?? Infinity) - (b.d ?? Infinity),
+      benefit: (a, b) => benefit(b.o) - benefit(a.o),
+      new: (a, b) => new Date(b.o.created_at) - new Date(a.o.created_at),
+    }[sort];
+    return [...list].sort(by);
+  }, [filtered, popular, sort]);
+
+  const savings = useMemo(() => {
+    const now = new Date();
+    const paid = orders.filter((o) => ['paid', 'completed'].includes(o.status));
+    const month = paid.filter((o) => {
+      const d = new Date(o.created_at);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+    const sum = (l) => l.reduce((s, o) => s + Number(o.discount_amount || 0) + Number(o.bonus_amount || 0), 0);
+    const first = paid.reduce((min, o) => (!min || new Date(o.created_at) < min ? new Date(o.created_at) : min), null);
+    return { month: sum(month), count: month.length, total: sum(paid), since: first };
+  }, [orders]);
+
+  const near = (m) => withDist.filter((x) => x.d != null && x.d <= m).length;
+
+  const take = (o) => (user ? navigate(`/offers/${o.id}/checkout`) : navigate('/login'));
+  const setTag = (slug) => {
+    const next = new URLSearchParams(params);
+    if (slug) next.set('tag', slug);
+    else next.delete('tag');
+    setParams(next, { replace: true });
+  };
+  const askLocation = () =>
+    requestPosition().then((p) => {
+      if (p) {
+        setMe(p);
+        setSort('near');
+      }
+    });
+
+  const now = new Date();
+  const visible = rest.slice(0, shown);
+  const rows = [];
+  for (let i = 0; i < visible.length; i += 3) rows.push(visible.slice(i, i + 3));
 
   return (
-    <div>
-      <PageTitle>Актуальные предложения</PageTitle>
+    <div className="flex flex-col lg:flex-row gap-10 items-start">
+      {/* Колонка 1 */}
+      <aside className="w-full lg:w-[300px] shrink-0 flex flex-col gap-6">
+        {user && (
+          <>
+            <div className="font-mono font-medium text-[11px] tracking-[0.08em] uppercase text-ink-soft">Вы сэкономили · {MONTHS[now.getMonth()]}</div>
+            <Link to="/savings" className="font-display font-bold text-[44px] tracking-[-0.03em] leading-none text-ink hover:text-accent">{rubInt(savings.month)}</Link>
+            <div className="flex flex-col gap-2">
+              <Leader label="Скидок" value={savings.count} />
+              <Leader label="Бонусов" value={Math.floor(wallet?.bonus || 0)} />
+              <Leader label={savings.since ? `Всего с ${MONTHS_GEN[savings.since.getMonth()]}` : 'Всего'} value={rubInt(savings.total)} />
+            </div>
+            <Rule />
+          </>
+        )}
+        <label className="flex items-center gap-[10px] border-b border-ink pb-[10px]">
+          <span className="font-mono font-bold text-[12px] tracking-[0.04em] text-ink">ПОИСК:</span>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="кофе, кино…"
+            className="flex-1 min-w-0 bg-transparent outline-none text-[15px] text-ink placeholder:text-ink-faint"
+          />
+        </label>
+        <Rule />
+        <SectionLabel>Категории</SectionLabel>
+        <div className="flex flex-col gap-2">
+          <Row label="Все" value={offers?.length ?? '…'} active={!tag} onClick={() => setTag('')} />
+          {categories.map((c) => (
+            <Row key={c.slug} label={c.name} value={c.n} active={tag === c.slug} onClick={() => setTag(tag === c.slug ? '' : c.slug)} />
+          ))}
+        </div>
+        <Rule />
+        <SectionLabel>Рядом</SectionLabel>
+        {me ? (
+          <div className="flex flex-col gap-2">
+            <Row label="до 500 м" value={near(500)} active={radius === 500} onClick={() => setRadius(radius === 500 ? null : 500)} />
+            <Row label="до 2 км" value={near(2000)} active={radius === 2000} onClick={() => setRadius(radius === 2000 ? null : 2000)} />
+          </div>
+        ) : (
+          <div className="flex flex-col items-start gap-1">
+            <span className="text-[13px] text-ink-soft">Покажем, что в шаге от вас.</span>
+            <TextButton onClick={askLocation}>Где я?</TextButton>
+          </div>
+        )}
+        {user && events.length > 0 && (
+          <>
+            <Rule />
+            <SectionLabel>Ближайшие ивенты</SectionLabel>
+            <div className="flex flex-col gap-2">
+              {events.map((e) => (
+                <Row key={e.id} label={e.title} value={weekdayTime(e.start_at)} onClick={() => navigate(`/events/${e.id}`)} />
+              ))}
+            </div>
+          </>
+        )}
+      </aside>
 
-      {tags.length > 0 && (
-        <div className="mb-8">
-          <Eyebrow className="mb-2">Фильтр</Eyebrow>
-          <div className="flex flex-wrap gap-x-4 gap-y-2 items-center">
-            {tags.map(tag => {
-              const active = selectedTags.includes(tag.slug);
-              return (
-                <button
-                  key={tag.id}
-                  onClick={() => toggleTag(tag.slug)}
-                  className={`text-sm pb-0.5 border-b transition ${
-                    active
-                      ? 'text-accent border-accent font-medium'
-                      : 'text-ink-soft border-transparent hover:text-ink'
-                  }`}
-                >
-                  {tag.name}
-                </button>
-              );
-            })}
-            {selectedTags.length > 0 && (
-              <button
-                onClick={clearFilters}
-                className="text-sm text-ink-faint hover:text-danger transition"
-              >
-                Сбросить
-              </button>
+      <VRule className="hidden lg:block" />
+
+      {/* Колонка 2 */}
+      <div className="flex-1 min-w-0 w-full">
+        {offers === null ? (
+          <RouteLoadingView label="Загрузка предложений..." />
+        ) : filtered.length === 0 ? (
+          <RouteEmptyState
+            title={tag || search || radius ? 'По выбранным условиям ничего нет' : 'Предложений пока нет'}
+            action={(tag || search || radius) && <TextButton onClick={() => { setTag(''); setSearch(''); setRadius(null); }}>Сбросить</TextButton>}
+          />
+        ) : (
+          <div className="flex flex-col gap-6">
+            <div className="flex items-center justify-between">
+              <SectionLabel>{me ? 'Популярное рядом' : 'Популярное'}</SectionLabel>
+              <Meta>Обновлено {hhmm(loadedAt)}</Meta>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-7 items-stretch">
+              {popular.map((x, i) => (
+                <React.Fragment key={x.o.id}>
+                  {i > 0 && <VRule className="hidden sm:block" />}
+                  <div className="flex-1 min-w-0">
+                    <OfferCard offer={x.o} index={i} size="featured" distance={x.d} onTake={take} />
+                  </div>
+                </React.Fragment>
+              ))}
+            </div>
+
+            {rest.length > 0 && (
+              <>
+                <Rule2 />
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <SectionLabel>Все предложения · {filtered.length}</SectionLabel>
+                  <div className="flex items-center gap-[14px]">
+                    <span className="font-mono font-medium text-[11px] tracking-[0.04em] text-ink-soft">СОРТ:</span>
+                    <div className="flex items-center gap-4">
+                      {[
+                        ['near', 'Ближе'],
+                        ['benefit', 'Выгоднее'],
+                        ['new', 'Новые'],
+                      ].map(([k, l]) =>
+                        k === sort ? (
+                          <span key={k} className="bg-ink text-white font-mono font-bold text-[12px] tracking-[0.04em] uppercase px-[6px] py-[2px]">{l}</span>
+                        ) : (
+                          <button
+                            key={k}
+                            onClick={() => (k === 'near' && !me ? askLocation() : setSort(k))}
+                            className="font-mono text-[12px] tracking-[0.04em] uppercase text-ink-soft hover:text-ink"
+                          >
+                            {l}
+                          </button>
+                        )
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {rows.map((row, ri) => (
+                  <React.Fragment key={ri}>
+                    {ri > 0 && <Rule />}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-[1fr_1px_1fr_1px_1fr] gap-7">
+                      {row.map((x, i) => (
+                        <React.Fragment key={x.o.id}>
+                          {i > 0 && <VRule className="hidden xl:block" />}
+                          <OfferCard offer={x.o} index={2 + ri * 3 + i} distance={x.d} onTake={take} />
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  </React.Fragment>
+                ))}
+                <div className="flex flex-col items-center gap-[14px] pt-2">
+                  <Meta>
+                    Показано {Math.min(shown, rest.length) + popular.length} из {filtered.length}
+                  </Meta>
+                  {shown < rest.length && <PrimaryButton onClick={() => setShown(shown + PAGE)}>Печатать дальше</PrimaryButton>}
+                </div>
+              </>
             )}
           </div>
-          <DottedDivider className="mt-4" />
-        </div>
-      )}
+        )}
+      </div>
 
-      {loading ? (
-        <RouteLoadingView label="Загрузка предложений..." />
-      ) : offers.length === 0 ? (
-        <RouteEmptyState
-          title={selectedTags.length > 0 ? 'По выбранным тегам ничего не найдено' : 'Нет доступных предложений'}
-          action={selectedTags.length > 0 && (
-            <button onClick={clearFilters} className="text-accent hover:underline text-sm">
-              Сбросить фильтры
-            </button>
-          )}
-        />
-      ) : (
-        <div className="space-y-10">
-          <Carousel title="Популярное" items={popular} renderItem={renderOfferMd} />
-
-          <VerticalFeed title="Все предложения" items={rest} renderItem={renderOfferLg} />
-
-          <VerticalFeed title="Ивенты" items={events} renderItem={renderEventLg} />
-        </div>
-      )}
-
-      {selectedOffer && (
-        <OfferDetailModal offer={selectedOffer} onClose={handleCloseModal} />
-      )}
-
-      {selectedEvent && (
-        <EventDetailModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />
-      )}
     </div>
   );
 };

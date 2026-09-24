@@ -42,7 +42,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
     }
 
     user, token, err := h.authUsecase.Register(r.Context(), req.Email, req.Password, req.FullName,
-        req.UniversityID, req.Course, req.ReferralCode, clientIP)
+        req.UniversityID, req.Course, req.ReferralCode, clientIP, r.Header.Get("User-Agent"))
     if err != nil {
         switch err {
         case domain.ErrEmailAlreadyExists:
@@ -133,10 +133,12 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
         writeError(w, http.StatusBadRequest, "invalid request")
         return
     }
-    if err := h.authUsecase.ChangePassword(r.Context(), userID, req.OldPassword, req.NewPassword); err != nil {
+    sid, _ := r.Context().Value(middleware.SessionIDKey).(int64)
+    if err := h.authUsecase.ChangePassword(r.Context(), userID, req.OldPassword, req.NewPassword, sid); err != nil {
         writeError(w, http.StatusBadRequest, err.Error())
         return
     }
+    middleware.ForgetSessions()
     writeJSON(w, http.StatusOK, map[string]string{"message": "password changed"})
 }
 
@@ -151,6 +153,10 @@ func (h *AuthHandler) ListSessions(w http.ResponseWriter, r *http.Request) {
     if err != nil {
         writeError(w, http.StatusInternalServerError, "failed")
         return
+    }
+    sid, _ := r.Context().Value(middleware.SessionIDKey).(int64)
+    for i := range sessions {
+        sessions[i].Current = sid > 0 && sessions[i].ID == sid
     }
     writeJSON(w, http.StatusOK, sessions)
 }
@@ -171,6 +177,7 @@ func (h *AuthHandler) RevokeSession(w http.ResponseWriter, r *http.Request) {
         writeError(w, http.StatusBadRequest, err.Error())
         return
     }
+    middleware.ForgetSessions()
     writeJSON(w, http.StatusOK, map[string]string{"message": "revoked"})
 }
 
@@ -181,10 +188,16 @@ func (h *AuthHandler) RevokeAllSessions(w http.ResponseWriter, r *http.Request) 
         writeError(w, http.StatusUnauthorized, "unauthorized")
         return
     }
-    if err := h.authUsecase.RevokeAllSessions(r.Context(), userID); err != nil {
+    // ?keep_current=1 — «Отозвать все, кроме этой».
+    var keep int64
+    if r.URL.Query().Get("keep_current") == "1" {
+        keep, _ = r.Context().Value(middleware.SessionIDKey).(int64)
+    }
+    if err := h.authUsecase.RevokeAllSessions(r.Context(), userID, keep); err != nil {
         writeError(w, http.StatusInternalServerError, err.Error())
         return
     }
+    middleware.ForgetSessions()
     writeJSON(w, http.StatusOK, map[string]string{"message": "all revoked"})
 }
 
@@ -206,5 +219,6 @@ func (h *AuthHandler) DeleteAccount(w http.ResponseWriter, r *http.Request) {
         writeError(w, http.StatusBadRequest, err.Error())
         return
     }
+    middleware.ForgetSessions()
     writeJSON(w, http.StatusOK, map[string]string{"message": "account deleted"})
 }

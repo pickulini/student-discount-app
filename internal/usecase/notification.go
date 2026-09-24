@@ -3,6 +3,7 @@ package usecase
 import (
     "context"
     "log"
+    "time"
 
     "your-project/internal/domain"
     "your-project/internal/repository"
@@ -70,6 +71,10 @@ func (u *NotificationUsecase) Create(ctx context.Context, in CreateNotificationI
         if !user.NotifyOffers {
             return nil
         }
+    case domain.NotifCategoryOrders:
+        if !user.NotifyOrders {
+            return nil
+        }
     }
 
     n := &domain.Notification{
@@ -109,6 +114,11 @@ func (u *NotificationUsecase) Create(ctx context.Context, in CreateNotificationI
         }
     }
 
+    // Тихие часы: уведомление сохраняется, но не прилетает в реальном времени.
+    if user.NotifyQuiet && inQuietHours(time.Now()) {
+        return nil
+    }
+
     // Публикуем в SSE
     u.hub.Publish(in.UserID, n)
 
@@ -142,6 +152,21 @@ type NotificationSettings struct {
     Friends bool `json:"friends"`
     Events  bool `json:"events"`
     Offers  bool `json:"offers"`
+    Orders  bool `json:"orders"`
+    Quiet   bool `json:"quiet"`
+}
+
+var moscow = func() *time.Location {
+    if l, err := time.LoadLocation("Europe/Moscow"); err == nil {
+        return l
+    }
+    return time.FixedZone("MSK", 3*3600)
+}()
+
+// inQuietHours — 23:00–09:00 по Москве.
+func inQuietHours(t time.Time) bool {
+    h := t.In(moscow).Hour()
+    return h >= 23 || h < 9
 }
 
 func (u *NotificationUsecase) GetUserForSettings(ctx context.Context, userID int64) (*NotificationSettings, error) {
@@ -154,11 +179,13 @@ func (u *NotificationUsecase) GetUserForSettings(ctx context.Context, userID int
         Friends: user.NotifyFriends,
         Events:  user.NotifyEvents,
         Offers:  user.NotifyOffers,
+        Orders:  user.NotifyOrders,
+        Quiet:   user.NotifyQuiet,
     }, nil
 }
 
-func (u *NotificationUsecase) UpdateSettings(ctx context.Context, userID int64, enabled, friends, events, offers *bool) error {
-    return u.userRepo.UpdateNotificationSettings(ctx, userID, enabled, friends, events, offers)
+func (u *NotificationUsecase) UpdateSettings(ctx context.Context, userID int64, enabled, friends, events, offers, orders, quiet *bool) error {
+    return u.userRepo.UpdateNotificationSettings(ctx, userID, enabled, friends, events, offers, orders, quiet)
 }
 
 func (u *NotificationUsecase) Delete(ctx context.Context, id, userID int64) error {

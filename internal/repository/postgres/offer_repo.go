@@ -106,8 +106,8 @@ const offerColumns = `id, company_id, title, description, discount_type, discoun
 const offerColumnsPrefixed = `o.id, o.company_id, o.title, o.description, o.discount_type, o.discount_value, o.special_price, o.base_price, o.start_at, o.end_at, o.status, o.max_uses, o.current_uses, o.bonus_allowed, o.max_bonus_percent, o.created_at, o.updated_at, o.image_url, o.address, o.phone, o.website, o.working_hours, o.rejection_reason, o.is_event, o.organizer_id, o.event_privacy, o.event_university_id, o.admin_edited_data, o.admin_edit_comment, o.partner_reject_comment, o.latitude, o.longitude, o.place_name, o.recurrence_rule, o.recurrence_until`
 
 func (r *OfferRepo) Create(ctx context.Context, o *domain.Offer) error {
-    query := `INSERT INTO offers (company_id, title, description, discount_type, discount_value, base_price, start_at, end_at, status, max_uses, current_uses, bonus_allowed, max_bonus_percent, image_url, address, phone, website, working_hours, is_event, organizer_id, event_privacy, event_university_id, latitude, longitude, place_name, recurrence_rule, recurrence_until) 
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27) RETURNING id, created_at, updated_at`
+    query := `INSERT INTO offers (company_id, title, description, discount_type, discount_value, base_price, start_at, end_at, status, max_uses, current_uses, bonus_allowed, max_bonus_percent, image_url, address, phone, website, working_hours, is_event, organizer_id, event_privacy, event_university_id, latitude, longitude, place_name, recurrence_rule, recurrence_until, gallery) 
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, COALESCE($28::text[], '{}')) RETURNING id, created_at, updated_at`
 
     eventPrivacy := o.EventPrivacy
     if eventPrivacy == "" {
@@ -121,7 +121,7 @@ func (r *OfferRepo) Create(ctx context.Context, o *domain.Offer) error {
         o.ImageURL, o.Address, o.Phone, o.Website, o.WorkingHours,
         o.IsEvent, o.OrganizerID, eventPrivacy, o.EventUniversityID,
         o.Latitude, o.Longitude, o.PlaceName,
-        o.RecurrenceRule, o.RecurrenceUntil,
+        o.RecurrenceRule, o.RecurrenceUntil, o.Gallery,
     ).Scan(&o.ID, &o.CreatedAt, &o.UpdatedAt)
     if err != nil {
         log.Printf("OfferRepo.Create SQL error: %v", err)
@@ -266,7 +266,7 @@ func (r *OfferRepo) IncrementUsesTx(ctx context.Context, tx pgx.Tx, id int64) er
 }
 
 func (r *OfferRepo) Update(ctx context.Context, o *domain.Offer) error {
-    query := `UPDATE offers SET title=$1, description=$2, discount_type=$3, discount_value=$4, base_price=$5, special_price=$6, start_at=$7, end_at=$8, status=$9, max_uses=$10, bonus_allowed=$11, max_bonus_percent=$12, image_url=$13, address=$14, phone=$15, website=$16, working_hours=$17, rejection_reason=$18, is_event=$19, organizer_id=$20, event_privacy=$21, event_university_id=$22, latitude=$23, longitude=$24, place_name=$25, recurrence_rule=$26, recurrence_until=$27, updated_at=NOW() WHERE id=$28`
+    query := `UPDATE offers SET title=$1, description=$2, discount_type=$3, discount_value=$4, base_price=$5, special_price=$6, start_at=$7, end_at=$8, status=$9, max_uses=$10, bonus_allowed=$11, max_bonus_percent=$12, image_url=$13, address=$14, phone=$15, website=$16, working_hours=$17, rejection_reason=$18, is_event=$19, organizer_id=$20, event_privacy=$21, event_university_id=$22, latitude=$23, longitude=$24, place_name=$25, recurrence_rule=$26, recurrence_until=$27, gallery=COALESCE($29::text[], gallery), updated_at=NOW() WHERE id=$28`
     _, err := r.db.Pool.Exec(ctx, query,
         o.Title, o.Description, o.DiscountType, o.DiscountValue,
         o.BasePrice, o.SpecialPrice, o.StartAt, o.EndAt, o.Status, o.MaxUses,
@@ -276,7 +276,7 @@ func (r *OfferRepo) Update(ctx context.Context, o *domain.Offer) error {
         o.IsEvent, o.OrganizerID, o.EventPrivacy, o.EventUniversityID,
         o.Latitude, o.Longitude, o.PlaceName,
         o.RecurrenceRule, o.RecurrenceUntil,
-        o.ID,
+        o.ID, o.Gallery,
     )
     return err
 }
@@ -471,14 +471,20 @@ func (r *OfferRepo) ListEvents(ctx context.Context, organizerID *int64, status s
 
 // SetAdminEdits сохраняет JSONB-снимок админских правок и переводит оффер
 // в статус pending_partner_approval.
-func (r *OfferRepo) SetAdminEdits(ctx context.Context, id int64, data []byte, comment string) error {
+func (r *OfferRepo) SetAdminEdits(ctx context.Context, id int64, data []byte, comment string, editorID int64) error {
+    var editor interface{}
+    if editorID > 0 {
+        editor = editorID
+    }
     query := `UPDATE offers
               SET admin_edited_data = $1,
                   admin_edit_comment = $2,
                   status = 'pending_partner_approval',
+                  admin_edited_by = $4,
+                  admin_edited_at = NOW(),
                   updated_at = NOW()
               WHERE id = $3`
-    _, err := r.db.Pool.Exec(ctx, query, data, comment, id)
+    _, err := r.db.Pool.Exec(ctx, query, data, comment, id, editor)
     return err
 }
 
@@ -490,6 +496,7 @@ func (r *OfferRepo) ApplyAdminEdits(ctx context.Context, id int64) error {
                   discount_type = COALESCE(admin_edited_data->>'discount_type', discount_type),
                   discount_value = COALESCE((admin_edited_data->>'discount_value')::numeric, discount_value),
                   special_price = COALESCE((admin_edited_data->>'special_price')::numeric, special_price),
+                  base_price = COALESCE((admin_edited_data->>'base_price')::numeric, base_price),
                   start_at = COALESCE((admin_edited_data->>'start_at')::timestamptz, start_at),
                   end_at = COALESCE((admin_edited_data->>'end_at')::timestamptz, end_at),
                   bonus_allowed = COALESCE((admin_edited_data->>'bonus_allowed')::boolean, bonus_allowed),

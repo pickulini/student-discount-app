@@ -1,341 +1,114 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import api from '../api/client';
-import { Link } from 'react-router-dom';
-import { Card, PageTitle, Eyebrow, Caption, Badge } from '../design/UI';
-import { RouteLoadingView } from '../design/DottedPath';
+import {
+  PageHead, SectionLabel, Meta, Segmented, StatRow, DayBars, Table, CellMono, CellText, Rule2, VRule, Loading, ErrorLine,
+  rub, num, ddmm, monthDative, joinNames,
+} from './merchant/kit';
 
+/** P07 · Статистика */
 const MerchantStatistics = () => {
-  const [tab, setTab] = useState('overview'); // overview | events | offers
-  const [balance, setBalance] = useState(null);
-  const [offers, setOffers] = useState([]);
-  const [events, setEvents] = useState([]);
-  const [eventStats, setEventStats] = useState(null);
-  const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { scope, companies, selected } = useOutletContext();
+  const [period, setPeriod] = useState('30');
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    Promise.all([
-      api.get('/merchant/balance').catch(() => ({ data: null })),
-      api.get('/merchant/offers').catch(() => ({ data: [] })),
-      api.get('/merchant/events').catch(() => ({ data: [] })),
-      api.get('/merchant/events/stats').catch(() => ({ data: null })),
-      api.get('/merchant/transactions?limit=20').catch(() => ({ data: [] })),
-    ])
-      .then(([b, o, e, es, tx]) => {
-        setBalance(b.data);
-        setOffers(o.data || []);
-        setEvents(e.data || []);
-        setEventStats(es.data);
-        setTransactions(tx.data || []);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+    setData(null);
+    api
+      .get('/merchant/cabinet/stats', { params: { ...scope, period } })
+      .then((r) => setData(r.data))
+      .catch((e) => setError(e.response?.data?.error || 'Не удалось загрузить статистику'));
+  }, [scope.company_id, period]);
 
-  if (loading) return <RouteLoadingView label="Загрузка..." />;
-  if (!balance) return <div className="text-center py-8 text-danger">Не удалось загрузить данные</div>;
+  if (error) return <ErrorLine>{error}</ErrorLine>;
 
-  // ---- Общая ----
-  const totalUses = offers.reduce((sum, o) => sum + (o.current_uses || 0), 0);
-  const publishedOffers = offers.filter(o => o.status === 'published').length;
-  const pendingOffers = offers.filter(o => o.status === 'pending_review').length;
-  const draftOffers = offers.filter(o => o.status === 'draft').length;
+  const who = selected ? selected.name : companies.length === 2 ? 'Обе компании' : joinNames(companies.map((c) => c.name));
+  const multi = !selected && companies.length > 1;
 
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  const recentTx = transactions.filter(t => new Date(t.created_at) >= thirtyDaysAgo);
+  const head = (
+    <PageHead
+      title="Статистика"
+      subtitle={data ? `${who} · ${ddmm(data.from)} — ${ddmm(data.to)}` : who}
+      right={
+        <Segmented
+          items={[{ key: '7', label: '7 дней' }, { key: '30', label: '30 дней' }, { key: '90', label: 'Квартал' }]}
+          value={period}
+          onChange={setPeriod}
+        />
+      }
+    />
+  );
+  if (!data) return <div className="flex flex-col gap-7">{head}<Loading /></div>;
 
-  const recentGross = recentTx
-    .filter(t => t.type === 'order_earning')
-    .reduce((sum, t) => sum + t.amount, 0);
-  const recentRefunds = recentTx
-    .filter(t => t.type === 'refund')
-    .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-  const recentNet = recentGross - recentRefunds;
-
-  const topOffers = [...offers]
-    .sort((a, b) => (b.current_uses || 0) - (a.current_uses || 0))
-    .slice(0, 5);
-  const maxUses = Math.max(...topOffers.map(o => o.current_uses || 0), 1);
-
-  const topEvents = eventStats?.top_events || [];
-  const maxEventAttendees = Math.max(...topEvents.map(e => e.attendees_count || 0), 1);
-
-  const tabs = [
-    { key: 'overview', label: 'Общая' },
-    { key: 'events', label: `Ивенты${eventStats?.total_events > 0 ? ` (${eventStats.total_events})` : ''}` },
-    { key: 'offers', label: `Предложения${offers.length > 0 ? ` (${offers.length})` : ''}` },
-  ];
+  const o = data.offers;
+  const growth = data.uses_prev > 0 ? Math.round(((data.uses - data.uses_prev) / data.uses_prev) * 100) : null;
+  const peak = data.daily.reduce((best, d) => (d.count > (best?.count ?? -1) ? d : best), null);
+  const ev = data.events;
 
   return (
-    <div>
-      <PageTitle>Статистика партнёра</PageTitle>
-
-      {/* Табы */}
-      <div className="flex gap-1 border-b border-line mb-6">
-        {tabs.map(t => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`px-4 py-2 text-sm transition ${
-              tab === t.key ? 'border-b-2 border-accent text-ink font-semibold' : 'text-ink-soft hover:text-ink'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+    <div className="flex flex-col gap-7">
+      {head}
+      <StatRow
+        items={[
+          { label: 'Предложений', value: num(o.total), caption: `${o.published} опубл. · ${o.pending} на модер. · ${o.draft} черн.` },
+          {
+            label: 'Использований',
+            value: num(data.uses),
+            caption: growth === null ? 'Нет данных для сравнения' : `${growth >= 0 ? '+' : '−'}${Math.abs(growth)}% к ${monthDative(new Date(new Date(data.prev_from).getTime() + (new Date(data.from) - new Date(data.prev_from)) / 2))}`,
+          },
+          { label: 'Ивентов', value: num(ev.total), caption: `Идут ${ev.going} · интерес ${ev.interested}` },
+          { label: 'Средний чек', value: rub(data.avg_check), caption: `Скидка в среднем ${Math.round(data.avg_discount_pct)}%` },
+        ]}
+      />
+      <Rule2 />
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <SectionLabel>Использования предложений по дням</SectionLabel>
+        {peak && peak.count > 0 && <Meta>Макс. {peak.count} · {ddmm(peak.date)}</Meta>}
       </div>
-
-      {/* === ОБЩАЯ === */}
-      {tab === 'overview' && (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <Card className="p-4">
-              <Eyebrow>Общий баланс</Eyebrow>
-              <p className="text-editorial text-3xl text-ink mt-1">{balance.total_balance || 0} ₽</p>
-            </Card>
-            <Card className="p-4">
-              <Eyebrow>Начислено за 30 дней</Eyebrow>
-              <p className="text-editorial text-3xl text-ink mt-1">{recentGross.toFixed(0)} ₽</p>
-            </Card>
-            <Card className="p-4">
-              <Eyebrow>Возвраты за 30 дней</Eyebrow>
-              <p className="text-editorial text-3xl text-danger mt-1">-{recentRefunds.toFixed(0)} ₽</p>
-            </Card>
-            <Card className="p-4">
-              <Eyebrow>Чистыми за 30 дней</Eyebrow>
-              <p className={`text-editorial text-3xl mt-1 ${recentNet >= 0 ? 'text-accent' : 'text-danger'}`}>
-                {recentNet.toFixed(0)} ₽
-              </p>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <Card className="p-4">
-              <Eyebrow>Предложений</Eyebrow>
-              <p className="text-editorial text-2xl text-ink mt-1">{offers.length}</p>
-              <Caption className="mt-1">
-                {publishedOffers} опубл. · {pendingOffers} на модерации · {draftOffers} черновиков
-              </Caption>
-            </Card>
-            <Card className="p-4">
-              <Eyebrow>Ивентов</Eyebrow>
-              <p className="text-editorial text-2xl text-ink mt-1">{eventStats?.total_events || 0}</p>
-              <Caption className="mt-1">
-                {eventStats?.published_events || 0} опубл. · {eventStats?.total_attendees || 0} участников
-              </Caption>
-            </Card>
-            <Card className="p-4">
-              <Eyebrow>Всего использований офферов</Eyebrow>
-              <p className="text-editorial text-2xl text-ink mt-1">{totalUses}</p>
-            </Card>
-          </div>
-
-          {/* Последние транзакции */}
-          <Card className="p-4">
-            <Eyebrow className="mb-3">Последние транзакции</Eyebrow>
-            {transactions.length === 0 ? (
-              <p className="text-ink-soft text-sm">Нет транзакций</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm border-collapse">
-                  <thead>
-                    <tr className="border-b border-line">
-                      <th className="p-2 text-left text-eyebrow">Дата</th>
-                      <th className="p-2 text-left text-eyebrow">Тип</th>
-                      <th className="p-2 text-right text-eyebrow">Сумма</th>
-                      <th className="p-2 text-left text-eyebrow">Статус</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {transactions.slice(0, 10).map(tx => (
-                      <tr key={tx.id} className="border-b border-line last:border-0">
-                        <td className="p-2 text-caption text-ink">{new Date(tx.created_at).toLocaleString('ru-RU')}</td>
-                        <td className="p-2 text-ink">
-                          {tx.type === 'order_earning' ? 'Заработок' :
-                           tx.type === 'refund' ? 'Возврат' :
-                           tx.type === 'settlement' ? 'Выплата' : tx.type}
-                        </td>
-                        <td className={`p-2 text-right text-caption font-semibold ${tx.amount >= 0 ? 'text-accent' : 'text-danger'}`}>
-                          {tx.amount >= 0 ? '+' : ''}{tx.amount} ₽
-                        </td>
-                        <td className="p-2">
-                          <Badge filled={tx.status === 'completed'}>{tx.status}</Badge>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Card>
-        </>
-      )}
-
-      {/* === ИВЕНТЫ === */}
-      {tab === 'events' && eventStats && (
-        <>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-            <Card className="p-3">
-              <Caption>Всего ивентов</Caption>
-              <p className="text-editorial text-2xl text-ink mt-1">{eventStats.total_events}</p>
-            </Card>
-            <Card className="p-3">
-              <Caption>Опубликовано</Caption>
-              <p className="text-editorial text-2xl text-ink mt-1">{eventStats.published_events}</p>
-            </Card>
-            <Card className="p-3">
-              <Caption>На модерации</Caption>
-              <p className="text-editorial text-2xl text-ink mt-1">{eventStats.pending_events}</p>
-            </Card>
-            <Card className="p-3">
-              <Caption>Идут</Caption>
-              <p className="text-editorial text-2xl text-ink mt-1">{eventStats.total_attendees}</p>
-            </Card>
-            <Card className="p-3">
-              <Caption>Интерес</Caption>
-              <p className="text-editorial text-2xl text-ink mt-1">{eventStats.total_interested || 0}</p>
-            </Card>
-            <Card className="p-3">
-              <Caption>Средний размер</Caption>
-              <p className="text-editorial text-2xl text-ink mt-1">{(eventStats.avg_attendees || 0).toFixed(1)}</p>
-            </Card>
-          </div>
-
-          {eventStats.rejected_events > 0 && (
-            <div className="border border-danger/30 bg-danger/10 text-danger rounded-[var(--radius-sm)] p-3 mb-4 text-sm">
-              Отклонено ивентов: <strong>{eventStats.rejected_events}</strong>
-            </div>
-          )}
-
-          {eventStats.top_interested && eventStats.top_interested.length > 0 && eventStats.top_interested.some(e => e.interested_count > 0) && (
-            <Card className="p-4 mb-6">
-              <Eyebrow className="mb-3">Топ-3 по интересу</Eyebrow>
-              <div className="space-y-3">
-                {eventStats.top_interested.filter(e => e.interested_count > 0).map(e => (
-                  <div key={e.id}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <Link to="/events" className="text-accent hover:underline truncate mr-2">
-                        {e.title}
-                      </Link>
-                      <span className="font-semibold whitespace-nowrap text-ink">{e.interested_count}</span>
-                    </div>
-                    <div className="w-full bg-surface-2 border border-line h-2">
-                      <div
-                        className="bg-accent h-2 transition-all"
-                        style={{ width: `${((e.interested_count || 0) / Math.max(...eventStats.top_interested.map(x => x.interested_count || 0), 1)) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
-
-          <Card className="p-4 mb-6">
-            <Eyebrow className="mb-3">Топ-3 ивента по посещаемости</Eyebrow>
-            {topEvents.length === 0 ? (
-              <p className="text-ink-soft text-sm">Нет опубликованных ивентов</p>
-            ) : (
-              <div className="space-y-3">
-                {topEvents.map(e => (
-                  <div key={e.id}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <Link to="/events" className="text-accent hover:underline truncate mr-2">
-                        {e.title}
-                      </Link>
-                      <span className="font-semibold whitespace-nowrap text-ink">{e.attendees_count || 0} идут</span>
-                    </div>
-                    <div className="w-full bg-surface-2 border border-line h-2">
-                      <div
-                        className="bg-accent h-2 transition-all"
-                        style={{ width: `${((e.attendees_count || 0) / maxEventAttendees) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-
-          {events.length > 0 && (
-            <Card className="p-4">
-              <Eyebrow className="mb-3">Все ивенты</Eyebrow>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm border-collapse">
-                  <thead>
-                    <tr className="border-b border-line">
-                      <th className="p-2 text-left text-eyebrow">Дата</th>
-                      <th className="p-2 text-left text-eyebrow">Название</th>
-                      <th className="p-2 text-left text-eyebrow">Статус</th>
-                      <th className="p-2 text-right text-eyebrow">Идут</th>
-                      <th className="p-2 text-right text-eyebrow">Интерес</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {events.map(e => (
-                      <tr key={e.id} className="border-b border-line last:border-0">
-                        <td className="p-2 whitespace-nowrap text-caption text-ink">
-                          {new Date(e.start_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: '2-digit' })}
-                        </td>
-                        <td className="p-2 max-w-xs truncate text-ink">{e.title}</td>
-                        <td className="p-2">
-                          <Badge filled={e.status === 'published'}>{e.status}</Badge>
-                        </td>
-                        <td className="p-2 text-right font-semibold text-ink">{e.attendees_count || 0}</td>
-                        <td className="p-2 text-right font-semibold text-accent">{e.interested_count || 0}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-          )}
-        </>
-      )}
-
-      {/* === ПРЕДЛОЖЕНИЯ === */}
-      {tab === 'offers' && (
-        <>
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <Card className="p-3 text-center">
-              <p className="text-editorial text-3xl text-accent">{publishedOffers}</p>
-              <Caption className="mt-1">Опубликовано</Caption>
-            </Card>
-            <Card className="p-3 text-center">
-              <p className="text-editorial text-3xl text-ink">{pendingOffers}</p>
-              <Caption className="mt-1">На модерации</Caption>
-            </Card>
-            <Card className="p-3 text-center">
-              <p className="text-editorial text-3xl text-ink-soft">{draftOffers}</p>
-              <Caption className="mt-1">Черновиков</Caption>
-            </Card>
-          </div>
-
-          <Card className="p-4">
-            <Eyebrow className="mb-3">Топ-5 предложений по использованию</Eyebrow>
-            {topOffers.length === 0 ? (
-              <p className="text-ink-soft text-sm">Нет предложений</p>
-            ) : (
-              <div className="space-y-3">
-                {topOffers.map(o => (
-                  <div key={o.id}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-ink-soft truncate mr-2">{o.title}</span>
-                      <span className="font-semibold whitespace-nowrap text-ink">{o.current_uses || 0} раз</span>
-                    </div>
-                    <div className="w-full bg-surface-2 border border-line h-2">
-                      <div
-                        className="bg-accent h-2 transition-all"
-                        style={{ width: `${((o.current_uses || 0) / maxUses) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-        </>
-      )}
+      <DayBars days={data.daily} height={150} />
+      <Rule2 />
+      <div className="flex flex-col xl:flex-row gap-10 items-start">
+        <div className="flex-1 min-w-0 w-full flex flex-col gap-5">
+          <SectionLabel>Топ-5 предложений по использованию</SectionLabel>
+          <Table
+            rowKey="offer_id"
+            columns={[
+              { key: 'n', label: '№', width: 30, render: (r) => <CellMono>{data.top_offers.indexOf(r) + 1}</CellMono> },
+              { key: 't', label: 'Предложение', render: (r) => <CellText>{multi ? `${r.title} · ${r.company_name}` : r.title}</CellText> },
+              { key: 'c', label: 'Раз', width: 70, render: (r) => <CellMono>{num(r.count)}</CellMono> },
+              { key: 'r', label: 'Выручка', width: 90, render: (r) => <CellMono>{rub(r.revenue)}</CellMono> },
+            ]}
+            rows={data.top_offers}
+            empty="За период заказов не было."
+          />
+        </div>
+        <VRule className="hidden xl:block" />
+        <div className="flex-1 min-w-0 w-full flex flex-col gap-5">
+          <SectionLabel>Топ-3 ивента по посещаемости</SectionLabel>
+          <Table
+            rowKey="event_id"
+            columns={[
+              { key: 'n', label: '№', width: 30, render: (r) => <CellMono>{ev.top_going.indexOf(r) + 1}</CellMono> },
+              { key: 't', label: 'Ивент', render: (r) => <CellText>{r.title}</CellText> },
+              { key: 'c', label: 'Идут', width: 70, render: (r) => <CellMono>{r.count}</CellMono> },
+            ]}
+            rows={ev.top_going}
+            empty="Пока никто не отметил «Пойду»."
+          />
+          <SectionLabel className="mt-5">Топ-3 по интересу («может быть»)</SectionLabel>
+          <Table
+            rowKey="event_id"
+            columns={[
+              { key: 'n', label: '№', width: 30, render: (r) => <CellMono>{ev.top_interested.indexOf(r) + 1}</CellMono> },
+              { key: 't', label: 'Ивент', render: (r) => <CellText>{r.title}</CellText> },
+              { key: 'c', label: '?', width: 70, render: (r) => <CellMono>{r.count}</CellMono> },
+            ]}
+            rows={ev.top_interested}
+            empty="Пока никто не отметил «Может быть»."
+          />
+        </div>
+      </div>
     </div>
   );
 };

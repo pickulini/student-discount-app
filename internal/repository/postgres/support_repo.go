@@ -135,7 +135,7 @@ func (r *SupportMessageRepo) Create(ctx context.Context, msg *domain.SupportMess
 
 func (r *SupportMessageRepo) GetByTicketID(ctx context.Context, ticketID int64) ([]domain.SupportMessage, error) {
     query := `SELECT id, ticket_id, user_id, message, is_internal, created_at 
-              FROM support_messages WHERE ticket_id = $1 ORDER BY created_at ASC`
+              FROM support_messages WHERE ticket_id = $1 AND NOT is_note ORDER BY created_at ASC`
     rows, err := r.db.Pool.Query(ctx, query, ticketID)
     if err != nil {
         return nil, err

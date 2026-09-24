@@ -1,6 +1,8 @@
 package handlers
 
 import (
+    "your-project/internal/journal"
+    "strings"
     "encoding/json"
     "net/http"
     "strconv"
@@ -68,7 +70,11 @@ func (h *SupportHandler) GetTicketMessages(w http.ResponseWriter, r *http.Reques
         writeError(w, http.StatusUnauthorized, "unauthorized")
         return
     }
-    // Проверяем, что тикет принадлежит пользователю (для простоты – позже)
+    // Чужие обращения читать нельзя.
+    if !h.supportUsecase.OwnsTicket(r.Context(), ticketID, userID) {
+        writeError(w, http.StatusNotFound, "ticket not found")
+        return
+    }
     messages, err := h.supportUsecase.GetTicketMessages(r.Context(), ticketID, userID)
     if err != nil {
         writeError(w, http.StatusInternalServerError, "failed to load messages")
@@ -95,6 +101,15 @@ func (h *SupportHandler) AddMessage(w http.ResponseWriter, r *http.Request) {
     userID, ok := r.Context().Value(middleware.UserIDKey).(int64)
     if !ok {
         writeError(w, http.StatusUnauthorized, "unauthorized")
+        return
+    }
+    // Писать можно только в своё обращение.
+    if !h.supportUsecase.OwnsTicket(r.Context(), ticketID, userID) {
+        writeError(w, http.StatusNotFound, "ticket not found")
+        return
+    }
+    if strings.TrimSpace(req.Message) == "" {
+        writeError(w, http.StatusBadRequest, "empty message")
         return
     }
     msg, err := h.supportUsecase.AddMessage(r.Context(), ticketID, userID, req.Message, false)
@@ -129,10 +144,17 @@ func (h *SupportHandler) AdminUpdateTicketStatus(w http.ResponseWriter, r *http.
         writeError(w, http.StatusBadRequest, "invalid request")
         return
     }
+    labels := map[string]string{"open": "открыт", "in_progress": "в работе", "resolved": "решён", "closed": "закрыт"}
+    if labels[req.Status] == "" {
+        writeError(w, http.StatusBadRequest, "unknown status")
+        return
+    }
     if err := h.supportUsecase.UpdateTicketStatus(r.Context(), ticketID, req.Status); err != nil {
         writeError(w, http.StatusInternalServerError, "failed to update status")
         return
     }
+    actor, _ := r.Context().Value(middleware.UserIDKey).(int64)
+    journal.Log(r.Context(), actor, journal.SupportStatus, "ticket", ticketID, "Обращение: "+labels[req.Status])
     writeJSON(w, http.StatusOK, map[string]string{"message": "status updated"})
 }
 
@@ -153,10 +175,18 @@ func (h *SupportHandler) AdminAddMessage(w http.ResponseWriter, r *http.Request)
         writeError(w, http.StatusUnauthorized, "unauthorized")
         return
     }
-    msg, err := h.supportUsecase.AddMessage(r.Context(), ticketID, adminID, req.Message, true) // isInternal = true
+    if strings.TrimSpace(req.Message) == "" {
+        writeError(w, http.StatusBadRequest, "пустое сообщение")
+        return
+    }
+    msg, err := h.supportUsecase.AddMessage(r.Context(), ticketID, adminID, req.Message, true) // isInternal = true: ответ поддержки
     if err != nil {
         writeError(w, http.StatusInternalServerError, "failed to add message")
         return
+    }
+    // Первый ответ берёт обращение в работу.
+    if t, err := h.supportUsecase.GetTicket(r.Context(), ticketID); err == nil && t != nil && t.Status == "open" {
+        _ = h.supportUsecase.UpdateTicketStatus(r.Context(), ticketID, "in_progress")
     }
     writeJSON(w, http.StatusCreated, msg)
 }

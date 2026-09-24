@@ -1,6 +1,7 @@
 package usecase
 
 import (
+    "your-project/internal/journal"
     "context"
     "errors"
     "strings"
@@ -166,6 +167,7 @@ func (u *EventUsecase) SubmitForReview(ctx context.Context, userID, eventID int6
             "title":    event.Title,
         })
     }
+    journal.Log(ctx, userID, journal.OfferSubmit, "offer", eventID, "Ивент отправлен на модерацию")
     return nil
 }
 

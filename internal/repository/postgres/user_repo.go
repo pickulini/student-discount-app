@@ -5,6 +5,7 @@ import (
 	"database/sql"
     "errors"
     "github.com/jackc/pgx/v5"
+    "github.com/jackc/pgx/v5/pgconn"
     "your-project/internal/domain"
     "your-project/internal/repository"
 )
@@ -61,6 +62,9 @@ func (r *UserRepo) GetByID(ctx context.Context, id int64) (*domain.User, error) 
                      COALESCE(notify_friends, true),
                      COALESCE(notify_events, true),
                      COALESCE(notify_offers, true),
+                     COALESCE(notify_orders, true),
+                     COALESCE(notify_quiet, false),
+                     COALESCE(searchable, true),
                      COALESCE(avatar_visibility, 'public'),
                      COALESCE(email_visibility, 'public'),
                      COALESCE(university_visibility, 'public'),
@@ -84,6 +88,7 @@ func (r *UserRepo) GetByID(ctx context.Context, id int64) (*domain.User, error) 
         &u.IsActive, &u.Role,
         &u.PrivacyAllowSubscriptions,
         &u.NotifyEnabled, &u.NotifyFriends, &u.NotifyEvents, &u.NotifyOffers,
+        &u.NotifyOrders, &u.NotifyQuiet, &u.Searchable,
         &u.AvatarVisibility, &u.EmailVisibility, &u.UniversityVisibility,
         &u.FriendsListVisibility, &u.SubscribersVisibility, &u.SubscriptionsVisibility,
         &u.AttendingEventsVisibility, &u.OrganizingEventsVisibility,
@@ -103,7 +108,7 @@ func (r *UserRepo) GetByID(ctx context.Context, id int64) (*domain.User, error) 
 func (r *UserRepo) GetByReferralCode(ctx context.Context, code string) (*domain.User, error) {
     query := `SELECT id, email, password_hash, full_name, nickname, username, avatar_url, university_id, course, birth_date,
                      student_status, referral_code, referred_by, is_active, role, created_at, updated_at
-              FROM users WHERE referral_code = $1`
+              FROM users WHERE LOWER(referral_code) = LOWER(TRIM($1))`
     var u domain.User
     err := r.db.Pool.QueryRow(ctx, query, code).Scan(
         &u.ID, &u.Email, &u.PasswordHash, &u.FullName,
@@ -213,6 +218,7 @@ func (r *UserRepo) SearchUsers(ctx context.Context, excludeID int64, query strin
         FROM users u
         LEFT JOIN universities un ON un.id = u.university_id
         WHERE u.id <> $1
+          AND u.is_active AND COALESCE(u.searchable, true)
           AND (u.username ILIKE $2 OR u.nickname ILIKE $2 OR u.full_name ILIKE $2)
         ORDER BY u.username NULLS LAST, u.nickname NULLS LAST
         LIMIT $3`
@@ -316,15 +322,17 @@ func (r *UserRepo) GetPublicProfileByUsername(ctx context.Context, username stri
     return &p, nil
 }
 
-func (r *UserRepo) UpdateNotificationSettings(ctx context.Context, userID int64, enabled, friends, events, offers *bool) error {
+func (r *UserRepo) UpdateNotificationSettings(ctx context.Context, userID int64, enabled, friends, events, offers, orders, quiet *bool) error {
     query := `UPDATE users SET
                 notify_enabled = COALESCE($1, notify_enabled),
                 notify_friends = COALESCE($2, notify_friends),
                 notify_events  = COALESCE($3, notify_events),
                 notify_offers  = COALESCE($4, notify_offers),
+                notify_orders  = COALESCE($5, notify_orders),
+                notify_quiet   = COALESCE($6, notify_quiet),
                 updated_at = NOW()
-              WHERE id = $5`
-    _, err := r.db.Pool.Exec(ctx, query, enabled, friends, events, offers, userID)
+              WHERE id = $7`
+    _, err := r.db.Pool.Exec(ctx, query, enabled, friends, events, offers, orders, quiet, userID)
     return err
 }
 
@@ -443,7 +451,48 @@ func (r *UserRepo) UpdatePassword(ctx context.Context, userID int64, passwordHas
     return err
 }
 
+// DeleteUser — удаляет пользователя. Если на него ссылаются заказы, платежи и
+// прочие финансовые записи (их удалять нельзя), аккаунт обезличивается:
+// вход закрыт, имя, почта, аватар и @username стёрты, друзья и подписки удалены.
 func (r *UserRepo) DeleteUser(ctx context.Context, userID int64) error {
     _, err := r.db.Pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID)
-    return err
+    var pgErr *pgconn.PgError
+    if err == nil || !errors.As(err, &pgErr) || pgErr.Code != "23503" {
+        return err
+    }
+    tx, err := r.db.Pool.Begin(ctx)
+    if err != nil {
+        return err
+    }
+    defer tx.Rollback(ctx)
+    for _, q := range []string{
+        `DELETE FROM friendships WHERE requester_id = $1 OR addressee_id = $1`,
+        `DELETE FROM company_subscriptions WHERE user_id = $1`,
+        `DELETE FROM event_attendees WHERE user_id = $1`,
+        `DELETE FROM notifications WHERE user_id = $1`,
+    } {
+        // Таблицы могут отличаться между версиями схемы — пропускаем отсутствующие.
+        if _, e := tx.Exec(ctx, "SAVEPOINT s"); e != nil {
+            return e
+        }
+        if _, e := tx.Exec(ctx, q, userID); e != nil {
+            if _, e2 := tx.Exec(ctx, "ROLLBACK TO SAVEPOINT s"); e2 != nil {
+                return e2
+            }
+        }
+    }
+    _, err = tx.Exec(ctx, `
+        UPDATE users SET
+            is_active = false,
+            email = 'deleted+' || id || '@deleted.invalid',
+            password_hash = 'deleted',
+            full_name = 'Удалённый пользователь',
+            nickname = NULL, username = NULL, avatar_url = NULL,
+            searchable = false,
+            updated_at = NOW()
+        WHERE id = $1`, userID)
+    if err != nil {
+        return err
+    }
+    return tx.Commit(ctx)
 }

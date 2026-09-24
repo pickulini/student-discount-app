@@ -7,7 +7,7 @@ const TILES = [
   { to: '/settings/profile', title: 'Профиль', hint: 'Никнейм, username, аватар' },
   { to: '/settings/privacy', title: 'Приватность', hint: 'Кто видит ваш профиль' },
   { to: '/settings/notifications', title: 'Уведомления', hint: 'Что вам присылать' },
-  { to: '/settings/verification', title: 'Верификация', hint: 'Статус студента' },
+  { to: '/verification', title: 'Верификация', hint: 'Статус студента' },
   { to: '/settings/security', title: 'Безопасность', hint: 'Пароль и активные сессии' },
   { to: '/settings/account', title: 'Аккаунт', hint: 'Баланс, рефералы, удаление' },
 ];

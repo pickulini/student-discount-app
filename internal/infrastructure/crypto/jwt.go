@@ -19,13 +19,20 @@ func NewJWTManager(secret string, expiryMinutes int) *JWTManager {
 }
 
 type Claims struct {
-    UserID int64 `json:"sub"`
+    UserID    int64 `json:"sub"`
+    SessionID int64 `json:"sid,omitempty"` // строка user_sessions; 0 — старый токен без сессии
     jwt.RegisteredClaims
 }
 
 func (m *JWTManager) Generate(userID int64) (string, error) {
+    return m.GenerateForSession(userID, 0)
+}
+
+// GenerateForSession — токен, привязанный к сессии: отзыв сессии гасит и токен.
+func (m *JWTManager) GenerateForSession(userID, sessionID int64) (string, error) {
     claims := Claims{
-        UserID: userID,
+        UserID:    userID,
+        SessionID: sessionID,
         RegisteredClaims: jwt.RegisteredClaims{
             ExpiresAt: jwt.NewNumericDate(time.Now().Add(m.expiry)),
             IssuedAt:  jwt.NewNumericDate(time.Now()),

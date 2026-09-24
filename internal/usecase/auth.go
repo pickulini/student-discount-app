@@ -3,6 +3,7 @@ package usecase
 import (
     "context"
     "strings"
+    "unicode/utf8"
     "crypto/rand"
     "crypto/sha256"
     "encoding/hex"
@@ -69,7 +70,18 @@ func NewAuthUsecase(
 }
 
 // Register — с проверками антифрода
-func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName string, universityID *int64, course *int, referralCode, clientIP string) (*domain.User, string, error) {
+func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName string, universityID *int64, course *int, referralCode, clientIP, userAgent string) (*domain.User, string, error) {
+    email = strings.TrimSpace(email)
+    fullName = strings.TrimSpace(fullName)
+    if !strings.Contains(email, "@") || strings.HasPrefix(email, "@") || strings.HasSuffix(email, "@") {
+        return nil, "", errors.New("invalid email")
+    }
+    if utf8.RuneCountInString(password) < 8 {
+        return nil, "", errors.New("password must be at least 8 characters")
+    }
+    if fullName == "" {
+        return nil, "", errors.New("full name is required")
+    }
     // TODO: в продакшене заменить на device fingerprint + 2FA (email/SMS)
     // === ANTIFRAUD: Rate limit по IP (100 регистраций в час) ===
     ipHash := hashString(clientIP)
@@ -188,7 +200,22 @@ func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName st
         }
     }
 
-    token, err := u.jwtManager.Generate(user.ID)
+    // Сразу открываем сессию — она появится в «Активных сессиях».
+    rt := generateRandomToken(40)
+    rh := sha256.Sum256([]byte(rt))
+    sess := &domain.UserSession{
+        UserID:           user.ID,
+        RefreshTokenHash: hex.EncodeToString(rh[:]),
+        DeviceName:       "unknown",
+        UserAgent:        userAgent,
+        IP:               clientIP,
+        ExpiresAt:        time.Now().Add(7 * 24 * time.Hour),
+    }
+    var sid int64
+    if err := u.sessionRepo.Create(ctx, sess); err == nil {
+        sid = sess.ID
+    }
+    token, err := u.jwtManager.GenerateForSession(user.ID, sid)
     if err != nil {
         return nil, "", err
     }
@@ -230,7 +257,7 @@ func (u *AuthUsecase) Login(ctx context.Context, email, password, deviceName, us
         return "", "", err
     }
 
-    accessToken, err = u.jwtManager.Generate(user.ID)
+    accessToken, err = u.jwtManager.GenerateForSession(user.ID, session.ID)
     if err != nil {
         return "", "", err
     }
@@ -350,8 +377,8 @@ func itoa(n int) string {
 }
 
 // ChangePassword — смена пароля с проверкой старого.
-func (u *AuthUsecase) ChangePassword(ctx context.Context, userID int64, oldPassword, newPassword string) error {
-    if len(newPassword) < 8 {
+func (u *AuthUsecase) ChangePassword(ctx context.Context, userID int64, oldPassword, newPassword string, keepSessionID int64) error {
+    if utf8.RuneCountInString(newPassword) < 8 {
         return errors.New("пароль должен быть не менее 8 символов")
     }
     user, err := u.userRepo.GetByID(ctx, userID)
@@ -369,8 +396,12 @@ func (u *AuthUsecase) ChangePassword(ctx context.Context, userID int64, oldPassw
     if err := u.userRepo.UpdatePassword(ctx, userID, newHash); err != nil {
         return err
     }
-    // Отзываем все сессии, кроме текущей — пользователь перелогинится
-    _ = u.sessionRepo.RevokeAll(ctx, userID)
+    // Отзываем все сессии, кроме текущей: на этом устройстве пользователь остаётся.
+    if keepSessionID > 0 {
+        _ = u.sessionRepo.RevokeAllExcept(ctx, userID, keepSessionID)
+    } else {
+        _ = u.sessionRepo.RevokeAll(ctx, userID)
+    }
     return nil
 }
 
@@ -391,9 +422,21 @@ func (u *AuthUsecase) RevokeSession(ctx context.Context, userID, sessionID int64
     return u.sessionRepo.Revoke(ctx, sessionID)
 }
 
-// RevokeAllSessions — отозвать все сессии.
-func (u *AuthUsecase) RevokeAllSessions(ctx context.Context, userID int64) error {
+// RevokeAllSessions — отозвать все сессии (keepID > 0 — кроме этой).
+func (u *AuthUsecase) RevokeAllSessions(ctx context.Context, userID, keepID int64) error {
+    if keepID > 0 {
+        return u.sessionRepo.RevokeAllExcept(ctx, userID, keepID)
+    }
     return u.sessionRepo.RevokeAll(ctx, userID)
+}
+
+// SessionAlive — для middleware: сессия существует, не отозвана и не истекла.
+func (u *AuthUsecase) SessionAlive(ctx context.Context, sessionID, userID int64) bool {
+    ok, err := u.sessionRepo.Touch(ctx, sessionID, userID)
+    if err != nil {
+        return true // база недоступна — не разлогиниваем всех разом
+    }
+    return ok
 }
 
 // DeleteAccount — удаление аккаунта с проверкой пароля.

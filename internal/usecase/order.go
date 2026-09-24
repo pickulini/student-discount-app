@@ -23,6 +23,26 @@ type OrderUsecase struct {
     merchantTxRepo      repository.MerchantTransactionRepository
     attendeeRepo        repository.EventAttendeeRepository
     db                  *pgxpool.Pool
+    notif               *NotificationUsecase
+}
+
+// SetNotifier подключает уведомления (оплата и возврат заказа).
+func (u *OrderUsecase) SetNotifier(n *NotificationUsecase) { u.notif = n }
+
+func (u *OrderUsecase) notifyOrder(ctx context.Context, order *domain.Order, typ, title, body string) {
+    if u.notif == nil || order == nil {
+        return
+    }
+    id := order.ID
+    _ = u.notif.Create(ctx, CreateNotificationInput{
+        UserID:        order.UserID,
+        Type:          typ,
+        Title:         title,
+        Body:          body,
+        Link:          fmt.Sprintf("/orders/%d", order.ID),
+        ReferenceType: "order",
+        ReferenceID:   &id,
+    })
 }
 
 func NewOrderUsecase(
@@ -87,25 +107,27 @@ func (u *OrderUsecase) CreateOrder(ctx context.Context, input CreateOrderInput) 
     }
 
     subtotal := offer.BasePrice
-    if offer.IsEvent {
-        // Для ивентов subtotal = цена билета (может быть 0)
-        if offer.SpecialPrice != nil {
-            subtotal = *offer.SpecialPrice
-        } else {
-            subtotal = offer.DiscountValue
-        }
-        if subtotal < 0 {
-            subtotal = 0
-        }
-    }
-    if subtotal <= 0 {
-        subtotal = 1000 // fallback, если base_price не задан
-    }
     discount := 0.0
-    if offer.DiscountType == "percentage" {
-        discount = subtotal * (offer.DiscountValue / 100)
+    if offer.IsEvent {
+        // Ивент: цена билета = special_price (нет — бесплатно). Скидка не применяется.
+        subtotal = 0
+        if offer.SpecialPrice != nil && *offer.SpecialPrice > 0 {
+            subtotal = *offer.SpecialPrice
+        }
     } else {
-        discount = offer.DiscountValue
+        // Раньше здесь подставлялось «1000 ₽ по умолчанию» — предложение без цены
+        // продавалось за выдуманную сумму. Теперь это ошибка.
+        if subtotal <= 0 {
+            return nil, errors.New("у предложения не указана цена")
+        }
+        if offer.DiscountType == "percentage" {
+            discount = subtotal * (offer.DiscountValue / 100)
+        } else {
+            discount = offer.DiscountValue
+        }
+        if discount > subtotal {
+            discount = subtotal
+        }
     }
     afterDiscount := subtotal - discount
 
@@ -118,9 +140,12 @@ func (u *OrderUsecase) CreateOrder(ctx context.Context, input CreateOrderInput) 
     if bonusUsed > bonusAcc.Balance {
         bonusUsed = bonusAcc.Balance
     }
+    if !offer.BonusAllowed || bonusUsed < 0 {
+        bonusUsed = 0
+    }
 
     total := afterDiscount - bonusUsed
-    commission := total * 0.02
+    commission := total * domain.CommissionRate
 
     if total > account.Balance {
         return nil, domain.ErrInsufficientBalance
@@ -265,6 +290,14 @@ func (u *OrderUsecase) CancelOrder(ctx context.Context, userID, orderID int64) e
     return u.orderRepo.UpdateStatus(ctx, orderID, domain.OrderStatusCancelled)
 }
 
+// OrderAmount — сумма заказа к оплате (для журнала).
+func (u *OrderUsecase) OrderAmount(ctx context.Context, orderID int64) float64 {
+    if o, err := u.orderRepo.GetByID(ctx, orderID); err == nil && o != nil {
+        return o.TotalAmount
+    }
+    return 0
+}
+
 // RefundOrder – возврат средств по заказу (только для paid или completed)
 func (u *OrderUsecase) RefundOrder(ctx context.Context, orderID int64, reason string) error {
     tx, err := u.db.Begin(ctx)
@@ -373,7 +406,8 @@ func (u *OrderUsecase) RefundOrder(ctx context.Context, orderID int64, reason st
     if err := tx.Commit(ctx); err != nil {
         return err
     }
-
+    u.notifyOrder(ctx, order, domain.NotifOrderRefunded, fmt.Sprintf("Возврат по заказу № %06d", order.ID),
+        fmt.Sprintf("%.0f ₽ вернулись на кошелёк.", order.TotalAmount))
     return nil
 }
 
@@ -426,6 +460,13 @@ func (u *OrderUsecase) ConfirmOrderPayment(ctx context.Context, userID, orderID 
             Status:  domain.AttendeeGoing,
             OrderID: &orderID,
         })
+    }
+    if offer != nil && offer.IsEvent {
+        if order.TotalAmount > 0 {
+            u.notifyOrder(ctx, order, domain.NotifOrderPaid, fmt.Sprintf("Билет на «%s» оплачен", offer.Title), "Чек с кодом — в разделе «Заказы».")
+        }
+    } else {
+        u.notifyOrder(ctx, order, domain.NotifOrderPaid, fmt.Sprintf("Заказ № %06d оплачен", order.ID), "Чек с кодом — в разделе «Заказы».")
     }
     return nil
 }

@@ -1,137 +1,136 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
-import AdminVerificationDetailModal from './AdminVerificationDetailModal';
-import { PageTitle, Button, Badge } from '../design/UI';
 import { RouteLoadingView } from '../design/DottedPath';
+import { Avatar, SmallButton, Tabs, ddmm, ddmmyy, hhmm, num } from './merchant/kit';
+import { AdminHead, durationLabel } from './admin/shared';
 
-const STATUS_LABELS = {
-  pending: 'Ожидает',
-  verified: 'Подтверждён',
-  rejected: 'Отклонён',
+/** A04 · Верификации: очередь заявок студентов. */
+
+export const VERIF_STATUS = {
+  pending: { icon: '◐', label: 'Ожидает' },
+  verified: { icon: '✓', label: 'Подтверждён' },
+  rejected: { icon: '×', label: 'Отклонён' },
 };
 
-const AdminVerifications = () => {
-  const [verifications, setVerifications] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [selected, setSelected] = useState(null);
+export const VerifStatus = ({ status, className = '' }) => {
+  const s = VERIF_STATUS[status] || { icon: '○', label: status };
+  return (
+    <span className={`font-mono font-bold text-[11px] tracking-[0.03em] uppercase whitespace-nowrap text-ink ${className}`}>
+      {s.icon} {s.label}
+    </span>
+  );
+};
 
-  const fetchVerifications = async () => {
-    try {
-      const res = await api.get('/admin/verifications');
-      setVerifications(res.data || []);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
+const COLS = 'grid grid-cols-[minmax(0,1.3fr)_minmax(0,1.1fr)_70px_130px_130px_110px_100px] gap-4 items-center';
+
+const AdminVerifications = () => {
+  const [params, setParams] = useSearchParams();
+  const tab = params.get('tab') || 'pending';
+  const [data, setData] = useState(null);
 
   useEffect(() => {
-    fetchVerifications();
-  }, []);
+    setData(null);
+    api
+      .get('/admin/verifications/queue', { params: { tab } })
+      .then((r) => setData(r.data))
+      .catch(() => setData({ items: [], meta: {} }));
+  }, [tab]);
 
-  const handleUpdate = () => {
-    fetchVerifications();
-  };
-
-  if (loading) return <RouteLoadingView label="Загрузка верификаций..." />;
-
-  const filtered = filterStatus === 'all'
-    ? verifications
-    : verifications.filter((v) => v.status === filterStatus);
+  const meta = data?.meta || {};
+  const tabs = [
+    { key: 'pending', label: `Ожидают · ${meta.pending ?? 0}` },
+    { key: 'verified', label: 'Подтверждённые' },
+    { key: 'rejected', label: 'Отклонённые' },
+    { key: 'expiring', label: `Истекают в 30 дней · ${num(meta.expiring ?? 0)}` },
+    { key: 'all', label: 'Все' },
+  ];
+  const hasManual = (data?.items || []).some((v) => !v.domain_match);
 
   return (
-    <div>
-      <PageTitle>Верификации</PageTitle>
+    <div className="flex flex-col gap-7">
+      <AdminHead
+        title="Верификации"
+        subtitle="Проверьте студенческий и селфи. Срок ответа — 24 часа."
+        right={
+          meta.avg_seconds ? (
+            <span className="font-mono text-[11px] tracking-[0.04em] uppercase text-ink-soft whitespace-nowrap">
+              Среднее время проверки {durationLabel(meta.avg_seconds * 1000)}
+            </span>
+          ) : null
+        }
+      />
+      <Tabs items={tabs} value={tab} onChange={(v) => setParams({ tab: v }, { replace: true })} />
 
-      <div className="mb-4 flex gap-2 items-center">
-        <label className="text-sm text-ink-soft">Фильтр:</label>
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="bg-surface border border-line rounded-[var(--radius-xs)] p-1.5 text-sm text-ink"
-        >
-          <option value="all">Все</option>
-          <option value="pending">Ожидают</option>
-          <option value="verified">Подтверждённые</option>
-          <option value="rejected">Отклонённые</option>
-        </select>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-line">
-              <th className="p-2 text-left text-eyebrow text-ink-faint font-normal">ID</th>
-              <th className="p-2 text-left text-eyebrow text-ink-faint font-normal">Пользователь</th>
-              <th className="p-2 text-left text-eyebrow text-ink-faint font-normal">Email</th>
-              <th className="p-2 text-left text-eyebrow text-ink-faint font-normal">Студенческий</th>
-              <th className="p-2 text-left text-eyebrow text-ink-faint font-normal">Статус</th>
-              <th className="p-2 text-left text-eyebrow text-ink-faint font-normal">Фото</th>
-              <th className="p-2 text-left text-eyebrow text-ink-faint font-normal">Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((v) => {
-              const displayName = v.user_nickname || v.user_full_name || `#${v.user_id}`;
-              return (
-                <tr key={v.id} className="border-b border-line">
-                  <td className="p-2 text-ink-faint">{v.id}</td>
-                  <td className="p-2">
-                    {v.user_username ? (
-                      <span>
-                        <span className="font-medium text-ink">{displayName}</span>
-                        <span className="text-accent ml-1 text-xs">@{v.user_username}</span>
+      {!data ? (
+        <RouteLoadingView label="Загружаем заявки..." />
+      ) : (
+        <div className="overflow-x-auto">
+          <div className="min-w-[980px]">
+            <div className={`${COLS} py-2 border-b border-ink font-mono font-medium text-[10px] tracking-[0.06em] uppercase text-ink-soft`}>
+              <span>Студент</span>
+              <span>Email</span>
+              <span>Вуз</span>
+              <span>Студенческий</span>
+              <span>Отправлено</span>
+              <span className="text-right">Статус</span>
+              <span />
+            </div>
+            {data.items.length === 0 ? (
+              <div className="py-6 text-[15px] text-ink-soft border-b border-dashed border-line">
+                {tab === 'pending' ? 'Все заявки проверены.' : 'Здесь пока ничего нет.'}
+              </div>
+            ) : (
+              data.items.map((v) => (
+                <div key={v.id} className={`${COLS} py-3 border-b border-dashed border-line`}>
+                  <Link to={`/admin/verifications/${v.id}`} className="flex gap-3 items-center min-w-0 group">
+                    <Avatar src={v.avatar_url} name={v.full_name} size={36} />
+                    <span className="flex flex-col gap-[2px] min-w-0">
+                      <span className="text-[15px] font-medium text-ink truncate group-hover:text-accent">{v.full_name}</span>
+                      <span className="font-mono text-[11px] text-ink-soft truncate">{v.username ? `@${v.username}` : `ID ${v.user_id}`}</span>
+                    </span>
+                  </Link>
+                  <span className="text-[15px] text-ink truncate">{v.email}</span>
+                  <span className="font-mono text-[12px] tracking-[0.02em] uppercase text-ink">
+                    {v.university || '—'}
+                    {!v.domain_match && ' ?'}
+                  </span>
+                  <span className="font-mono text-[12px] tracking-[0.02em] text-ink truncate">{v.student_identifier || '—'}</span>
+                  <span className="font-mono text-[12px] tracking-[0.02em] text-ink whitespace-nowrap">
+                    {ddmm(v.created_at)} · {hhmm(v.created_at)}
+                  </span>
+                  <VerifStatus status={v.status} className="text-right" />
+                  <span>
+                    {v.status === 'pending' ? (
+                      <SmallButton as={Link} to={`/admin/verifications/${v.id}`}>Проверить</SmallButton>
+                    ) : v.status === 'verified' ? (
+                      <span className="font-mono text-[11px] tracking-[0.03em] uppercase text-ink-soft">
+                        {v.expires_at ? `до ${ddmmyy(v.expires_at)}` : ''}
                       </span>
                     ) : (
-                      <span className="text-ink">{displayName}</span>
+                      <Link
+                        to={`/admin/verifications/${v.id}`}
+                        title={v.rejection_reason}
+                        className="block font-mono text-[11px] tracking-[0.03em] uppercase text-ink-soft truncate hover:text-ink"
+                      >
+                        {(v.rejection_reason || 'отказ').split(/[;.—]/)[0]}
+                      </Link>
                     )}
-                  </td>
-                  <td className="p-2 text-xs text-ink-soft">{v.user_email || '—'}</td>
-                  <td className="p-2 text-xs text-ink-soft">{v.student_identifier || '—'}</td>
-                  <td className="p-2">
-                    <Badge
-                      filled={v.status === 'verified'}
-                      className={v.status === 'rejected' ? '!text-danger !border-danger/30' : ''}
-                    >
-                      {STATUS_LABELS[v.status] || v.status}
-                    </Badge>
-                  </td>
-                  <td className="p-2">
-                    <div className="flex gap-1">
-                      <span
-                        title="Студенческий"
-                        className={`text-xs px-2 py-1 rounded-[var(--radius-xs)] border border-line ${v.document_key ? 'text-accent' : 'text-ink-faint'}`}
-                      >
-                        {v.document_key ? '✓' : '—'}
-                      </span>
-                      <span
-                        title="Селфи"
-                        className={`text-xs px-2 py-1 rounded-[var(--radius-xs)] border border-line ${v.selfie_key ? 'text-accent' : 'text-ink-faint'}`}
-                      >
-                        {v.selfie_key ? '✓' : '—'}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="p-2">
-                    <Button variant="ghost" onClick={() => setSelected(v)} className="text-xs px-3 py-1">
-                      Открыть
-                    </Button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
-      {selected && (
-        <AdminVerificationDetailModal
-          verification={selected}
-          onClose={() => setSelected(null)}
-          onUpdate={handleUpdate}
-        />
+      {hasManual && (
+        <div className="border-l border-ink pl-[14px] flex flex-col gap-[6px]">
+          <span className="font-mono font-bold text-[11px] tracking-[0.04em] text-ink">? ПОЧТА НЕ ВУЗОВСКАЯ</span>
+          <span className="text-[14px] leading-[21px] text-ink-soft">
+            Если вуз определён не по домену почты, а указан вручную — проверяйте особенно внимательно.
+          </span>
+        </div>
       )}
     </div>
   );

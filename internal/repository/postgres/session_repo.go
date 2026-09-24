@@ -94,3 +94,21 @@ func (r *SessionRepo) GetByID(ctx context.Context, id int64) (*domain.UserSessio
     }
     return &s, nil
 }
+
+// RevokeAllExcept — отозвать все сессии пользователя, кроме keepID.
+func (r *SessionRepo) RevokeAllExcept(ctx context.Context, userID, keepID int64) error {
+    _, err := r.db.Pool.Exec(ctx,
+        `UPDATE user_sessions SET revoked_at = NOW() WHERE user_id = $1 AND id <> $2 AND revoked_at IS NULL`, userID, keepID)
+    return err
+}
+
+// Touch — сессия жива? Заодно отмечает время последней активности.
+func (r *SessionRepo) Touch(ctx context.Context, id, userID int64) (bool, error) {
+    tag, err := r.db.Pool.Exec(ctx,
+        `UPDATE user_sessions SET last_used_at = NOW()
+          WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL AND expires_at > NOW()`, id, userID)
+    if err != nil {
+        return false, err
+    }
+    return tag.RowsAffected() > 0, nil
+}

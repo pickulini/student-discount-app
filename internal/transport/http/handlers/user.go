@@ -1,6 +1,7 @@
 package handlers
 
 import (
+    "context"
     "encoding/json"
     "net/http"
     "strconv"
@@ -10,6 +11,8 @@ import (
 )
 
 type UserHandler struct {
+    // Extras дополняет ответ /users/me (курс, вуз, срок статуса).
+    Extras func(ctx context.Context, userID int64) map[string]interface{}
     userUsecase *usecase.UserUsecase
 }
 
@@ -58,6 +61,11 @@ func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 
         "created_at": user.CreatedAt,
         "updated_at": user.UpdatedAt,
+    }
+    if h.Extras != nil {
+        for k, v := range h.Extras(r.Context(), user.ID) {
+            response[k] = v
+        }
     }
     writeJSON(w, http.StatusOK, response)
 }

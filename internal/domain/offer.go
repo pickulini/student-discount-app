@@ -52,6 +52,12 @@ type Offer struct {
 
     RecurrenceRule  *string    `json:"recurrence_rule,omitempty"`
     RecurrenceUntil *time.Time `json:"recurrence_until,omitempty"`
+
+    // Дополнительные поля для витрины и кабинета (заполняются отдельным запросом).
+    CompanyName       *string    `json:"company_name,omitempty"`
+    Gallery           []string   `json:"gallery,omitempty"`
+    AdminEditedByName *string    `json:"admin_edited_by_name,omitempty"`
+    AdminEditedAt     *time.Time `json:"admin_edited_at,omitempty"`
 }
 
 const OfferStatusPendingPartnerApproval = "pending_partner_approval"

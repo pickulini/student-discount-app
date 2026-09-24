@@ -115,7 +115,34 @@ func (u *FriendUsecase) AcceptFriendRequest(ctx context.Context, userID, friends
 	if f.Status != "pending" {
 		return errors.New("заявка уже обработана")
 	}
-	return u.friendRepo.UpdateStatus(ctx, friendshipID, "accepted")
+	if err := u.friendRepo.UpdateStatus(ctx, friendshipID, "accepted"); err != nil {
+		return err
+	}
+	// Сообщаем тому, кто отправлял заявку.
+	if u.notifUC != nil {
+		name, link := "Пользователь", "/friends"
+		if me, err := u.userRepo.GetByID(ctx, userID); err == nil && me != nil {
+			if me.Nickname != nil && *me.Nickname != "" {
+				name = *me.Nickname
+			} else if me.FullName != "" {
+				name = me.FullName
+			}
+			if me.Username != nil && *me.Username != "" {
+				link = "/@" + *me.Username
+			}
+		}
+		fid := f.ID
+		_ = u.notifUC.Create(ctx, CreateNotificationInput{
+			UserID:        f.RequesterID,
+			Type:          domain.NotifFriendAccepted,
+			Title:         name + " теперь у вас в друзьях",
+			Link:          link,
+			ActorID:       &userID,
+			ReferenceType: "friendship",
+			ReferenceID:   &fid,
+		})
+	}
+	return nil
 }
 
 // RejectFriendRequest

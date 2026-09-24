@@ -42,6 +42,18 @@ type CreateOfferRequest struct {
     Phone           *string `json:"phone,omitempty"`
     Website         *string `json:"website,omitempty"`
     WorkingHours    *string `json:"working_hours,omitempty"`
+    MaxUses         *int     `json:"max_uses,omitempty"`
+    Gallery         []string `json:"gallery,omitempty"`
+}
+
+// parseOfferTime принимает RFC3339, «2006-01-02T15:04» и «2006-01-02».
+func parseOfferTime(v string) (time.Time, bool) {
+    for _, layout := range []string{time.RFC3339, "2006-01-02T15:04", "2006-01-02"} {
+        if t, err := time.Parse(layout, v); err == nil {
+            return t, true
+        }
+    }
+    return time.Time{}, false
 }
 
 func (h *MerchantHandler) GetUserCompanies(w http.ResponseWriter, r *http.Request) {
@@ -99,32 +111,22 @@ func (h *MerchantHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
     }
     var startAt, endAt time.Time
     if req.StartAt != "" {
-        t, err := time.Parse(time.RFC3339, req.StartAt)
-        if err != nil {
-            t, err = time.Parse("2006-01-02T15:04", req.StartAt)
-            if err != nil {
-                writeError(w, http.StatusBadRequest, "invalid start_at format")
-                return
-            }
-            startAt = t
-        } else {
-            startAt = t
+        t, ok := parseOfferTime(req.StartAt)
+        if !ok {
+            writeError(w, http.StatusBadRequest, "invalid start_at format")
+            return
         }
+        startAt = t
     } else {
         startAt = time.Now()
     }
     if req.EndAt != "" {
-        t, err := time.Parse(time.RFC3339, req.EndAt)
-        if err != nil {
-            t, err = time.Parse("2006-01-02T15:04", req.EndAt)
-            if err != nil {
-                writeError(w, http.StatusBadRequest, "invalid end_at format")
-                return
-            }
-            endAt = t
-        } else {
-            endAt = t
+        t, ok := parseOfferTime(req.EndAt)
+        if !ok {
+            writeError(w, http.StatusBadRequest, "invalid end_at format")
+            return
         }
+        endAt = t
     } else {
         endAt = time.Now().Add(24 * time.Hour)
     }
@@ -153,6 +155,8 @@ func (h *MerchantHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
         Phone:           req.Phone,
         Website:         req.Website,
         WorkingHours:    req.WorkingHours,
+        MaxUses:         req.MaxUses,
+        Gallery:         req.Gallery,
     }
     userID, ok := r.Context().Value(middleware.UserIDKey).(int64)
     if !ok {
@@ -265,14 +269,12 @@ func (h *MerchantHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
 
     var startAt, endAt time.Time
     if req.StartAt != "" {
-        t, err := time.Parse(time.RFC3339, req.StartAt)
-        if err == nil {
+        if t, ok := parseOfferTime(req.StartAt); ok {
             startAt = t
         }
     }
     if req.EndAt != "" {
-        t, err := time.Parse(time.RFC3339, req.EndAt)
-        if err == nil {
+        if t, ok := parseOfferTime(req.EndAt); ok {
             endAt = t
         }
     }
@@ -302,6 +304,8 @@ func (h *MerchantHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
         Phone:           req.Phone,
         Website:         req.Website,
         WorkingHours:    req.WorkingHours,
+        MaxUses:         req.MaxUses,
+        Gallery:         req.Gallery,
     }
 
     userID, ok := r.Context().Value(middleware.UserIDKey).(int64)

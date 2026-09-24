@@ -1,7 +1,11 @@
 package main
 
 import (
+    "your-project/internal/journal"
+    "your-project/internal/transport/http/middleware"
     "context"
+    "fmt"
+    "your-project/internal/domain"
     "log"
     "net/http"
     "os"
@@ -53,7 +57,6 @@ func main() {
     // Запускаем фоновые воркеры
     worker.StartVerificationExpiryWorker(context.Background(), studentVerifRepo)
     notificationRepo := postgres.NewNotificationRepo(db)
-	worker.StartBonusCreditWorker(context.Background(), referralRepo, bonusRepo)
 	worker.StartNotificationCleanupWorker(context.Background(), notificationRepo)
     antifraudRepo := postgres.NewAntifraudRepo(db)
     tagRepo := postgres.NewTagRepo(db)
@@ -73,12 +76,21 @@ func main() {
         accountRepo, bonusRepo, referralRepo, antifraudRepo,
         hasher, jwtManager, cfg.FrontendURL,
     )
+    middleware.SessionAlive = authUsecase.SessionAlive
     userUsecase := usecase.NewUserUsecase(userRepo, accountRepo, bonusRepo, ledgerRepo, studentVerifRepo, companyRepo, friendshipRepo)
     companyUsecase := usecase.NewCompanyUsecase(companyRepo, locationRepo, offerRepo, uniRepo)
     orderUsecase := usecase.NewOrderUsecase(orderRepo, offerRepo, userRepo, accountRepo, ledgerRepo, bonusRepo, merchantAccountRepo, merchantTxRepo, eventAttendeeRepo, db.Pool)
     paymentUsecase := usecase.NewPaymentUsecase(accountRepo, ledgerRepo, bonusRepo, paymentRepo, db.Pool, cfg.PaymentWebhookSecret)
     referralUsecase := usecase.NewReferralUsecase(referralRepo, userRepo)
 	notificationUsecase := usecase.NewNotificationUsecase(notificationRepo, userRepo, sseHub)
+    orderUsecase.SetNotifier(notificationUsecase)
+    worker.StartBonusCreditWorker(context.Background(), referralRepo, bonusRepo, func(ctx context.Context, rw domain.ReferralReward) {
+        title := fmt.Sprintf("Начислено %.0f бонусов за приглашённого друга", rw.Amount)
+        if ru, err := userRepo.GetByID(ctx, rw.ReferredUserID); err == nil && ru != nil && ru.Username != nil {
+            title += " @" + *ru.Username
+        }
+        _ = notificationUsecase.Create(ctx, usecase.CreateNotificationInput{UserID: rw.ReferrerID, Type: "bonus_credited", Title: title, Link: "/wallet"})
+    })
     supportUsecase := usecase.NewSupportUsecase(ticketRepo, msgRepo, userRepo, notificationUsecase)
     adminUsecase := usecase.NewAdminUsecase(userRepo, companyRepo, locationRepo, offerRepo, studentVerifRepo, accountRepo, bonusRepo, referralRepo, tagRepo, companyUserRepo, notificationUsecase, companySubRepo, db.Pool)
     merchantUsecase := usecase.NewMerchantUsecase(companyRepo, locationRepo, offerRepo, companyUserRepo, userRepo, merchantAccountRepo, merchantTxRepo, tagRepo, notificationUsecase, db.Pool)
@@ -101,6 +113,13 @@ func main() {
 	eventHandler := handlers.NewEventHandler(eventUsecase)
 	notificationHandler := handlers.NewNotificationHandler(notificationUsecase)
     uploadHandler := handlers.NewUploadHandler("/app/uploads")
+    cabinetRepo := postgres.NewCabinetRepo(db)
+    worker.StartEventReminderWorker(context.Background(), cabinetRepo, notificationUsecase)
+    cabinetHandler := handlers.NewCabinetHandler(cabinetRepo, offerRepo, companyUsecase, orderUsecase, subscriptionUsecase)
+    adminRepo := postgres.NewAdminRepo(db)
+    journal.SetSink(adminRepo.WriteJournal)
+    cabinetHandler.Admin = handlers.NewAdminCabinetHandler(adminRepo)
+    cabinetHandler.Admin.Cab = cabinetRepo
 
     router := transport.NewRouterProto(
         authUsecase,
@@ -124,6 +143,7 @@ func main() {
         notificationHandler,
         friendHandler,
         uploadHandler,
+        cabinetHandler,
         userRepo,
         jwtManager,
         cfg.FrontendURL,

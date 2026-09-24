@@ -1,6 +1,8 @@
 package usecase
 
 import (
+    "fmt"
+    "your-project/internal/journal"
     "context"
     "errors"
     "encoding/json"
@@ -108,11 +110,28 @@ var allowedUserRoles = map[string]bool{
     "admin":    true,
 }
 
+var roleNames = map[string]string{"student": "студент", "merchant": "партнёр", "admin": "админ"}
+
 func (u *AdminUsecase) UpdateUserRole(ctx context.Context, userID int64, role string) error {
+    return u.UpdateUserRoleBy(ctx, 0, userID, role)
+}
+
+// UpdateUserRoleBy — смена роли с записью в журнал от имени админа.
+func (u *AdminUsecase) UpdateUserRoleBy(ctx context.Context, actorID, userID int64, role string) error {
     if !allowedUserRoles[role] {
         return errors.New("invalid role")
     }
-    return u.userRepo.UpdateRole(ctx, userID, role)
+    old := ""
+    if cur, err := u.userRepo.GetByID(ctx, userID); err == nil && cur != nil {
+        old = cur.Role
+    }
+    if err := u.userRepo.UpdateRole(ctx, userID, role); err != nil {
+        return err
+    }
+    if old != role {
+        journal.Log(ctx, actorID, journal.UserRole, "user", userID, "Роль: "+roleNames[old]+" → "+roleNames[role])
+    }
+    return nil
 }
 
 // ---- Компании ----
@@ -158,8 +177,13 @@ func (u *AdminUsecase) UpdateOffer(ctx context.Context, offer *domain.Offer, tag
 func (u *AdminUsecase) DeleteOffer(ctx context.Context, id int64) error {
     return u.offerRepo.Delete(ctx, id)
 }
-func (u *AdminUsecase) ModerateOffer(ctx context.Context, id int64, action string, reason string) error {
+func (u *AdminUsecase) ModerateOffer(ctx context.Context, id int64, action string, reason string, actorID int64) error {
+    title := ""
+    if o, err := u.offerRepo.GetByID(ctx, id); err == nil && o != nil {
+        title = o.Title
+    }
     if action == "publish" {
+        defer journal.Log(ctx, actorID, journal.OfferPublish, "offer", id, "{Опубликовал|Опубликовала} «"+title+"»")
         if err := u.offerRepo.UpdateStatusWithReason(ctx, id, "published", ""); err != nil {
             return err
         }
@@ -174,12 +198,20 @@ func (u *AdminUsecase) ModerateOffer(ctx context.Context, id int64, action strin
         if reason == "" {
             reason = "Предложение отклонено администратором"
         }
-        return u.offerRepo.UpdateStatusWithReason(ctx, id, "rejected", reason)
+        if err := u.offerRepo.UpdateStatusWithReason(ctx, id, "rejected", reason); err != nil {
+            return err
+        }
+        journal.Log(ctx, actorID, journal.OfferReject, "offer", id, "{Отклонил|Отклонила}: «"+reason+"»")
+        return nil
     }
     return nil
 }
-func (u *AdminUsecase) ArchiveOffer(ctx context.Context, id int64) error {
-    return u.offerRepo.UpdateStatus(ctx, id, "archived")
+func (u *AdminUsecase) ArchiveOffer(ctx context.Context, id int64, actorID int64) error {
+    if err := u.offerRepo.UpdateStatus(ctx, id, "archived"); err != nil {
+        return err
+    }
+    journal.Log(ctx, actorID, journal.OfferArchive, "offer", id, "{Убрал|Убрала} в архив")
+    return nil
 }
 
 // ---- Верификации ----
@@ -187,7 +219,7 @@ func (u *AdminUsecase) ListVerifications(ctx context.Context, limit, offset int)
     return u.verificationRepo.List(ctx, limit, offset)
 }
 
-func (u *AdminUsecase) UpdateVerification(ctx context.Context, id int64, status string, rejectionReason string, adminID int64) error {
+func (u *AdminUsecase) UpdateVerification(ctx context.Context, id int64, status string, rejectionReason string, adminID int64, expiresOverride ...time.Time) error {
     // 1. Обновляем статус верификации
     if err := u.verificationRepo.UpdateStatus(ctx, id, status, adminID, rejectionReason); err != nil {
         return err
@@ -196,8 +228,54 @@ func (u *AdminUsecase) UpdateVerification(ctx context.Context, id int64, status 
     // Если статус verified — устанавливаем expires_at (30 сентября следующего года)
     if status == "verified" {
         expiresAt := calculateVerificationExpiry(time.Now())
+        if len(expiresOverride) > 0 && expiresOverride[0].After(time.Now()) {
+            expiresAt = expiresOverride[0]
+        }
         if err := u.verificationRepo.SetExpiresAt(ctx, id, expiresAt); err != nil {
             log.Printf("Failed to set expires_at: %v", err)
+        }
+    }
+    if v, err := u.verificationRepo.GetByID(ctx, id); err == nil && v != nil {
+        switch status {
+        case "verified":
+            until := calculateVerificationExpiry(time.Now())
+            if v.ExpiresAt != nil {
+                until = *v.ExpiresAt
+            }
+            journal.Log(ctx, adminID, journal.VerifyOK, "user", v.UserID, "{Подтвердил|Подтвердила} верификацию до "+until.Format("02.01.06"))
+        case "rejected":
+            txt := "{Отклонил|Отклонила} верификацию"
+            if rejectionReason != "" {
+                txt += ": «" + rejectionReason + "»"
+            }
+            journal.Log(ctx, adminID, journal.VerifyReject, "user", v.UserID, txt)
+        }
+    }
+
+    // Уведомление студенту о результате проверки.
+    if u.notifUC != nil && (status == "verified" || status == "rejected") {
+        if v, err := u.verificationRepo.GetByID(ctx, id); err == nil && v != nil {
+            vid := id
+            in := CreateNotificationInput{
+                UserID:        v.UserID,
+                Type:          domain.NotifVerificationDone,
+                Link:          "/verification",
+                ReferenceType: "verification",
+                ReferenceID:   &vid,
+            }
+            if status == "verified" {
+                in.Title = "Статус студента подтверждён"
+                until := calculateVerificationExpiry(time.Now())
+                if v.ExpiresAt != nil {
+                    until = *v.ExpiresAt
+                }
+                in.Body = "Действует до " + until.Format("02.01.06") + ". Все скидки открыты."
+            } else {
+                in.Type = "verification_rejected"
+                in.Title = "Заявка на верификацию отклонена"
+                in.Body = rejectionReason
+            }
+            _ = u.notifUC.Create(ctx, in)
         }
     }
 
@@ -252,12 +330,13 @@ func (u *AdminUsecase) UpdateVerification(ctx context.Context, id int64, status 
                 return nil
             }
 
-            // Создаём ОТЛОЖЕННУЮ награду (pending).
-            // Начисление на бонусный счёт произойдёт через 14 дней воркером.
+            // Создаём ОТЛОЖЕННУЮ награду пригласившему (pending).
+            // По макету «Рефералы»: бонусы приходят обоим в течение суток
+            // после верификации — воркер начислит пригласившему через 24 часа.
             const bonusAmount = 100.0
-            const refundWindowDays = 14
+            const creditDelay = 24 * time.Hour
 
-            availableAt := time.Now().Add(refundWindowDays * 24 * time.Hour)
+            availableAt := time.Now().Add(creditDelay)
             reward := &domain.ReferralReward{
                 ReferrerID:     referrerID,
                 ReferredUserID: user.ID,
@@ -271,8 +350,32 @@ func (u *AdminUsecase) UpdateVerification(ctx context.Context, id int64, status 
                 return nil
             }
 
-            log.Printf("Referrer %d will receive %.2f bonus for user %d after %s (refund window)",
+            log.Printf("Referrer %d will receive %.2f bonus for user %d after %s",
                 referrerID, bonusAmount, user.ID, availableAt.Format(time.RFC3339))
+
+            // Приглашённому — 100 бонусов сразу после одобрения верификации.
+            if acc, err := u.bonusRepo.GetByUserID(ctx, user.ID); err == nil && acc != nil {
+                welcome := &domain.BonusTransaction{
+                    UserID:        user.ID,
+                    Amount:        bonusAmount,
+                    Type:          "referral_welcome",
+                    ReferenceType: "referral",
+                    ReferenceID:   referrerID,
+                }
+                if err := u.bonusRepo.CreateTransaction(ctx, welcome); err != nil {
+                    log.Printf("Failed to create welcome bonus: %v", err)
+                } else if err := u.bonusRepo.UpdateBalance(ctx, acc.ID, acc.Balance+bonusAmount); err != nil {
+                    log.Printf("Failed to credit welcome bonus: %v", err)
+                } else if u.notifUC != nil {
+                    journal.Log(ctx, 0, journal.BonusRef, "user", user.ID, "Начислено 100 Б за регистрацию по приглашению")
+                    _ = u.notifUC.Create(ctx, CreateNotificationInput{
+                        UserID: user.ID,
+                        Type:   "bonus_credited",
+                        Title:  "Начислено 100 бонусов за регистрацию по приглашению",
+                        Link:   "/wallet",
+                    })
+                }
+            }
         }
     }
 
@@ -543,7 +646,7 @@ func (u *AdminUsecase) notifySubscribersAboutPublished(ctx context.Context, offe
 
 // AdminEditOffer — админ редактирует оффер. Переводит в pending_partner_approval
 // и уведомляет партнёра.
-func (u *AdminUsecase) AdminEditOffer(ctx context.Context, offerID int64, updated *domain.Offer, comment string) error {
+func (u *AdminUsecase) AdminEditOffer(ctx context.Context, offerID int64, updated *domain.Offer, comment string, editorID int64) error {
     // 1. Получаем исходный оффер (нужен для проверки + уведомления партнёру)
     existing, err := u.offerRepo.GetByID(ctx, offerID)
     if err != nil || existing == nil {
@@ -556,6 +659,7 @@ func (u *AdminUsecase) AdminEditOffer(ctx context.Context, offerID int64, update
         "description":       updated.Description,
         "discount_type":     updated.DiscountType,
         "discount_value":    updated.DiscountValue,
+        "base_price":        updated.BasePrice,
         "start_at":          updated.StartAt.Format(time.RFC3339),
         "end_at":            updated.EndAt.Format(time.RFC3339),
         "bonus_allowed":     updated.BonusAllowed,
@@ -581,9 +685,11 @@ func (u *AdminUsecase) AdminEditOffer(ctx context.Context, offerID int64, update
         return err
     }
 
-    if err := u.offerRepo.SetAdminEdits(ctx, offerID, dataJSON, comment); err != nil {
+    if err := u.offerRepo.SetAdminEdits(ctx, offerID, dataJSON, comment, editorID); err != nil {
         return err
     }
+    journal.Log(ctx, editorID, journal.OfferEdit, "offer", offerID,
+        fmt.Sprintf("{Отправил|Отправила} правки партнёру (%s)", pluralFields(countOfferChanges(existing, updated))))
 
     // 3. Уведомляем партнёра компании
     if u.notifUC != nil && existing.CompanyID != nil {
@@ -611,4 +717,47 @@ func (u *AdminUsecase) AdminGetOffer(ctx context.Context, id int64) (*domain.Off
 
 func (u *AdminUsecase) SetUserUniversity(ctx context.Context, userID int64, universityID *int64) error {
     return u.userRepo.SetUniversity(ctx, userID, universityID)
+}
+
+// countOfferChanges — сколько полей админ поменял (для журнала «правки партнёру (4 поля)»).
+func countOfferChanges(a, b *domain.Offer) int {
+    n := 0
+    diff := func(x, y interface{}) {
+        if fmt.Sprint(x) != fmt.Sprint(y) {
+            n++
+        }
+    }
+    diff(a.Title, b.Title)
+    diff(a.Description, b.Description)
+    diff(a.DiscountType, b.DiscountType)
+    diff(a.DiscountValue, b.DiscountValue)
+    diff(a.BasePrice, b.BasePrice)
+    diff(a.StartAt.In(moscow).Format("2006-01-02"), b.StartAt.In(moscow).Format("2006-01-02"))
+    diff(a.EndAt.In(moscow).Format("2006-01-02"), b.EndAt.In(moscow).Format("2006-01-02"))
+    diff(a.BonusAllowed, b.BonusAllowed)
+    diff(a.MaxBonusPercent, b.MaxBonusPercent)
+    diff(deref(a.Address), deref(b.Address))
+    diff(deref(a.Phone), deref(b.Phone))
+    diff(deref(a.Website), deref(b.Website))
+    diff(deref(a.WorkingHours), deref(b.WorkingHours))
+    diff(deref(a.ImageURL), deref(b.ImageURL))
+    return n
+}
+
+func deref(p *string) string {
+    if p == nil {
+        return ""
+    }
+    return *p
+}
+
+func pluralFields(n int) string {
+    switch {
+    case n%10 == 1 && n%100 != 11:
+        return fmt.Sprintf("%d поле", n)
+    case n%10 >= 2 && n%10 <= 4 && (n%100 < 10 || n%100 >= 20):
+        return fmt.Sprintf("%d поля", n)
+    default:
+        return fmt.Sprintf("%d полей", n)
+    }
 }

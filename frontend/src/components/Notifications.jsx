@@ -1,177 +1,215 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/client';
-import {
-  NOTIFICATION_GROUPS,
-  GROUP_ORDER,
-  groupNotifications,
-  timeAgo,
-} from '../utils/notificationGroups';
-import { RouteLoadingView, RouteEmptyState } from '../design/DottedPath';
-import { Card, Button } from '../design/UI';
+import { RouteLoadingView } from '../design/DottedPath';
+import { Rule, Rule2, VRule, SectionLabel, SmallButton, TextButton } from './merchant/kit';
+import { useNotifications } from '../context/NotificationContext';
+
+/**
+ * D54 · Уведомления: слева категории со счётчиками новых,
+ * справа — лента по дням. Заявку в друзья можно принять прямо здесь.
+ */
+
+const PAGE = 30;
+
+const CATS = [
+  { key: 'orders', label: 'Заказы', types: ['order_paid', 'order_refunded'] },
+  { key: 'offers', label: 'Офферы', types: ['new_offer', 'offer_admin_edited'] },
+  { key: 'events', label: 'Ивенты', types: ['new_event', 'friend_going', 'event_reminder'] },
+  { key: 'friends', label: 'Друзья', types: ['friend_request', 'friend_accepted'] },
+  { key: 'verification', label: 'Верификация', types: ['verification_done', 'verification_rejected'] },
+  { key: 'bonus', label: 'Бонусы', types: ['bonus_credited'] },
+  { key: 'support', label: 'Поддержка', types: ['support_reply'] },
+];
+const catOf = (n) => CATS.find((c) => c.types.includes(n.type))?.key || 'other';
+const catLabel = (n) => {
+  const c = CATS.find((x) => x.types.includes(n.type));
+  if (!c) return 'Сервис';
+  if (c.key === 'offers') return 'Оффер';
+  if (c.key === 'events') return 'Ивент';
+  if (c.key === 'orders') return 'Заказ';
+  return c.label;
+};
+
+const dayLabel = (d) => {
+  const x = new Date(d);
+  const today = new Date();
+  const y = new Date();
+  y.setDate(today.getDate() - 1);
+  const dm = x.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+  if (x.toDateString() === today.toDateString()) return `Сегодня · ${dm}`;
+  if (x.toDateString() === y.toDateString()) return `Вчера · ${dm}`;
+  const wd = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'][x.getDay()];
+  return `${wd} · ${x.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: x.getFullYear() !== today.getFullYear() ? '2-digit' : undefined })}`;
+};
+const hhmm = (d) => new Date(d).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+const Row = ({ n, onOpen, onAccept, onReject, requestState }) => {
+  const unread = !n.read_at;
+  const text = [n.title, n.body].filter(Boolean).join('. ').replace(/\.\./g, '.');
+  const isRequest = n.type === 'friend_request' && n.reference_id;
+  return (
+    <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 items-start py-1">
+      <div className="flex gap-2 items-center w-[64px] shrink-0 whitespace-nowrap">
+        <span className="font-mono text-[10px] text-ink w-[8px]">{unread ? '●' : ''}</span>
+        <span className={`font-mono font-bold text-[13px] ${unread ? 'text-ink' : 'text-ink-soft'}`}>{hhmm(n.created_at)}</span>
+      </div>
+      <div className="sm:w-[170px] shrink-0 font-mono font-medium text-[11px] tracking-[0.06em] uppercase text-ink-soft truncate">{catLabel(n)}</div>
+      <button onClick={() => onOpen(n)} className="flex-1 min-w-0 text-left">
+        <span className={`block text-[15px] leading-[22px] ${unread ? 'font-medium text-ink' : 'text-ink-soft'} hover:text-accent transition`}>{text}</span>
+      </button>
+      {isRequest && requestState !== 'done' ? (
+        <div className="flex gap-[14px] items-center shrink-0">
+          <SmallButton onClick={() => onAccept(n)} disabled={requestState === 'busy'}>Принять</SmallButton>
+          <button onClick={() => onReject(n)} disabled={requestState === 'busy'} className="font-mono text-[11px] tracking-[0.04em] text-ink-soft hover:text-accent">
+            ОТКЛОНИТЬ
+          </button>
+        </div>
+      ) : n.link ? (
+        <button onClick={() => onOpen(n)} className="font-mono text-[13px] text-ink shrink-0 hover:text-accent" aria-label="Открыть">
+          →
+        </button>
+      ) : null}
+    </div>
+  );
+};
 
 const Notifications = () => {
   const navigate = useNavigate();
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState('all');
-  const [offset, setOffset] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const LIMIT = 30;
+  const { refreshCount } = useNotifications();
+  const [items, setItems] = useState(null);
+  const [more, setMore] = useState(true);
+  const [cat, setCat] = useState('all');
+  const [req, setReq] = useState({});
+  const [error, setError] = useState('');
 
-  const fetchItems = (off = 0) => {
-    setLoading(true);
-    api.get(`/notifications?limit=${LIMIT}&offset=${off}`)
-      .then((res) => {
-        const data = res.data || [];
-        if (off === 0) setItems(data);
-        else setItems((prev) => [...prev, ...data]);
-        setHasMore(data.length === LIMIT);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+  const load = async (offset = 0) => {
+    const r = await api.get('/notifications', { params: { limit: PAGE, offset } }).catch(() => ({ data: [] }));
+    const list = r.data || [];
+    setItems((prev) => (offset ? [...(prev || []), ...list] : list));
+    setMore(list.length === PAGE);
   };
 
   useEffect(() => {
-    fetchItems(0);
+    load();
   }, []);
 
-  const loadMore = () => {
-    const next = offset + LIMIT;
-    setOffset(next);
-    fetchItems(next);
-  };
-
-  const handleClickItem = async (n) => {
-    // Оптимистично убираем из UI
-    setItems((prev) => prev.filter((x) => x.id !== n.id));
-
-    const token = localStorage.getItem('access_token');
-    try {
-      const res = await fetch(`/api/v1/notifications/${n.id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        console.error('DELETE failed:', res.status);
+  const unreadBy = useMemo(() => {
+    const m = { all: 0 };
+    (items || []).forEach((n) => {
+      if (!n.read_at) {
+        m.all += 1;
+        const k = catOf(n);
+        m[k] = (m[k] || 0) + 1;
       }
-    } catch (err) {
-      console.error('DELETE error:', err);
+    });
+    return m;
+  }, [items]);
+
+  if (!items) return <RouteLoadingView label="Загружаем уведомления..." />;
+
+  const markRead = (n) => {
+    if (n.read_at) return;
+    setItems((list) => list.map((x) => (x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x)));
+    api.post(`/notifications/${n.id}/read`).then(() => refreshCount()).catch(() => {});
+  };
+
+  const open = (n) => {
+    markRead(n);
+    if (n.link) navigate(n.link);
+  };
+
+  const respond = async (n, accept) => {
+    setReq((s) => ({ ...s, [n.id]: 'busy' }));
+    setError('');
+    try {
+      await api.post(`/friends/requests/${n.reference_id}/${accept ? 'accept' : 'reject'}`);
+      setReq((s) => ({ ...s, [n.id]: 'done' }));
+      markRead(n);
+    } catch (e) {
+      // Заявку уже обработали в другом месте — просто прячем кнопки.
+      setReq((s) => ({ ...s, [n.id]: 'done' }));
+      const msg = e.response?.data?.error || '';
+      if (!/обработана|не найдена/.test(msg)) setError(msg || 'Не получилось');
     }
-
-    navigate(n.link || '/notifications');
   };
 
-  const deleteAll = async () => {
-    if (!confirm('Удалить все уведомления?')) return;
-    try {
-      await api.delete('/notifications/all');
-      setItems([]);
-    } catch {}
+  const readAll = async () => {
+    await api.post('/notifications/read-all').catch(() => {});
+    const now = new Date().toISOString();
+    setItems((list) => list.map((x) => ({ ...x, read_at: x.read_at || now })));
+    refreshCount();
   };
 
-  const removeItem = async (id) => {
-    try {
-      await api.delete(`/notifications/${id}`);
-      setItems((prev) => prev.filter((n) => n.id !== id));
-    } catch {}
+  const visible = cat === 'all' ? items : items.filter((n) => catOf(n) === cat);
+  const groups = [];
+  visible.forEach((n) => {
+    const k = new Date(n.created_at).toDateString();
+    let g = groups.find((x) => x.key === k);
+    if (!g) {
+      g = { key: k, label: dayLabel(n.created_at), items: [] };
+      groups.push(g);
+    }
+    g.items.push(n);
+  });
+
+  const CatRow = ({ k, label }) => {
+    const active = cat === k;
+    const count = unreadBy[k] || 0;
+    return (
+      <button onClick={() => setCat(k)} className="flex items-end gap-2 w-full text-left group">
+        <span className={`font-mono text-[12px] tracking-[0.03em] uppercase whitespace-nowrap ${active ? 'font-bold text-ink' : 'text-ink group-hover:text-accent'}`}>{label}</span>
+        <span className="flex-1 min-w-[8px] border-t border-dashed border-ink-faint h-[4px]" />
+        <span className={`font-mono text-[12px] whitespace-nowrap ${active ? 'font-bold' : ''} text-ink`}>{k === 'all' ? `${count} нов.` : count}</span>
+      </button>
+    );
   };
-
-  const grouped = useMemo(() => groupNotifications(items), [items]);
-  const hasUnread = items.some((n) => !n.read_at);
-
-  const visibleItems = tab === 'all' ? items : (grouped[tab] || []);
-
-  const tabCounts = useMemo(() => {
-    const counts = { all: items.length };
-    GROUP_ORDER.forEach((k) => { counts[k] = (grouped[k] || []).length; });
-    return counts;
-  }, [grouped, items]);
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-editorial text-2xl text-ink uppercase">Уведомления</h1>
-        {items.length > 0 && (
-          <button onClick={deleteAll} className="text-sm text-accent hover:underline">
-            Прочитать все
-          </button>
+    <div className="flex flex-col lg:flex-row gap-10 lg:gap-14 items-start">
+      <div className="w-full lg:w-[280px] shrink-0 flex flex-col gap-6">
+        <h1 className="font-display font-bold text-[26px] leading-none tracking-[-0.02em] text-ink">УВЕДОМЛЕНИЯ</h1>
+        <div className="flex flex-col gap-[10px]">
+          <CatRow k="all" label="Все" />
+          {CATS.map((c) => (
+            <CatRow key={c.key} k={c.key} label={c.label} />
+          ))}
+        </div>
+        <Rule />
+        <div className="flex flex-col items-start gap-3">
+          <TextButton onClick={readAll} disabled={!unreadBy.all}>Прочитать все</TextButton>
+          <TextButton as={Link} to="/settings/notifications">Настроить уведомления</TextButton>
+        </div>
+      </div>
+
+      <VRule className="hidden lg:block" />
+
+      <div className="flex-1 min-w-0 w-full flex flex-col gap-6">
+        {error && <div className="font-mono text-[12px] text-accent uppercase">{error}</div>}
+        {groups.length === 0 ? (
+          <div className="text-[15px] text-ink-soft">{cat === 'all' ? 'Уведомлений пока нет.' : 'В этой категории пока пусто.'}</div>
+        ) : (
+          groups.map((g, gi) => (
+            <React.Fragment key={g.key}>
+              {gi > 0 && <Rule2 />}
+              <SectionLabel>{g.label}</SectionLabel>
+              <div className="flex flex-col gap-[14px]">
+                {g.items.map((n, i) => (
+                  <React.Fragment key={n.id}>
+                    {i > 0 && <Rule />}
+                    <Row n={n} onOpen={open} onAccept={(x) => respond(x, true)} onReject={(x) => respond(x, false)} requestState={req[n.id]} />
+                  </React.Fragment>
+                ))}
+              </div>
+            </React.Fragment>
+          ))
+        )}
+        {more && (
+          <div className="flex justify-center">
+            <TextButton onClick={() => load(items.length)}>Показать ещё</TextButton>
+          </div>
         )}
       </div>
-
-      <div className="flex gap-1 mb-4 border-b border-line overflow-x-auto">
-        <button
-          onClick={() => setTab('all')}
-          className={`px-3 py-2 text-sm whitespace-nowrap transition ${
-            tab === 'all' ? 'border-b-2 border-accent text-accent font-semibold' : 'text-ink-soft hover:text-ink'
-          }`}
-        >
-          Все {tabCounts.all > 0 && <span className="text-xs text-ink-faint">({tabCounts.all})</span>}
-        </button>
-        {GROUP_ORDER.map((gk) => {
-          const g = NOTIFICATION_GROUPS[gk];
-          if (!g) return null;
-          const cnt = tabCounts[gk] || 0;
-          if (cnt === 0) return null;
-          return (
-            <button
-              key={gk}
-              onClick={() => setTab(gk)}
-              className={`px-3 py-2 text-sm whitespace-nowrap transition ${
-                tab === gk ? 'border-b-2 border-accent text-accent font-semibold' : 'text-ink-soft hover:text-ink'
-              }`}
-            >
-              {g.shortLabel} <span className="text-xs text-ink-faint">({cnt})</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {loading && items.length === 0 ? (
-        <RouteLoadingView label="Загрузка..." />
-      ) : visibleItems.length === 0 ? (
-        <Card className="p-8 text-center text-ink-soft">
-          {tab === 'all' ? 'Уведомлений нет' : 'В этой категории нет уведомлений'}
-        </Card>
-      ) : (
-        <>
-          <Card className="divide-y divide-line overflow-hidden">
-            {visibleItems.map((n) => (
-              <button
-                key={n.id}
-                onClick={() => handleClickItem(n)}
-                className={`w-full text-left block p-4 hover:bg-surface-2 transition ${n.read_at ? '' : 'bg-surface-2/60'}`}
-              >
-                <div className="flex gap-3">
-                  {n.actor_avatar ? (
-                    <img src={n.actor_avatar} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-surface-2 border border-line flex items-center justify-center flex-shrink-0">
-                      <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-ink">{n.title}</div>
-                    {n.body && <div className="text-sm text-ink-soft mt-0.5">{n.body}</div>}
-                    <div className="text-xs text-ink-faint mt-1">
-                      {timeAgo(n.created_at)}
-                      {!n.read_at && <span className="ml-2 text-accent">• новое</span>}
-                    </div>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </Card>
-
-          {hasMore && tab === 'all' && (
-            <div className="text-center mt-4">
-              <Button variant="ghost" onClick={loadMore} disabled={loading} className="text-sm">
-                {loading ? 'Загрузка...' : 'Показать ещё'}
-              </Button>
-            </div>
-          )}
-        </>
-      )}
     </div>
   );
 };

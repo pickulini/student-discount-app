@@ -1,6 +1,7 @@
 package middleware
 
 import (
+    "strconv"
     "net/http"
     "sync"
     "time"
@@ -59,7 +60,13 @@ func RateLimit(limitPerMinute int) func(http.Handler) http.Handler {
             }
             b.count++
             exceeded := b.count > limitPerMinute
+            remaining := limitPerMinute - b.count
             mu.Unlock()
+            if remaining < 0 {
+                remaining = 0
+            }
+            // Фронтенд показывает «осталось N попыток» после неверного пароля.
+            w.Header().Set("X-RateLimit-Remaining", strconv.Itoa(remaining))
 
             if exceeded {
                 w.Header().Set("Retry-After", "60")

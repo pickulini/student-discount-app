@@ -1,175 +1,203 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import api from '../api/client';
-import { Card, Button, Input, Label } from '../design/UI';
+import { Field, PrimaryButton, Rule, Rule2, SectionLabel, TextButton, ddmm, hhmm } from './merchant/kit';
+import { PanelHead, SavedMark, ErrorText } from './settings/shared';
+
+/** D63 · Настройки → Безопасность: смена пароля и активные сессии. */
+
+const deviceOf = (ua = '') => {
+  let dev = 'Устройство';
+  if (/iPhone/i.test(ua)) dev = 'iPhone';
+  else if (/iPad/i.test(ua)) dev = 'iPad';
+  else if (/Android/i.test(ua)) dev = /Mobile/i.test(ua) ? 'Android' : 'Android-планшет';
+  else if (/Macintosh|Mac OS X/i.test(ua)) dev = 'Mac';
+  else if (/Windows/i.test(ua)) dev = 'Windows';
+  else if (/Linux/i.test(ua)) dev = 'Linux';
+
+  let br = '';
+  if (/YaBrowser/i.test(ua)) br = 'Яндекс Браузер';
+  else if (/Edg\//i.test(ua)) br = 'Edge';
+  else if (/OPR\//i.test(ua)) br = 'Opera';
+  else if (/Firefox\//i.test(ua)) br = 'Firefox';
+  else if (/Chrome\//i.test(ua)) br = 'Chrome';
+  else if (/Safari\//i.test(ua)) br = 'Safari';
+  else if (/curl|python|Go-http/i.test(ua)) br = 'API';
+  return br ? `${dev} · ${br}` : dev;
+};
+
+const whenLabel = (s) => {
+  const t = new Date(s.last_used_at || s.created_at);
+  if (s.current || Date.now() - t.getTime() < 3 * 60 * 1000) return 'сейчас';
+  const today = new Date().toDateString() === t.toDateString();
+  if (today) return `сегодня, ${hhmm(t)}`;
+  if (Date.now() - t.getTime() < 7 * 24 * 3600 * 1000) return `${ddmm(t)}, ${hhmm(t)}`;
+  return ddmm(t);
+};
 
 const SettingsSecurity = () => {
-  const [oldPassword, setOldPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [pw, setPw] = useState({ old: '', next: '', again: '' });
   const [changing, setChanging] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [changedAt, setChangedAt] = useState(null);
+  const [pwError, setPwError] = useState('');
 
-  const [sessions, setSessions] = useState([]);
-  const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [sessions, setSessions] = useState(null);
+  const [busy, setBusy] = useState(null);
+  const [sessError, setSessError] = useState('');
 
-  const fetchSessions = () => {
-    api.get('/users/me/sessions')
-      .then((res) => setSessions(res.data || []))
-      .catch(() => setSessions([]))
-      .finally(() => setSessionsLoading(false));
-  };
+  const loadSessions = () =>
+    api
+      .get('/users/me/sessions')
+      .then((r) => setSessions(r.data || []))
+      .catch(() => setSessions([]));
 
   useEffect(() => {
-    fetchSessions();
+    loadSessions();
   }, []);
 
-  const handleChangePassword = async (e) => {
+  const tooShort = pw.next.length > 0 && [...pw.next].length < 8;
+  const mismatch = pw.again.length > 0 && pw.again !== pw.next;
+
+  const change = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
-
-    if (newPassword.length < 8) {
-      setError('Пароль должен быть не менее 8 символов');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setError('Пароли не совпадают');
-      return;
-    }
-
+    if (!pw.old) return setPwError('Введите текущий пароль');
+    if (!pw.next || tooShort) return setPwError('Новый пароль — минимум 8 символов');
+    if (pw.again !== pw.next) return setPwError('Пароли не совпадают');
     setChanging(true);
+    setPwError('');
     try {
-      await api.patch('/users/me/password', {
-        old_password: oldPassword,
-        new_password: newPassword,
-      });
-      setSuccess('Пароль изменён. Все сессии отозваны, войдите заново.');
-      setOldPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
+      await api.patch('/users/me/password', { old_password: pw.old, new_password: pw.next });
+      setPw({ old: '', next: '', again: '' });
+      setChangedAt(new Date());
+      loadSessions();
     } catch (err) {
-      setError(err.response?.data?.error || 'Ошибка смены пароля');
+      const msg = err.response?.data?.error || '';
+      setPwError(/invalid|неверн/i.test(msg) ? 'Текущий пароль указан неверно' : msg || 'Не удалось сменить пароль');
     } finally {
       setChanging(false);
     }
   };
 
-  const revokeSession = async (id) => {
-    if (!confirm('Отозвать эту сессию?')) return;
+  const revoke = async (id) => {
+    setBusy(id);
+    setSessError('');
     try {
       await api.delete(`/users/me/sessions/${id}`);
-      fetchSessions();
+      await loadSessions();
     } catch (err) {
-      alert(err.response?.data?.error || 'Ошибка');
+      setSessError(err.response?.data?.error || 'Не удалось отозвать');
+    } finally {
+      setBusy(null);
     }
   };
 
-  const revokeAll = async () => {
-    if (!confirm('Отозвать все сессии? Вам нужно будет войти заново.')) return;
+  const revokeOthers = async () => {
+    setBusy('all');
+    setSessError('');
     try {
-      await api.delete('/users/me/sessions');
-      fetchSessions();
+      await api.delete('/users/me/sessions', { params: { keep_current: 1 } });
+      await loadSessions();
     } catch (err) {
-      alert(err.response?.data?.error || 'Ошибка');
+      setSessError(err.response?.data?.error || 'Не удалось отозвать');
+    } finally {
+      setBusy(null);
     }
   };
 
-  const formatDate = (iso) => {
-    if (!iso) return '—';
-    return new Date(iso).toLocaleString('ru-RU');
+  const setField = (k) => (e) => {
+    setPw((p) => ({ ...p, [k]: e.target.value }));
+    setPwError('');
+    setChangedAt(null);
   };
+
+  const list = sessions || [];
+  const hasOthers = list.some((s) => !s.current);
 
   return (
-    <div className="space-y-4">
-      {/* Смена пароля */}
-      <Card className="p-6">
-        <h2 className="text-editorial text-xl text-ink uppercase mb-1">Смена пароля</h2>
-        <p className="text-sm text-ink-soft mb-4">
-          После смены пароля все активные сессии будут отозваны
-        </p>
+    <>
+      <PanelHead title="Безопасность" />
 
-        {error && <div className="bg-danger/10 text-danger p-3 rounded-[var(--radius-sm)] mb-3 text-sm">{error}</div>}
-        {success && <div className="bg-accent/10 text-accent p-3 rounded-[var(--radius-sm)] mb-3 text-sm">{success}</div>}
-
-        <form onSubmit={handleChangePassword} className="space-y-3">
-          <div>
-            <Label className="mb-1">Текущий пароль</Label>
-            <Input
-              type="password"
-              value={oldPassword}
-              onChange={(e) => setOldPassword(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <Label className="mb-1">Новый пароль</Label>
-            <Input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              minLength={8}
-              required
-            />
-          </div>
-          <div>
-            <Label className="mb-1">Повторите новый пароль</Label>
-            <Input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-            />
-          </div>
-          <Button type="submit" disabled={changing} className="px-6">
-            {changing ? 'Сохранение...' : 'Изменить пароль'}
-          </Button>
-        </form>
-      </Card>
-
-      {/* Сессии */}
-      <Card className="p-6">
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <h2 className="text-editorial text-xl text-ink uppercase">Активные сессии</h2>
-            <p className="text-sm text-ink-soft">Устройства, где вы вошли</p>
-          </div>
-          {sessions.length > 1 && (
-            <button onClick={revokeAll} className="text-sm text-danger hover:underline">
-              Отозвать все
-            </button>
+      <form onSubmit={change} className="flex flex-col gap-6">
+        <SectionLabel>Смена пароля</SectionLabel>
+        <Field label="Текущий пароль" type="password" autoComplete="current-password" value={pw.old} onChange={setField('old')} placeholder="—" />
+        <div className="flex flex-col sm:flex-row gap-6 sm:gap-8 items-start">
+          <Field
+            className="flex-1 w-full"
+            label="Новый пароль"
+            type="password"
+            autoComplete="new-password"
+            value={pw.next}
+            onChange={setField('next')}
+            error={tooShort ? 'Минимум 8 символов' : ''}
+            placeholder="—"
+          />
+          <Field
+            className="flex-1 w-full"
+            label="Повторите новый пароль"
+            type="password"
+            autoComplete="new-password"
+            value={pw.again}
+            onChange={setField('again')}
+            error={mismatch ? 'Пароли не совпадают' : ''}
+            placeholder="—"
+          />
+        </div>
+        <div className="flex flex-wrap gap-6 items-center">
+          <PrimaryButton type="submit" disabled={changing}>
+            {changing ? 'Меняем…' : 'Изменить пароль'}
+          </PrimaryButton>
+          {changedAt ? (
+            <SavedMark at={changedAt}>Пароль изменён, другие сессии завершены</SavedMark>
+          ) : pwError ? (
+            <ErrorText>{pwError}</ErrorText>
+          ) : (
+            <span className="text-[13px] text-ink-soft">После смены все сессии будут завершены.</span>
           )}
         </div>
+      </form>
 
-        {sessionsLoading ? (
-          <div className="text-center py-4 text-ink-soft">Загрузка...</div>
-        ) : sessions.length === 0 ? (
-          <div className="text-center py-4 text-ink-soft text-sm">Нет активных сессий</div>
-        ) : (
-          <div className="space-y-2">
-            {sessions.map((s) => (
-              <div key={s.id} className="flex items-center gap-3 p-3 bg-surface-2 rounded-[var(--radius-sm)]">
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-ink truncate">
-                    {s.device_name || 'Неизвестное устройство'}
-                  </div>
-                  <div className="text-eyebrow text-ink-faint mt-0.5">
-                    {/mobile|android|iphone/i.test(s.user_agent || '') ? 'Мобильное' : 'Десктоп'}
-                  </div>
-                  <div className="text-xs text-ink-faint truncate mt-1">{s.ip || '—'}</div>
-                  <div className="text-caption text-xs text-ink-faint">
-                    Последняя активность: {formatDate(s.last_used_at)}
-                  </div>
-                </div>
-                <button onClick={() => revokeSession(s.id)} className="text-danger hover:underline text-sm">
-                  Отозвать
-                </button>
-              </div>
-            ))}
-          </div>
+      <Rule2 />
+
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <SectionLabel>Активные сессии · {list.length}</SectionLabel>
+        {hasOthers && (
+          <TextButton onClick={revokeOthers} disabled={busy !== null}>
+            Отозвать все, кроме этой
+          </TextButton>
         )}
-      </Card>
-    </div>
+      </div>
+      <ErrorText>{sessError}</ErrorText>
+
+      {sessions === null ? (
+        <span className="text-[14px] text-ink-soft">Загружаем сессии…</span>
+      ) : list.length === 0 ? (
+        <span className="text-[14px] text-ink-soft">Активных сессий нет.</span>
+      ) : (
+        list.map((s, i) => (
+          <React.Fragment key={s.id}>
+            {i > 0 && <Rule />}
+            <div className="flex gap-4 items-center">
+              <div className="flex-1 min-w-0 flex flex-col gap-[3px]">
+                <span className="font-mono font-bold text-[12px] tracking-[0.03em] uppercase text-ink truncate">{deviceOf(s.user_agent)}</span>
+                <span className="text-[14px] text-ink-soft truncate">
+                  {[s.ip ? `IP ${s.ip}` : null, whenLabel(s)].filter(Boolean).join(' · ')}
+                </span>
+              </div>
+              {s.current ? (
+                <span className="font-mono text-[11px] tracking-[0.04em] text-ink-soft whitespace-nowrap">ЭТО УСТРОЙСТВО</span>
+              ) : (
+                <button
+                  onClick={() => revoke(s.id)}
+                  disabled={busy !== null}
+                  className="font-mono font-bold text-[11px] tracking-[0.04em] uppercase text-ink hover:text-accent whitespace-nowrap disabled:opacity-40"
+                >
+                  {busy === s.id ? 'Отзываем…' : 'Отозвать'}
+                </button>
+              )}
+            </div>
+          </React.Fragment>
+        ))
+      )}
+    </>
   );
 };
 

@@ -1,145 +1,101 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { Card, Button, Input, Label, Eyebrow } from '../design/UI';
+import { RouteLoadingView } from '../design/DottedPath';
+import { AlertBlock, Field, Leader, OutlineButton, Rule2, SectionLabel, ddmmyy, num, plural } from './merchant/kit';
+import { PanelHead, ErrorText } from './settings/shared';
+
+/** D64 · Настройки → Аккаунт: сведения, кошелёк, удаление. */
+
+const ROLE = { student: 'Студент', merchant: 'Партнёр', admin: 'Администратор' };
 
 const SettingsAccount = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
-  const [deletePassword, setDeletePassword] = useState('');
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const { logout } = useAuth();
+  const [me, setMe] = useState(null);
+  const [password, setPassword] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
 
-  if (!user) return null;
+  useEffect(() => {
+    api
+      .get('/users/me')
+      .then((r) => setMe(r.data))
+      .catch(() => setError('Не удалось загрузить данные'));
+  }, []);
 
-  const handleDelete = async (e) => {
+  if (!me) return error ? <ErrorText>{error}</ErrorText> : <RouteLoadingView label="Загрузка..." />;
+
+  const balance = Number(me.balance || 0);
+  const bonus = Number(me.bonus_balance || 0);
+
+  const lose = [];
+  if (balance > 0) lose.push(`баланс ${num(balance)} ₽`);
+  if (bonus > 0) lose.push(`${num(bonus)} ${plural(bonus, 'бонус', 'бонуса', 'бонусов')}`);
+  const warning = lose.length
+    ? `Сгорят ${lose.join(' и ')}, удалятся заказы и журнал экономии.${balance > 0 ? ' Сначала выведите деньги через поддержку.' : ''}`
+    : 'Удалятся заказы, друзья, подписки и журнал экономии.';
+
+  const remove = async (e) => {
     e.preventDefault();
-    if (!confirm('Вы уверены? Это необратимо.')) return;
+    if (!password) return setError('Введите пароль');
     setDeleting(true);
     setError('');
     try {
-      await api.delete('/users/me', { data: { password: deletePassword } });
+      await api.delete('/users/me', { data: { password } });
       logout();
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.error || 'Ошибка удаления');
+      const msg = err.response?.data?.error || '';
+      setError(/неверн/i.test(msg) ? 'Неверный пароль' : msg || 'Не удалось удалить аккаунт');
       setDeleting(false);
     }
   };
 
-  const formatDate = (iso) => {
-    if (!iso) return '—';
-    return new Date(iso).toLocaleDateString('ru-RU', {
-      day: 'numeric', month: 'long', year: 'numeric',
-    });
-  };
-
   return (
-    <div className="space-y-4">
-      {/* Баланс и бонусы */}
-      <Card className="p-6">
-        <h2 className="text-editorial text-xl text-ink uppercase mb-4">Кошелёк</h2>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-surface-2 border border-line p-4 rounded-[var(--radius-sm)]">
-            <Eyebrow className="mb-1">Баланс</Eyebrow>
-            <div className="text-editorial text-2xl text-ink">{user.balance || 0} ₽</div>
-          </div>
-          <div className="bg-surface-2 border border-line p-4 rounded-[var(--radius-sm)]">
-            <Eyebrow className="mb-1">Бонусы</Eyebrow>
-            <div className="text-editorial text-2xl text-accent">{user.bonus_balance || 0}</div>
-          </div>
+    <>
+      <PanelHead title="Аккаунт" />
+
+      <div className="flex flex-col sm:flex-row gap-6 sm:gap-8 items-start">
+        <div className="flex-1 w-full min-w-0 flex flex-col gap-[10px]">
+          <SectionLabel>Информация</SectionLabel>
+          <Leader label="Email" value={me.email} />
+          <Leader label="Роль" value={ROLE[me.role] || me.role} />
+          <Leader label="Аккаунт создан" value={ddmmyy(me.created_at)} />
         </div>
-      </Card>
-
-      {/* Реферальная программа */}
-      <Card className="p-6">
-        <h2 className="text-editorial text-xl text-ink uppercase mb-4">Реферальная программа</h2>
-        <div className="flex items-center justify-between gap-3 p-3 bg-surface-2 rounded-[var(--radius-sm)]">
-          <div className="min-w-0">
-            <div className="text-xs text-ink-faint mb-1">Ваш код</div>
-            <div className="font-mono text-lg font-semibold text-ink truncate">{user.referral_code}</div>
-          </div>
-          <button
-            onClick={() => {
-              navigator.clipboard.writeText(user.referral_code);
-            }}
-            className="bg-surface border border-line px-3 py-1 rounded-[var(--radius-sm)] text-sm text-ink-soft hover:border-ink-faint transition"
-          >
-            Копировать
-          </button>
+        <div className="flex-1 w-full min-w-0 flex flex-col gap-[10px]">
+          <SectionLabel>Кошелёк</SectionLabel>
+          <Leader label="Баланс" value={`${num(balance)} ₽`} />
+          <Leader label="Бонусы" value={`${num(bonus)} Б`} />
+          <Leader label="Реферальный код" value={<span className="font-bold">{String(me.referral_code || '—').toUpperCase()}</span>} />
         </div>
-      </Card>
+      </div>
 
-      {/* Информация об аккаунте */}
-      <Card className="p-6">
-        <h2 className="text-editorial text-xl text-ink uppercase mb-4">Информация</h2>
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-ink-soft">Email</span>
-            <span className="font-medium text-ink">{user.email}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-ink-soft">Аккаунт создан</span>
-            <span className="font-medium text-ink">{formatDate(user.created_at)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-ink-soft">Роль</span>
-            <span className="font-medium text-ink capitalize">{user.role}</span>
-          </div>
-          {user.is_vip && (
-            <div className="flex justify-between">
-              <span className="text-ink-soft">VIP</span>
-              <span className="font-medium text-accent">
-                Активен
-                {user.vip_until && ` до ${formatDate(user.vip_until)}`}
-              </span>
-            </div>
-          )}
-        </div>
-      </Card>
+      <Rule2 />
 
-      {/* Опасная зона */}
-      <Card className="p-6 border-2 border-danger/30">
-        <h2 className="text-editorial text-xl uppercase mb-1 text-danger">Удаление аккаунта</h2>
-        <p className="text-sm text-ink-soft mb-4">
-          Все данные будут удалены безвозвратно: заказы, друзья, подписки, баланс.
-        </p>
+      <SectionLabel>Удаление аккаунта</SectionLabel>
+      <AlertBlock title="Это необратимо">{warning}</AlertBlock>
 
-        {error && <div className="bg-danger/10 text-danger p-3 rounded-[var(--radius-sm)] mb-3 text-sm">{error}</div>}
-
-        {!showDeleteConfirm ? (
-          <Button variant="danger" onClick={() => setShowDeleteConfirm(true)} className="border border-danger/30">
-            Удалить аккаунт
-          </Button>
-        ) : (
-          <form onSubmit={handleDelete} className="space-y-3">
-            <div>
-              <Label className="mb-1">Введите пароль для подтверждения</Label>
-              <Input
-                type="password"
-                value={deletePassword}
-                onChange={(e) => setDeletePassword(e.target.value)}
-                required
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button type="submit" variant="danger" disabled={deleting} className="border border-danger/30">
-                {deleting ? 'Удаление...' : 'Удалить навсегда'}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => { setShowDeleteConfirm(false); setDeletePassword(''); setError(''); }}
-              >
-                Отмена
-              </Button>
-            </div>
-          </form>
-        )}
-      </Card>
-    </div>
+      <form onSubmit={remove} className="flex flex-col sm:flex-row gap-6 items-stretch sm:items-end">
+        <Field
+          className="flex-1"
+          label="Пароль для подтверждения"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            setError('');
+          }}
+          error={error}
+          placeholder="••••••••"
+        />
+        <OutlineButton type="submit" disabled={deleting} className="px-[22px]">
+          {deleting ? 'Удаляем…' : 'Удалить навсегда'}
+        </OutlineButton>
+      </form>
+    </>
   );
 };
 

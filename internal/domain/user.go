@@ -32,6 +32,9 @@ type User struct {
     NotifyFriends bool `json:"notify_friends"`
     NotifyEvents  bool `json:"notify_events"`
     NotifyOffers  bool `json:"notify_offers"`
+    NotifyOrders  bool `json:"notify_orders"`
+    NotifyQuiet   bool `json:"notify_quiet"`  // тихие часы 23:00–09:00
+    Searchable    bool `json:"searchable"`    // показывать в поиске людей
 
     // Настройки приватности (10 полей)
     AvatarVisibility           string `json:"avatar_visibility"`
@@ -83,6 +86,7 @@ type UserSession struct {
     LastUsedAt     time.Time  `json:"last_used_at"`
     ExpiresAt      time.Time  `json:"expires_at"`
     RevokedAt      *time.Time `json:"revoked_at,omitempty"`
+    Current        bool       `json:"current"`
 }
 
 // Публичный профиль — то, что видно по ссылке /@username

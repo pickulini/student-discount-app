@@ -26,6 +26,7 @@ const (
     NotifFriendAccepted   = "friend_accepted"
     NotifNewEvent         = "new_event"
     NotifFriendGoing      = "friend_going"
+    NotifEventReminder    = "event_reminder"
     NotifNewOffer         = "new_offer"
     NotifOrderPaid        = "order_paid"
     NotifOrderRefunded    = "order_refunded"
@@ -37,6 +38,7 @@ const (
     NotifCategoryFriends = "friends"
     NotifCategoryEvents  = "events"
     NotifCategoryOffers  = "offers"
+    NotifCategoryOrders  = "orders"
     NotifCategorySystem  = "system"
 )
 
@@ -44,10 +46,12 @@ func NotificationCategoryByType(t string) string {
     switch t {
     case NotifFriendRequest, NotifFriendAccepted:
         return NotifCategoryFriends
-    case NotifNewEvent, NotifFriendGoing:
+    case NotifNewEvent, NotifFriendGoing, NotifEventReminder:
         return NotifCategoryEvents
     case NotifNewOffer:
         return NotifCategoryOffers
+    case NotifOrderPaid, NotifOrderRefunded:
+        return NotifCategoryOrders
     default:
         return NotifCategorySystem
     }

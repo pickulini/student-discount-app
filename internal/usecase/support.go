@@ -145,3 +145,14 @@ func (u *SupportUsecase) UpdateTicketStatus(ctx context.Context, ticketID int64,
 func (u *SupportUsecase) AssignTicket(ctx context.Context, ticketID, adminID int64) error {
     return u.ticketRepo.UpdateAssignedTo(ctx, ticketID, adminID)
 }
+
+// OwnsTicket — принадлежит ли обращение пользователю.
+func (u *SupportUsecase) OwnsTicket(ctx context.Context, ticketID, userID int64) bool {
+    t, err := u.ticketRepo.GetByID(ctx, ticketID)
+    return err == nil && t != nil && t.UserID == userID
+}
+
+// GetTicket — обращение по ID (для админки).
+func (u *SupportUsecase) GetTicket(ctx context.Context, ticketID int64) (*domain.SupportTicket, error) {
+    return u.ticketRepo.GetByID(ctx, ticketID)
+}

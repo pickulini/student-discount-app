@@ -16,7 +16,7 @@ type UserRepository interface {
     GetByReferralCode(ctx context.Context, code string) (*domain.User, error)
     GetByUsername(ctx context.Context, username string) (*domain.User, error)
     UpdateProfile(ctx context.Context, userID int64, nickname, username, avatarURL *string, privacyAllowSubscriptions *bool) error
-    UpdateNotificationSettings(ctx context.Context, userID int64, enabled, friends, events, offers *bool) error
+    UpdateNotificationSettings(ctx context.Context, userID int64, enabled, friends, events, offers, orders, quiet *bool) error
     UpdatePrivacy(ctx context.Context, userID int64, settings map[string]string) error
     GetPublicProfileByUsernameWithViewer(ctx context.Context, username string, viewerID int64) (*domain.UserPublicProfile, error)
     ListAdminIDs(ctx context.Context) ([]int64, error)
@@ -56,6 +56,8 @@ type SessionRepository interface {
     UpdateLastUsed(ctx context.Context, id int64) error
     ListByUserID(ctx context.Context, userID int64) ([]domain.UserSession, error)
     GetByID(ctx context.Context, id int64) (*domain.UserSession, error)
+    RevokeAllExcept(ctx context.Context, userID, keepID int64) error
+    Touch(ctx context.Context, id, userID int64) (bool, error)
 }
 
 // ---- University ----
@@ -101,7 +103,7 @@ type OfferRepository interface {
     UpdateStatusWithReason(ctx context.Context, id int64, status string, reason string) error
     ExpireOffers(ctx context.Context) error
     ListEvents(ctx context.Context, organizerID *int64, status string, limit, offset int) ([]domain.Offer, error)
-    SetAdminEdits(ctx context.Context, id int64, data []byte, comment string) error
+    SetAdminEdits(ctx context.Context, id int64, data []byte, comment string, editorID int64) error
     ApplyAdminEdits(ctx context.Context, id int64) error
     ClearAdminEdits(ctx context.Context, id int64, partnerComment string) error
 }

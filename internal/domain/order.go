@@ -17,6 +17,16 @@ type Order struct {
     CreatedAt      time.Time `json:"created_at"`
     CompletedAt    *time.Time `json:"completed_at,omitempty"`
     CancelledAt    *time.Time `json:"cancelled_at,omitempty"`
+
+    // Код погашения в чеке студента: «0512 · KX7Q» = последние 4 цифры id + RedeemCode.
+    RedeemCode string     `json:"redeem_code,omitempty"`
+    RedeemedAt *time.Time `json:"redeemed_at,omitempty"`
+
+    // Поля для отображения (заполняются JOIN-ом в списках заказов пользователя).
+    OfferTitle   string  `json:"offer_title,omitempty"`
+    CompanyName  string  `json:"company_name,omitempty"`
+    OfferImage   *string `json:"offer_image,omitempty"`
+    OfferAddress *string `json:"offer_address,omitempty"`
 }
 
 // Статусы заказов
@@ -51,3 +61,11 @@ func IsValidOrderTransition(from, to string) bool {
     }
     return false
 }
+
+// CommissionRate — комиссия сервиса с суммы, которую студент платит деньгами.
+// Используется при создании заказа и в расчётах кабинета партнёра.
+const CommissionRate = 0.02
+
+// PayoutDayOfMonth — день месяца, в который партнёрам перечисляется баланс.
+// Показывается в кабинете как «К ВЫПЛАТЕ dd.mm».
+const PayoutDayOfMonth = 5

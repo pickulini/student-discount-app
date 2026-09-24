@@ -1,475 +1,179 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useOutletContext } from 'react-router-dom';
 import api from '../api/client';
-import ImageUpload from './ImageUpload';
-import HashtagInput from './HashtagInput';
-import LocationPicker from './LocationPicker';
-import AdminEditDiffModal from './AdminEditDiffModal';
-import { Card, Button, Input, Textarea, Label, PageTitle, Eyebrow, Badge, ErrorText } from '../design/UI';
-import { RouteLoadingView } from '../design/DottedPath';
+import {
+  PageHead, PrimaryButton, SmallButton, Tabs, Table, CellMono, CellText, StatusMark, Photo, Loading, ErrorLine,
+  rub, num, pad6, ddmm, ddmmyy, plural, discountLabel,
+} from './merchant/kit';
 
-const EMPTY_FORM = {
-  company_id: '',
-  title: '',
-  latitude: null,
-  longitude: null,
-  place_name: '',
-  description: '',
-  discount_type: 'percentage',
-  discount_value: 10,
-  base_price: 1000,
-  start_at: '',
-  end_at: '',
-  bonus_allowed: false,
-  max_bonus_percent: 20,
-  image_url: '',
-  address: '',
-  phone: '',
-  website: '',
-  working_hours: '',
+/** P03 · Предложения */
+
+const isExpired = (o) => o.status === 'expired' || o.status === 'archived' || (o.status === 'published' && new Date(o.end_at) < new Date());
+
+export const offerBucket = (o) => {
+  if (isExpired(o)) return 'archive';
+  switch (o.status) {
+    case 'published':
+      return 'published';
+    case 'pending_review':
+      return 'pending';
+    case 'pending_partner_approval':
+      return 'waiting';
+    case 'draft':
+      return 'draft';
+    case 'rejected':
+      return 'rejected';
+    default:
+      return 'archive';
+  }
 };
 
-const selectClass = 'w-full bg-transparent border-b border-line focus:border-accent outline-none py-2.5 text-ink transition';
+const STATUS = {
+  published: { kind: 'ok', label: 'Опубликовано' },
+  pending: { kind: 'progress', label: 'На модерации' },
+  waiting: { kind: 'back', label: 'Ждёт вас' },
+  rejected: { kind: 'reject', label: 'Отклонён' },
+  draft: { kind: 'draft', label: 'Черновик' },
+  archive: { kind: 'archive', label: 'Истёк' },
+};
+
+const subline = (o) => {
+  const b = offerBucket(o);
+  const no = `№ ${pad6(o.id)}`;
+  if (b === 'published' || b === 'archive') return `${no} · до ${ddmmyy(o.end_at)}`;
+  if (b === 'waiting') return `${no} · правки админа`;
+  if (b === 'pending') return `${no} · отправлено ${ddmm(o.updated_at)}`;
+  if (b === 'rejected') return `${no} · ${o.rejection_reason || 'отклонено'}`;
+  return no;
+};
+
+const ActionCell = ({ o }) => {
+  const b = offerBucket(o);
+  const cls = 'font-mono font-bold text-[11px] tracking-[0.04em] uppercase';
+  if (b === 'waiting') return <SmallButton as={Link} to={`/merchant/offers/${o.id}/edits`}>Согласовать</SmallButton>;
+  if (b === 'pending') return <Link to={`/merchant/offers/${o.id}/edit`} className={`${cls} font-medium text-ink-faint hover:text-ink`}>Смотреть</Link>;
+  if (b === 'archive') return <Link to={`/merchant/offers/new?copy=${o.id}`} className={`${cls} font-medium text-ink-faint hover:text-ink`}>Повторить</Link>;
+  const label = b === 'rejected' ? 'Исправить' : b === 'draft' ? 'Продолжить' : 'Изменить';
+  return <Link to={`/merchant/offers/${o.id}/edit`} className={`${cls} text-ink hover:opacity-70`}>{label}</Link>;
+};
 
 const MerchantOffers = () => {
-  const [offers, setOffers] = useState([]);
-  const [companies, setCompanies] = useState([]);
-  const [hashtags, setHashtags] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState(null);
+  const { scope, companies, selected } = useOutletContext();
+  const navigate = useNavigate();
+  const [offers, setOffers] = useState(null);
   const [error, setError] = useState('');
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [selectedDiffOffer, setSelectedDiffOffer] = useState(null);
-
-  const fetchData = async () => {
-    try {
-      const [offersRes, companiesRes] = await Promise.all([
-        api.get('/merchant/offers'),
-        api.get('/merchant/companies'),
-      ]);
-      setOffers(offersRes.data || []);
-      setCompanies(companiesRes.data || []);
-    } catch (err) {
-      console.error('Failed to load data:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [tab, setTab] = useState('all');
+  const [query, setQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    setOffers(null);
+    api
+      .get('/merchant/cabinet/offers', { params: scope })
+      .then((r) => setOffers((r.data || []).sort((a, b) => b.id - a.id)))
+      .catch((e) => setError(e.response?.data?.error || 'Не удалось загрузить предложения'));
+  }, [scope.company_id]);
 
-  const resetForm = () => {
-    setForm(EMPTY_FORM);
-    setHashtags([]);
-    setEditingId(null);
-    setError('');
-  };
-
-  const toLocalDatetime = (iso) => {
-    if (!iso) return '';
-    const d = new Date(iso);
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  };
-
-  const handleEdit = (offer) => {
-    setForm({
-      company_id: String(offer.company_id || ''),
-      title: offer.title || '',
-      description: offer.description || '',
-      discount_type: offer.discount_type || 'percentage',
-      discount_value: offer.discount_value || 0,
-      base_price: offer.base_price || 1000,
-      start_at: toLocalDatetime(offer.start_at),
-      end_at: toLocalDatetime(offer.end_at),
-      bonus_allowed: !!offer.bonus_allowed,
-      max_bonus_percent: offer.max_bonus_percent || 0,
-      image_url: offer.image_url || '',
-      address: offer.address || '',
-      latitude: offer.latitude || null,
-      longitude: offer.longitude || null,
-      place_name: offer.place_name || '',
-      phone: offer.phone || '',
-      website: offer.website || '',
-      working_hours: offer.working_hours || '',
+  const counts = useMemo(() => {
+    const c = { all: 0, published: 0, pending: 0, waiting: 0, draft: 0, rejected: 0, archive: 0 };
+    (offers || []).forEach((o) => {
+      c.all += 1;
+      c[offerBucket(o)] += 1;
     });
-    setHashtags((offer.tags || []).map(t => t.name));
-    setEditingId(offer.id);
-    setShowForm(true);
-    setError('');
-  };
+    return c;
+  }, [offers]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
+  const rows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return (offers || []).filter(
+      (o) => (tab === 'all' || offerBucket(o) === tab) && (!q || o.title.toLowerCase().includes(q) || (o.company_name || '').toLowerCase().includes(q))
+    );
+  }, [offers, tab, query]);
 
-    const payload = {
-      company_id: parseInt(form.company_id),
-      title: form.title,
-      description: form.description,
-      discount_type: form.discount_type,
-      discount_value: parseFloat(form.discount_value),
-      base_price: parseFloat(form.base_price) || 0,
-      start_at: form.start_at ? new Date(form.start_at).toISOString() : '',
-      end_at: form.end_at ? new Date(form.end_at).toISOString() : '',
-      bonus_allowed: form.bonus_allowed,
-      max_bonus_percent: parseInt(form.max_bonus_percent || 0),
-      hashtags: hashtags,
-      image_url: form.image_url || undefined,
-      address: form.address || undefined,
-      latitude: form.latitude || undefined,
-      longitude: form.longitude || undefined,
-      place_name: form.place_name || undefined,
-      phone: form.phone || undefined,
-      website: form.website || undefined,
-      working_hours: form.working_hours || undefined,
-    };
+  if (error) return <ErrorLine>{error}</ErrorLine>;
+  if (!offers) return <Loading />;
 
-    try {
-      if (editingId) {
-        await api.put(`/merchant/offers/${editingId}`, payload);
-      } else {
-        await api.post('/merchant/offers', payload);
-      }
-      setShowForm(false);
-      resetForm();
-      fetchData();
-    } catch (err) {
-      setError('Ошибка: ' + (err.response?.data?.error || err.message));
-    }
-  };
-
-  const handleAcceptEdits = async (offerId) => {
-    if (!confirm('Согласовать правки администратора и опубликовать?')) return;
-    try {
-      await api.post(`/merchant/offers/${offerId}/accept-edits`);
-      setSelectedDiffOffer(null);
-      fetchData();
-    } catch (err) {
-      alert('Ошибка: ' + (err.response?.data?.error || err.message));
-    }
-  };
-
-  const handleRejectEdits = async (offerId) => {
-    const comment = window.prompt('Что именно вас не устроило? (комментарий увидит администратор):');
-    if (comment === null) return;
-    if (!comment.trim()) {
-      alert('Укажите причину');
-      return;
-    }
-    try {
-      await api.post(`/merchant/offers/${offerId}/reject-edits`, { comment });
-      setSelectedDiffOffer(null);
-      fetchData();
-    } catch (err) {
-      alert('Ошибка: ' + (err.response?.data?.error || err.message));
-    }
-  };
-
-  const handleSubmitForReview = async (offerId) => {
-    try {
-      await api.post(`/merchant/offers/${offerId}/submit`);
-      fetchData();
-    } catch (err) {
-      alert('Ошибка отправки на модерацию');
-    }
-  };
-
-  if (loading) return <RouteLoadingView label="Загрузка..." />;
+  const nCompanies = selected ? 1 : companies.length;
+  const tabs = [
+    { key: 'all', label: `Все · ${counts.all}` },
+    { key: 'published', label: `Опубликованные · ${counts.published}` },
+    { key: 'pending', label: `На модерации · ${counts.pending}` },
+    { key: 'waiting', label: `Ждут вас · ${counts.waiting}` },
+    { key: 'draft', label: `Черновики · ${counts.draft}` },
+    { key: 'rejected', label: `Отклонённые · ${counts.rejected}` },
+    { key: 'archive', label: counts.archive ? `Архив · ${counts.archive}` : 'Архив' },
+  ];
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
-        <PageTitle className="mb-0">Мои предложения</PageTitle>
-        <Button onClick={() => { resetForm(); setShowForm(true); }}>
-          Создать предложение
-        </Button>
+    <div className="flex flex-col gap-7">
+      <PageHead
+        title="Предложения"
+        subtitle={`${counts.all} ${plural(counts.all, 'предложение', 'предложения', 'предложений')} в ${nCompanies} ${plural(nCompanies, 'компании', 'компаниях', 'компаниях')}`}
+        right={<PrimaryButton onClick={() => navigate('/merchant/offers/new')}>+ Новое предложение</PrimaryButton>}
+      />
+
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <Tabs items={tabs} value={tab} onChange={setTab} />
+        {searchOpen ? (
+          <input
+            autoFocus
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onBlur={() => !query && setSearchOpen(false)}
+            placeholder="Название или компания"
+            className="w-56 border-b border-dashed border-ink bg-transparent outline-none font-mono text-[12px] tracking-[0.02em] pb-1"
+          />
+        ) : (
+          <button onClick={() => setSearchOpen(true)} className="font-mono font-medium text-[11px] tracking-[0.04em] uppercase text-ink">
+            Поиск ⌕
+          </button>
+        )}
       </div>
 
-      {showForm && (
-        <Card className="p-4 mb-6">
-          <Eyebrow className="mb-2">
-            {editingId ? `Редактировать предложение #${editingId}` : 'Новое предложение'}
-          </Eyebrow>
-          {editingId && (
-            <p className="text-sm text-accent mb-2">
-              При сохранении предложение уйдёт на повторную модерацию.
-            </p>
-          )}
-          {editingId && offers.find(o => o.id === editingId)?.rejection_reason && (
-            <div className="border border-danger/30 bg-danger/10 rounded-[var(--radius-sm)] p-3 text-sm text-danger mb-3">
-              <strong>Причина отклонения:</strong> {offers.find(o => o.id === editingId).rejection_reason}
-            </div>
-          )}
-          <ErrorText>{error}</ErrorText>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label className="mb-1">Компания</Label>
-              <select
-                value={form.company_id}
-                onChange={e => setForm({...form, company_id: e.target.value})}
-                className={selectClass}
-                required
-              >
-                <option value="">Выберите компанию</option>
-                {companies.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label className="mb-1">Название</Label>
-              <Input
-                type="text"
-                value={form.title}
-                onChange={e => setForm({...form, title: e.target.value})}
-                placeholder="Скидка 20% на кофе"
-                required
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Label className="mb-1">Описание</Label>
-              <Textarea
-                value={form.description}
-                onChange={e => setForm({...form, description: e.target.value})}
-                placeholder="На все напитки в меню"
-                rows="2"
-              />
-            </div>
+      <Table
+        columns={[
+          {
+            key: 'offer',
+            label: 'Предложение',
+            render: (o) => (
+              <div className="flex items-center gap-3 min-w-0">
+                <Photo src={o.image_url} className="w-10 h-10 shrink-0" />
+                <div className="min-w-0">
+                  <CellText>{o.title}</CellText>
+                  <div className="font-mono text-[11px] tracking-[0.02em] uppercase text-ink-soft truncate mt-[2px]">{subline(o)}</div>
+                </div>
+              </div>
+            ),
+          },
+          { key: 'company', label: 'Компания', width: 150, render: (o) => <CellText>{o.company_name}</CellText> },
+          { key: 'disc', label: 'Скидка', width: 90, render: (o) => <span className="text-ink-red text-[12px]">{discountLabel(o)}</span> },
+          { key: 'price', label: 'Цена', width: 100, render: (o) => <CellMono>{o.base_price > 0 ? rub(o.base_price) : '—'}</CellMono> },
+          { key: 'uses', label: 'Использ.', width: 110, render: (o) => <CellMono>{o.current_uses > 0 ? num(o.current_uses) : '—'}</CellMono> },
+          {
+            key: 'status',
+            label: 'Статус',
+            width: 150,
+            align: 'right',
+            render: (o) => {
+              const s = STATUS[offerBucket(o)];
+              return <StatusMark kind={s.kind}>{s.label}</StatusMark>;
+            },
+          },
+          { key: 'act', label: '', width: 110, render: (o) => <ActionCell o={o} /> },
+        ]}
+        rows={rows}
+        empty={counts.all === 0 ? 'Предложений пока нет — создайте первое.' : 'В этом разделе пусто.'}
+      />
 
-            <div className="md:col-span-2">
-              <ImageUpload
-                value={form.image_url}
-                onChange={(url) => setForm({ ...form, image_url: url })}
-                uploadEndpoint="/merchant/upload"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <LocationPicker
-                value={{
-                  latitude: form.latitude,
-                  longitude: form.longitude,
-                  place_name: form.place_name,
-                  address: form.address,
-                }}
-                onChange={(v) => setForm({
-                  ...form,
-                  latitude: v.latitude,
-                  longitude: v.longitude,
-                  place_name: v.place_name,
-                  address: v.address || form.address,
-                })}
-              />
-            </div>
-
-            <div>
-              <Label className="mb-1">Адрес</Label>
-              <Input
-                type="text"
-                value={form.address}
-                onChange={e => setForm({...form, address: e.target.value})}
-                placeholder="г. Москва, ул. Примерная, д. 1"
-              />
-              <p className="text-xs text-ink-faint mt-1">
-                Можно править вручную или установить точку на карте — адрес подтянется автоматически
-              </p>
-            </div>
-            <div>
-              <Label className="mb-1">Телефон</Label>
-              <Input
-                type="text"
-                value={form.phone}
-                onChange={e => setForm({...form, phone: e.target.value})}
-                placeholder="+7 (999) 123-45-67"
-              />
-            </div>
-            <div>
-              <Label className="mb-1">Сайт</Label>
-              <Input
-                type="text"
-                value={form.website}
-                onChange={e => setForm({...form, website: e.target.value})}
-                placeholder="example.com"
-              />
-            </div>
-            <div>
-              <Label className="mb-1">Часы работы</Label>
-              <Input
-                type="text"
-                value={form.working_hours}
-                onChange={e => setForm({...form, working_hours: e.target.value})}
-                placeholder="Пн–Пт 10:00–20:00"
-              />
-            </div>
-
-            <div>
-              <Label className="mb-1">Базовая цена (₽)</Label>
-              <Input
-                type="number"
-                value={form.base_price}
-                onChange={e => setForm({...form, base_price: parseFloat(e.target.value) || 0})}
-                placeholder="1000"
-                min="0"
-                step="1"
-                required
-              />
-              <p className="text-xs text-ink-faint mt-1">
-                Стоимость без скидки. Скидка применяется к этой цене.
-              </p>
-            </div>
-            <div>
-              <Label className="mb-1">Тип скидки</Label>
-              <select
-                value={form.discount_type}
-                onChange={e => setForm({...form, discount_type: e.target.value})}
-                className={selectClass}
-              >
-                <option value="percentage">Процент</option>
-                <option value="fixed">Фиксированная</option>
-              </select>
-            </div>
-            <div>
-              <Label className="mb-1">Значение</Label>
-              <Input
-                type="number"
-                value={form.discount_value}
-                onChange={e => setForm({...form, discount_value: parseFloat(e.target.value)})}
-                placeholder="20"
-                required
-              />
-            </div>
-            <div>
-              <Label className="mb-1">Начало</Label>
-              <Input
-                type="datetime-local"
-                value={form.start_at}
-                onChange={e => setForm({...form, start_at: e.target.value})}
-                required
-              />
-            </div>
-            <div>
-              <Label className="mb-1">Окончание</Label>
-              <Input
-                type="datetime-local"
-                value={form.end_at}
-                onChange={e => setForm({...form, end_at: e.target.value})}
-                required
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Label className="mb-0">Бонусы разрешены</Label>
-              <input
-                type="checkbox"
-                checked={form.bonus_allowed}
-                onChange={e => setForm({...form, bonus_allowed: e.target.checked})}
-                className="accent-[var(--color-accent)]"
-              />
-            </div>
-            <div>
-              <Label className="mb-1">Макс. % бонусов</Label>
-              <Input
-                type="number"
-                value={form.max_bonus_percent}
-                onChange={e => setForm({...form, max_bonus_percent: parseInt(e.target.value)})}
-                placeholder="20"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <Label className="mb-1">Хештеги</Label>
-              <HashtagInput value={hashtags} onChange={setHashtags} />
-              <p className="text-xs text-ink-faint mt-1">
-                Новые теги появятся в общем пуле после одобрения предложения модератором.
-              </p>
-            </div>
-
-            <div className="md:col-span-2 flex gap-2">
-              <Button type="submit">
-                {editingId ? 'Сохранить' : 'Создать'}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => { setShowForm(false); resetForm(); }}
-              >
-                Отмена
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
-
-      <Card className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-line">
-              <th className="p-2 text-left text-eyebrow">Название</th>
-              <th className="p-2 text-left text-eyebrow">Скидка</th>
-              <th className="p-2 text-left text-eyebrow">Статус</th>
-              <th className="p-2 text-left text-eyebrow">Причина</th>
-              <th className="p-2 text-left text-eyebrow">Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            {offers.map(o => (
-              <tr key={o.id} className="border-b border-line last:border-0">
-                <td className="p-2 text-ink">{o.title}</td>
-                <td className="p-2">
-                  <div className="text-xs text-ink-faint">{o.base_price} ₽</div>
-                  <div className="font-semibold text-danger">
-                    −{o.discount_value}{o.discount_type === 'percentage' ? '%' : ' ₽'}
-                  </div>
-                </td>
-                <td className="p-2">
-                  <Badge filled={o.status === 'published'}>{o.status}</Badge>
-                </td>
-                <td className="p-2 text-xs text-danger">
-                  {o.status === 'pending_partner_approval' ? (
-                    <span className="text-accent">
-                      Админ изменил оффер
-                      {o.admin_edit_comment && (
-                        <span className="block text-ink-soft mt-0.5">
-                          «{o.admin_edit_comment}»
-                        </span>
-                      )}
-                    </span>
-                  ) : (
-                    o.rejection_reason || '—'
-                  )}
-                </td>
-                <td className="p-2 space-x-2">
-                  {o.status === 'pending_partner_approval' && (
-                    <Button variant="ghost" onClick={() => setSelectedDiffOffer(o)} className="px-2 py-1 text-xs">
-                      Посмотреть правки
-                    </Button>
-                  )}
-                  {(o.status === 'draft' || o.status === 'published' || o.status === 'rejected') && (
-                    <Button variant="ghost" onClick={() => handleEdit(o)} className="px-2 py-1 text-xs">
-                      Редактировать
-                    </Button>
-                  )}
-                  {o.status === 'draft' && (
-                    <Button onClick={() => handleSubmitForReview(o.id)} className="px-2 py-1 text-xs">
-                      На модерацию
-                    </Button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
-      {selectedDiffOffer && (
-        <AdminEditDiffModal
-          offer={selectedDiffOffer}
-          onClose={() => setSelectedDiffOffer(null)}
-          onAccept={handleAcceptEdits}
-          onReject={handleRejectEdits}
-        />
-      )}
+      <div className="flex items-center gap-7 flex-wrap font-mono text-[10px] tracking-[0.04em] uppercase text-ink-soft">
+        <span>Обозначения:</span>
+        <span>● Опубликовано</span>
+        <span>◐ На модерации</span>
+        <span>↺ Ждёт вашего решения</span>
+        <span>✕ Отклонено</span>
+        <span>○ Черновик</span>
+        <span>▫ Истёк / архив</span>
+      </div>
     </div>
   );
 };

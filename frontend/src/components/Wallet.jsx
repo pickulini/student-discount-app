@@ -1,72 +1,231 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api/client';
-import { Card, Button, Input, PageTitle, Eyebrow, Caption } from '../design/UI';
+import { RouteLoadingView } from '../design/DottedPath';
+import { Tabs, Rule, Rule2, VRule, Leader, SectionLabel, PrimaryButton, Table, CellMono, CellText, num } from './merchant/kit';
+import { savedOf, isSpent, MONTHS_NOM } from '../utils/orders';
+
+/**
+ * D40 · Кошелёк: слева баланс, бонусы и пополнение через СБП,
+ * справа — операции за месяц с фильтром и итогами.
+ */
+
+const PRESETS = [300, 500, 1000, 2000];
+const MIN_TOPUP = 10;
+const MAX_TOPUP = 100000;
+
+const monthLabel = (ym) => {
+  const [y, m] = ym.split('-').map(Number);
+  return `${MONTHS_NOM[m - 1]} ${y}`;
+};
+const ddmm = (d) => new Date(d).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+const signed = (v, unit) => {
+  const s = v > 0 ? '+' : v < 0 ? '−' : '';
+  return `${s}${num(Math.abs(v))} ${unit === 'BONUS' ? 'Б' : '₽'}`;
+};
+
+const LinkRow = ({ to, title, sub }) => (
+  <Link to={to} className="flex gap-4 items-center group">
+    <span className="flex-1 min-w-0 flex flex-col gap-[3px]">
+      <span className="font-mono font-bold text-[12px] tracking-[0.04em] uppercase text-ink group-hover:text-accent transition">{title}</span>
+      <span className="text-[13px] leading-[19px] text-ink-soft">{sub}</span>
+    </span>
+    <span className="font-mono text-[13px] text-ink">→</span>
+  </Link>
+);
 
 const Wallet = () => {
-  const [balance, setBalance] = useState(0);
-  const [bonus, setBonus] = useState(0);
-  const [amount, setAmount] = useState(100);
-  const [loading, setLoading] = useState(false);
+  const [wallet, setWallet] = useState(null);
+  const [ops, setOps] = useState(null);
+  const [months, setMonths] = useState([]);
+  const [month, setMonth] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [preset, setPreset] = useState(500);
+  const [custom, setCustom] = useState('');
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-
-  const fetchWallet = async () => {
-    try {
-      const res = await api.get('/wallet');
-      setBalance(res.data.balance || 0);
-      setBonus(res.data.bonus || 0);
-    } catch (err) {
-      console.error('Failed to load wallet:', err);
-      setError('Не удалось загрузить кошелёк');
-    }
-  };
-
-  const handleDeposit = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await api.post('/payments/init', { amount });
-      // Редирект на страницу оплаты
-      window.location.href = res.data.payment_url;
-    } catch (err) {
-      setError('Ошибка инициализации платежа: ' + (err.response?.data?.error || err.message));
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [totalSaved, setTotalSaved] = useState(null);
 
   useEffect(() => {
-    fetchWallet();
+    api.get('/wallet').then((r) => setWallet(r.data)).catch(() => setWallet({ balance: 0, bonus: 0 }));
+    api
+      .get('/orders')
+      .then((r) => setTotalSaved((r.data || []).filter(isSpent).reduce((s, o) => s + savedOf(o), 0)))
+      .catch(() => setTotalSaved(0));
   }, []);
 
-  if (error) return <div className="text-danger text-center py-8">{error}</div>;
+  useEffect(() => {
+    setOps(null);
+    api
+      .get('/wallet/operations', { params: month ? { month } : {} })
+      .then((r) => {
+        setOps(r.data.operations || []);
+        setMonths(r.data.months?.length ? r.data.months : [r.data.month]);
+        if (!month) setMonth(r.data.month);
+      })
+      .catch(() => setOps([]));
+  }, [month]);
+
+  const amount = preset === 'custom' ? Math.floor(Number(String(custom).replace(/\s/g, '').replace(',', '.')) || 0) : preset;
+  const amountOk = amount >= MIN_TOPUP && amount <= MAX_TOPUP;
+
+  const topUp = async () => {
+    if (!amountOk) return setError(`Сумма от ${MIN_TOPUP} до ${num(MAX_TOPUP)} ₽`);
+    setBusy(true);
+    setError('');
+    try {
+      const r = await api.post('/payments/init', { amount });
+      window.location.href = r.data.payment_url;
+    } catch (e) {
+      setError(e.response?.data?.error || 'Не удалось начать оплату через СБП');
+      setBusy(false);
+    }
+  };
+
+  const visible = useMemo(() => {
+    const list = ops || [];
+    if (filter === 'topup') return list.filter((o) => o.kind === 'topup');
+    if (filter === 'orders') return list.filter((o) => o.kind === 'order' || o.kind === 'refund');
+    if (filter === 'bonus') return list.filter((o) => o.unit === 'BONUS');
+    return list;
+  }, [ops, filter]);
+
+  const totals = useMemo(() => {
+    const list = ops || [];
+    const rub = list.filter((o) => o.unit === 'RUB');
+    const bon = list.filter((o) => o.unit === 'BONUS');
+    return {
+      in: rub.filter((o) => o.kind === 'topup').reduce((s, o) => s + o.amount, 0),
+      // Потрачено — заказы минус возвраты по ним.
+      out: rub.filter((o) => o.kind !== 'topup').reduce((s, o) => s + o.amount, 0),
+      bonusIn: bon.filter((o) => o.amount > 0).reduce((s, o) => s + o.amount, 0),
+      bonusOut: bon.filter((o) => o.amount < 0).reduce((s, o) => s + o.amount, 0),
+    };
+  }, [ops]);
+
+  if (!wallet) return <RouteLoadingView label="Открываем кошелёк..." />;
+
+  const columns = [
+    { key: 'date', label: 'Дата', width: 90, render: (o) => <CellMono>{ddmm(o.created_at)}</CellMono> },
+    {
+      key: 'title',
+      label: 'Операция',
+      render: (o) =>
+        o.order_id ? (
+          <Link to={`/orders/${o.order_id}`} className="hover:text-accent">
+            <CellText>{o.title}</CellText>
+          </Link>
+        ) : (
+          <CellText>{o.title}</CellText>
+        ),
+    },
+    { key: 'method', label: 'Способ', width: 150, render: (o) => <CellMono>{o.method}</CellMono> },
+    { key: 'amount', label: 'Сумма', width: 120, align: 'right', render: (o) => <CellMono>{signed(o.amount, o.unit)}</CellMono> },
+  ];
+
+  const monthIdx = months.indexOf(month);
 
   return (
-    <Card className="max-w-md mx-auto p-6">
-      <PageTitle className="mb-4">Кошелёк</PageTitle>
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        <div className="bg-surface-2 border border-line p-3 rounded-[var(--radius-sm)] text-center">
-          <div className="text-editorial text-2xl text-ink">{balance} ₽</div>
-          <Eyebrow className="mt-1">Денежный баланс</Eyebrow>
+    <div className="flex flex-col lg:flex-row gap-10 lg:gap-14 items-start">
+      <div className="w-full lg:w-[420px] shrink-0 flex flex-col gap-6">
+        <h1 className="font-display font-bold text-[36px] leading-none tracking-[-0.02em] text-ink">КОШЕЛЁК</h1>
+        <div className="font-mono font-medium text-[11px] tracking-[0.08em] uppercase text-ink-soft">Денежный баланс</div>
+        <div className="font-display font-bold text-[44px] sm:text-[56px] leading-none tracking-[-0.03em] text-ink whitespace-nowrap">
+          {num(wallet.balance)} ₽
         </div>
-        <div className="bg-surface-2 border border-line p-3 rounded-[var(--radius-sm)] text-center">
-          <div className="text-editorial text-2xl text-accent">{bonus}</div>
-          <Eyebrow className="mt-1">Бонусные баллы</Eyebrow>
+        <Leader label="Бонусные баллы" value={<b>{num(wallet.bonus)} Б</b>} />
+        <p className="text-[14px] leading-[21px] text-ink-soft">1 балл = 1 ₽. Бонусами можно оплатить часть заказа — лимит указан в каждом предложении.</p>
+        <Rule2 />
+        <div className="flex items-center justify-between font-mono text-[11px] whitespace-nowrap">
+          <span className="font-medium tracking-[0.08em] uppercase text-ink">Пополнить</span>
+          <span className="tracking-[0.04em] text-ink-soft">ЧЕРЕЗ СБП</span>
         </div>
-      </div>
-      <div className="flex gap-2">
-        <Input
-          type="number"
-          value={amount}
-          onChange={e => setAmount(Number(e.target.value))}
-          className="w-24"
-          min="1"
+        <Tabs
+          value={preset}
+          onChange={(v) => {
+            setPreset(v);
+            setError('');
+          }}
+          items={[...PRESETS.map((p) => ({ key: p, label: num(p) })), { key: 'custom', label: 'Другая' }]}
         />
-        <Button onClick={handleDeposit} disabled={loading}>
-          {loading ? 'Обработка...' : 'Пополнить'}
-        </Button>
+        <label className="flex flex-col gap-2">
+          <span className="font-mono font-medium text-[11px] tracking-[0.06em] text-ink-soft">СУММА</span>
+          {preset === 'custom' ? (
+            <span className="flex items-baseline gap-2 border-b border-ink pb-[10px]">
+              <input
+                autoFocus
+                inputMode="numeric"
+                value={custom}
+                onChange={(e) => setCustom(e.target.value.replace(/[^\d]/g, ''))}
+                placeholder="0"
+                className="flex-1 min-w-0 bg-transparent outline-none font-display font-bold text-[28px] text-ink placeholder:text-ink-faint"
+              />
+              <span className="font-display font-bold text-[28px] text-ink">₽</span>
+            </span>
+          ) : (
+            <span className="border-b border-ink pb-[10px] font-display font-bold text-[28px] text-ink">{num(amount)} ₽</span>
+          )}
+        </label>
+        {error && <div className="font-mono text-[12px] text-accent uppercase -mt-2">{error}</div>}
+        <PrimaryButton className="w-full" onClick={topUp} disabled={busy || !amountOk}>
+          {busy ? 'Переходим к оплате…' : `Пополнить на ${num(amount)} ₽`}
+        </PrimaryButton>
+        <Rule />
+        <div className="flex flex-col gap-[14px]">
+          <LinkRow to="/savings" title="Журнал экономии" sub={totalSaved === null ? '…' : `${num(totalSaved)} ₽ за всё время`} />
+          <LinkRow to="/referral" title="Пригласить друзей" sub="+100 бонусов за каждого" />
+        </div>
       </div>
-      <Caption className="mt-3">* Пополнение через СБП (эмуляция)</Caption>
-    </Card>
+
+      <VRule className="hidden lg:block" />
+
+      <div className="flex-1 min-w-0 w-full flex flex-col gap-6">
+        <SectionLabel>Операции</SectionLabel>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <Tabs
+            value={filter}
+            onChange={setFilter}
+            items={[
+              { key: 'all', label: 'Все' },
+              { key: 'topup', label: 'Пополнения' },
+              { key: 'orders', label: 'Заказы' },
+              { key: 'bonus', label: 'Бонусы' },
+            ]}
+          />
+          {month && (
+            <div className="flex items-center gap-3 font-mono font-medium text-[11px] tracking-[0.04em] uppercase text-ink whitespace-nowrap">
+              <button
+                onClick={() => setMonth(months[monthIdx + 1])}
+                disabled={monthIdx < 0 || monthIdx >= months.length - 1}
+                className="px-1 hover:text-accent disabled:opacity-30"
+                aria-label="Предыдущий месяц"
+              >
+                ←
+              </button>
+              <span>{monthLabel(month)}</span>
+              <button onClick={() => setMonth(months[monthIdx - 1])} disabled={monthIdx <= 0} className="px-1 hover:text-accent disabled:opacity-30" aria-label="Следующий месяц">
+                →
+              </button>
+            </div>
+          )}
+        </div>
+        {ops === null ? (
+          <div className="font-mono text-[12px] text-ink-soft uppercase">Загружаем операции…</div>
+        ) : (
+          <Table columns={columns} rows={visible} rowKey="__none" minWidth={560} empty="В этом месяце операций не было." />
+        )}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-10 pt-[6px]">
+          <div className="flex-1 min-w-0 flex flex-col gap-2">
+            <Leader label="Пополнено" value={signed(totals.in, 'RUB')} />
+            <Leader label="Потрачено" value={signed(totals.out, 'RUB')} />
+          </div>
+          <div className="flex-1 min-w-0 flex flex-col gap-2">
+            <Leader label="Бонусов получено" value={signed(totals.bonusIn, 'BONUS')} />
+            <Leader label="Бонусов списано" value={signed(totals.bonusOut, 'BONUS')} />
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
