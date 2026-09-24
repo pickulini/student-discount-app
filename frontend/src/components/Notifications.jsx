@@ -214,7 +214,7 @@ const Notifications = () => {
         <div className="flex items-center gap-4 overflow-x-auto no-scrollbar -mx-5 px-5">
           {[{ key: 'all', label: unreadBy.all ? `Все · ${unreadBy.all}` : 'Все' }, ...CATS].map((c) =>
             c.key === cat ? (
-              <span key={c.key} className="shrink-0 bg-ink text-white font-mono font-bold text-[12px] tracking-[0.04em] uppercase px-[6px] py-[2px] whitespace-nowrap">
+              <span key={c.key} className="shrink-0 bg-ink text-on-ink font-mono font-bold text-[12px] tracking-[0.04em] uppercase px-[6px] py-[2px] whitespace-nowrap">
                 {c.label}
               </span>
             ) : (

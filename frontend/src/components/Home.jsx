@@ -185,7 +185,7 @@ const Home = () => {
       <div className="flex gap-4 items-start overflow-x-auto no-scrollbar -mx-5 px-5">
         {[{ slug: '', name: 'все' }, ...categories].map((c) =>
           (tag || '') === c.slug ? (
-            <span key={c.slug || 'all'} className="bg-ink text-white font-mono font-bold text-[12px] tracking-[0.04em] uppercase px-[6px] py-[2px] whitespace-nowrap">
+            <span key={c.slug || 'all'} className="bg-ink text-on-ink font-mono font-bold text-[12px] tracking-[0.04em] uppercase px-[6px] py-[2px] whitespace-nowrap">
               #{c.name}
             </span>
           ) : (
@@ -369,7 +369,7 @@ const Home = () => {
                         ['new', 'Новые'],
                       ].map(([k, l]) =>
                         k === sort ? (
-                          <span key={k} className="bg-ink text-white font-mono font-bold text-[12px] tracking-[0.04em] uppercase px-[6px] py-[2px]">{l}</span>
+                          <span key={k} className="bg-ink text-on-ink font-mono font-bold text-[12px] tracking-[0.04em] uppercase px-[6px] py-[2px]">{l}</span>
                         ) : (
                           <button
                             key={k}

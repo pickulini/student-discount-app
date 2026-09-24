@@ -70,7 +70,7 @@ const AdminLayout = () => {
             <Link to="/admin" className="font-display font-bold text-[20px] tracking-[-0.02em] text-ink whitespace-nowrap">
               СТУДЕНТ−%
             </Link>
-            <span className="bg-ink text-white font-mono font-bold text-[11px] tracking-[0.06em] px-2 py-[3px] whitespace-nowrap">АДМИН-ПАНЕЛЬ</span>
+            <span className="bg-ink text-on-ink font-mono font-bold text-[11px] tracking-[0.06em] px-2 py-[3px] whitespace-nowrap">АДМИН-ПАНЕЛЬ</span>
           </div>
           <div className="flex items-center gap-6">
             <span className="hidden md:inline font-mono font-medium text-[11px] tracking-[0.04em] text-ink whitespace-nowrap">
@@ -105,7 +105,7 @@ const AdminLayout = () => {
                 >
                   <span>{item.label}</span>
                   {item.badge && c[item.badge] > 0 && (
-                    <span className="bg-ink text-white font-mono font-bold text-[10px] px-[6px] py-px">{c[item.badge] > 99 ? '99+' : c[item.badge]}</span>
+                    <span className="bg-ink text-on-ink font-mono font-bold text-[10px] px-[6px] py-px">{c[item.badge] > 99 ? '99+' : c[item.badge]}</span>
                   )}
                 </NavLink>
               ))}

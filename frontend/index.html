@@ -1,10 +1,21 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Студент−%</title>
+    <meta name="theme-color" content="#ffffff" />
+    <!-- Тема ставится до загрузки приложения, чтобы тёмная не мигала белым. Логика та же, что в utils/theme.js. -->
+    <script>
+      (function () {
+        var t = 'auto';
+        try { t = localStorage.getItem('theme') || 'auto'; } catch (e) {}
+        if (t !== 'light' && t !== 'dark') t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.dataset.theme = t;
+        document.querySelector('meta[name="theme-color"]').content = t === 'dark' ? '#17140f' : '#ffffff';
+      })();
+    </script>
 
     <!-- Editorial-гарнитура: Unbounded для крупных заголовков (жирный,
          геометричный, с характером), Manrope для основного текста,

@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* dark: следует за data-theme на <html> (его ставит utils/theme.js), а не за системной настройкой напрямую. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 /*
  * «Студент−%» — визуальный язык кассового чека (см. Figma: Концепция «Чек»,
  * страница «00 · Основы»). Белая бумага, чёрная краска, никаких рамок,
@@ -26,6 +29,10 @@
 
   --color-danger: #d12b1f;
 
+  /* Текст на чёрной плашке (кнопки, активные вкладки) и бумага чека. */
+  --color-on-ink: #ffffff;
+  --color-paper: #ffffff;
+
   /* «Стол», на котором лежит чек, и вторичный текст на чёрной плашке. */
   --color-desk: #ededea;
   --color-plate-soft: #cfcfcf;
@@ -44,6 +51,45 @@
 
 html {
   color-scheme: light;
+}
+
+/*
+ * Тёмная тема «B · тёплая тьма» (Figma: 01/02/03 · B тёплая тьма):
+ * фон — тёплый почти-чёрный, цвет старой бумаги ушёл в текст и линии.
+ * Кнопки и плашки инвертируются: кремовая заливка, тёмный текст.
+ */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: #17140f;
+  --color-surface: #17140f;
+  --color-surface-2: #221d16;
+  --color-ink: #ece1c8;
+  --color-ink-soft: #a69679;
+  --color-ink-faint: #6f6452;
+  --color-line: #4b4335;
+  --color-line-dotted: #4b4335;
+  --color-accent: #f2674f;
+  --color-accent-ink: #17140f;
+  --color-danger: #f2674f;
+  --color-desk: #0e0c09;
+  --color-plate-soft: #4b4335;
+  --color-on-ink: #17140f;
+  --color-paper: #e2d5b7;
+}
+
+/* Чек заказа в тёмной теме остаётся бумажным: своя палитра внутри «бумаги». */
+[data-theme="dark"] .paper {
+  --color-bg: #e2d5b7;
+  --color-surface: #e2d5b7;
+  --color-surface-2: #d6c8a7;
+  --color-ink: #2b2118;
+  --color-ink-soft: #6e5f4a;
+  --color-ink-faint: #9f8e72;
+  --color-line: #b3a284;
+  --color-accent: #b53222;
+  --color-on-ink: #e2d5b7;
+  --color-plate-soft: #b3a284;
+  color: var(--color-ink);
 }
 
 body {
@@ -146,9 +192,14 @@ body {
 .tear-edge {
   height: 6px;
   width: 100%;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='6' viewBox='0 0 12 6'%3E%3Cpath d='M0 5.5 L6 0.5 L12 5.5' fill='none' stroke='%23BDBDBD' stroke-width='1.2'/%3E%3C/svg%3E");
-  background-size: 12px 6px;
-  background-repeat: repeat-x;
+  /* Цвет берём из токена линии, форму зубцов — из маски: так зубцы работают в обеих темах. */
+  background-color: var(--color-line);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='6' viewBox='0 0 12 6'%3E%3Cpath d='M0 5.5 L6 0.5 L12 5.5' fill='none' stroke='%23000' stroke-width='1.2'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='6' viewBox='0 0 12 6'%3E%3Cpath d='M0 5.5 L6 0.5 L12 5.5' fill='none' stroke='%23000' stroke-width='1.2'/%3E%3C/svg%3E");
+  -webkit-mask-size: 12px 6px;
+  mask-size: 12px 6px;
+  -webkit-mask-repeat: repeat-x;
+  mask-repeat: repeat-x;
 }
 
 /* Нижний край бумажного чека на «столе»: белые зубцы. */
@@ -156,8 +207,8 @@ body {
   height: 7px;
   width: 100%;
   background-image:
-    linear-gradient(135deg, #ffffff 50%, transparent 50%),
-    linear-gradient(225deg, #ffffff 50%, transparent 50%);
+    linear-gradient(135deg, var(--color-paper) 50%, transparent 50%),
+    linear-gradient(225deg, var(--color-paper) 50%, transparent 50%);
   background-size: 14px 14px;
   background-position: 0 -7px, 0 -7px;
   background-repeat: repeat-x;

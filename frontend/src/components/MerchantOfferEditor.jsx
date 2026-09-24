@@ -405,7 +405,7 @@ const MerchantOfferEditor = () => {
                 className="relative"
               >
                 <Photo src={g} className="w-16 h-10" />
-                <span className="absolute -top-2 -right-2 bg-ink text-white font-mono text-[10px] w-4 h-4 leading-4">×</span>
+                <span className="absolute -top-2 -right-2 bg-ink text-on-ink font-mono text-[10px] w-4 h-4 leading-4">×</span>
               </button>
             ))}
             {form.gallery.length < 4 && (

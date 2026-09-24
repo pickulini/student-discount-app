@@ -219,7 +219,7 @@ const Thread = ({ id, onChanged }) => {
         <button
           type="submit"
           disabled={busy || !text.trim()}
-          className="bg-ink text-white font-mono font-bold text-[11px] tracking-[0.04em] uppercase px-[10px] py-[6px] disabled:opacity-40"
+          className="bg-ink text-on-ink font-mono font-bold text-[11px] tracking-[0.04em] uppercase px-[10px] py-[6px] disabled:opacity-40"
         >
           {busy ? '…' : 'Отправить'}
         </button>

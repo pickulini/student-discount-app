@@ -20,7 +20,7 @@ const Receipt = ({ result, redeemed }) => {
   if (!o) {
     return (
       <div className="bg-desk p-7">
-        <div className="bg-white px-6 pt-6 pb-5 flex flex-col items-center gap-3 min-h-[260px] justify-center">
+        <div className="paper bg-paper px-6 pt-6 pb-5 flex flex-col items-center gap-3 min-h-[260px] justify-center">
           <div className="font-mono text-[11px] tracking-[0.04em] text-ink-soft">ЗАКАЗ № ——————</div>
           <div className="font-display font-bold text-[22px] text-ink-faint">ВВЕДИТЕ КОД</div>
           <div className="font-mono text-[11px] tracking-[0.04em] text-ink-soft text-center">
@@ -45,7 +45,7 @@ const Receipt = ({ result, redeemed }) => {
   const pct = o.discount_type === 'percentage' ? ` ${Number(o.discount_value)}%` : '';
   return (
     <div className="bg-desk p-7">
-      <div className="bg-white px-6 pt-6 pb-5 flex flex-col items-center gap-3">
+      <div className="paper bg-paper px-6 pt-6 pb-5 flex flex-col items-center gap-3">
         <div className="font-mono text-[11px] tracking-[0.04em] text-ink-soft">ЗАКАЗ № {pad6(o.id)}</div>
         <div className={`font-display font-bold text-[22px] tracking-[-0.01em] ${status.startsWith('✕') ? 'text-accent' : 'text-ink'}`}>
           {status}

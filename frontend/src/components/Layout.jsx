@@ -194,7 +194,7 @@ const LayoutInner = () => {
                 <Link to="/login" className="font-mono font-medium text-[11px] tracking-[0.06em] uppercase text-ink-soft hover:text-ink">
                   Вход
                 </Link>
-                <Link to="/register" className="bg-ink text-white font-mono font-bold text-[11px] tracking-[0.04em] uppercase px-[10px] py-[6px] hover:bg-ink/85">
+                <Link to="/register" className="bg-ink text-on-ink font-mono font-bold text-[11px] tracking-[0.04em] uppercase px-[10px] py-[6px] hover:bg-ink/85">
                   Регистрация
                 </Link>
               </div>

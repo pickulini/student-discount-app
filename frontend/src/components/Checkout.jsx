@@ -138,7 +138,7 @@ const Checkout = () => {
               <div className="mt-3 flex items-center gap-4 flex-wrap">
                 {steps.map((v) =>
                   v === bonus ? (
-                    <span key={v} className="bg-ink text-white font-mono font-bold text-[12px] tracking-[0.04em] uppercase px-[6px] py-[2px]">
+                    <span key={v} className="bg-ink text-on-ink font-mono font-bold text-[12px] tracking-[0.04em] uppercase px-[6px] py-[2px]">
                       {v === calc.maxBonus && v > 0 ? `${v} · макс` : v}
                     </span>
                   ) : (

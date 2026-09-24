@@ -210,7 +210,7 @@ const EventDetail = () => {
             <AlertBlock title={error.title}>
               {error.text}{' '}
               {error.wallet && (
-                <Link to="/wallet" className="underline text-white">
+                <Link to="/wallet" className="underline text-on-ink">
                   В кошелёк
                 </Link>
               )}
@@ -311,7 +311,7 @@ const EventDetail = () => {
                 <AlertBlock title={error.title}>
                   {error.text}{' '}
                   {error.wallet && (
-                    <Link to="/wallet" className="underline text-white">
+                    <Link to="/wallet" className="underline text-on-ink">
                       В кошелёк
                     </Link>
                   )}

@@ -13,7 +13,7 @@ const base =
 export const Button = ({ variant = 'primary', className = '', children, ...props }) => {
   const variants = {
     // Главное действие — чёрная плашка, как инверсная печать на кассе.
-    primary: 'bg-ink text-white hover:bg-ink/85',
+    primary: 'bg-ink text-on-ink hover:bg-ink/85',
     ghost: 'bg-transparent text-ink border border-ink hover:bg-surface-2',
     danger: 'bg-transparent text-accent hover:bg-accent/5',
     // Второстепенное действие — текст в скобках, без плашки.
@@ -72,7 +72,7 @@ export const Badge = ({ children, filled = false, danger = false, className = ''
   <span
     className={`inline-flex items-center gap-1 px-2 py-1 text-[11px] font-mono uppercase tracking-[0.04em] ${
       filled
-        ? 'bg-ink text-white'
+        ? 'bg-ink text-on-ink'
         : danger
         ? 'text-accent border border-accent/40'
         : 'text-ink-soft border border-line'

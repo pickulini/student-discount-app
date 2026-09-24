@@ -123,7 +123,7 @@ const OrderReceipt = () => {
       </div>
 
       <div className="w-full max-w-[440px] mx-auto lg:mx-0 shrink-0">
-        <div className="bg-white px-5 md:px-7 pt-7 pb-6 flex flex-col gap-[14px] text-center">
+        <div className="paper bg-paper px-5 md:px-7 pt-7 pb-6 flex flex-col gap-[14px] text-center">
           <div className="font-display font-bold text-[18px] text-ink">СТУДЕНТ−%</div>
           <div className="font-mono text-[11px] tracking-[0.04em] text-ink-soft">КАССОВЫЙ ЧЕК № {pad6(order.id)}</div>
           <div className="font-mono text-[11px] tracking-[0.04em] text-ink-soft">

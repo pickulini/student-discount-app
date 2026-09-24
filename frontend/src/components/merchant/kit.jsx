@@ -86,7 +86,7 @@ export const VRule = ({ className = '' }) => <div className={`w-px self-stretch 
 
 export const PrimaryButton = ({ as: As = 'button', className = '', children, ...props }) => (
   <As
-    className={`inline-flex items-center justify-center bg-ink text-white font-mono font-bold text-[12px] tracking-[0.06em] uppercase px-[22px] py-[14px] hover:bg-ink/85 transition disabled:opacity-40 disabled:pointer-events-none ${className}`}
+    className={`inline-flex items-center justify-center bg-ink text-on-ink font-mono font-bold text-[12px] tracking-[0.06em] uppercase px-[22px] py-[14px] hover:bg-ink/85 transition disabled:opacity-40 disabled:pointer-events-none ${className}`}
     {...props}
   >
     {children}
@@ -95,7 +95,7 @@ export const PrimaryButton = ({ as: As = 'button', className = '', children, ...
 
 export const SmallButton = ({ as: As = 'button', className = '', children, ...props }) => (
   <As
-    className={`inline-flex items-center bg-ink text-white font-mono font-bold text-[11px] tracking-[0.04em] uppercase px-[10px] py-[6px] hover:bg-ink/85 transition disabled:opacity-40 ${className}`}
+    className={`inline-flex items-center bg-ink text-on-ink font-mono font-bold text-[11px] tracking-[0.04em] uppercase px-[10px] py-[6px] hover:bg-ink/85 transition disabled:opacity-40 ${className}`}
     {...props}
   >
     {children}
@@ -124,7 +124,7 @@ export const Tabs = ({ items, value, onChange, className = '' }) => (
   <div className={`flex items-center gap-4 flex-wrap ${className}`}>
     {items.map((it) =>
       it.key === value ? (
-        <span key={it.key} className="bg-ink text-white font-mono font-bold text-[12px] tracking-[0.04em] uppercase px-[6px] py-[2px]">
+        <span key={it.key} className="bg-ink text-on-ink font-mono font-bold text-[12px] tracking-[0.04em] uppercase px-[6px] py-[2px]">
           {it.label}
         </span>
       ) : (
@@ -151,7 +151,7 @@ export const Segmented = ({ items, value, onChange, dense = false, className = '
         title={it.title}
         onClick={() => onChange(it.key)}
         className={`px-[8px] ${dense ? 'py-[3px]' : 'py-[4px]'} font-mono text-[11px] tracking-[0.03em] uppercase whitespace-nowrap transition disabled:opacity-40 disabled:pointer-events-none ${
-          it.key === value ? 'bg-ink text-white font-bold' : 'text-ink-soft hover:text-ink'
+          it.key === value ? 'bg-ink text-on-ink font-bold' : 'text-ink-soft hover:text-ink'
         }`}
       >
         {it.label}
@@ -304,7 +304,7 @@ export const StatusMark = ({ kind, children, className = '' }) => {
 /** Чёрная плашка-предупреждение (касса). */
 export const AlertBlock = ({ title, children, className = '' }) => (
   <div className={`bg-ink px-4 py-[14px] flex flex-col gap-1 ${className}`}>
-    <div className="font-mono font-bold text-[12px] tracking-[0.04em] uppercase text-white">! {title}</div>
+    <div className="font-mono font-bold text-[12px] tracking-[0.04em] uppercase text-on-ink">! {title}</div>
     {children && <div className="text-[14px] leading-[20px] text-plate-soft">{children}</div>}
   </div>
 );

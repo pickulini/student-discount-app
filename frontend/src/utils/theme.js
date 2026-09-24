@@ -18,7 +18,11 @@ const media = () => (typeof window !== 'undefined' && window.matchMedia ? window
 export const resolveTheme = (pref = getThemePref()) => (pref === 'auto' ? (media()?.matches ? 'dark' : 'light') : pref);
 
 export const applyTheme = (pref = getThemePref()) => {
-  document.documentElement.dataset.theme = resolveTheme(pref);
+  const theme = resolveTheme(pref);
+  document.documentElement.dataset.theme = theme;
+  // Цвет строки состояния браузера на телефоне — под фон темы.
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = theme === 'dark' ? '#17140f' : '#ffffff';
 };
 
 export const setThemePref = (pref) => {

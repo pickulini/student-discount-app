@@ -25,12 +25,12 @@ const MiniMap = ({ offer, me, h = 'h-[200px]' }) => {
       : yandexMapUrl(target.lat, target.lng)
     : yandexSearchUrl(offer.address);
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className={`relative block w-full ${h} bg-desk overflow-hidden group`}>
-      <svg viewBox="0 0 395 200" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
+    <a href={href} target="_blank" rel="noopener noreferrer" className={`relative block w-full ${h} bg-desk dark:bg-surface-2 overflow-hidden group`}>
+      <svg viewBox="0 0 395 200" preserveAspectRatio="none" className="absolute inset-0 w-full h-full text-ink">
         <path
           d="M30 170 C 90 165, 140 120, 175 105 S 230 85, 260 92 S 330 60, 397 40"
           fill="none"
-          stroke="#121212"
+          stroke="currentColor"
           strokeWidth="1.2"
           strokeDasharray="4 4"
           vectorEffect="non-scaling-stroke"

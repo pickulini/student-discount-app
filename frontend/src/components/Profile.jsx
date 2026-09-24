@@ -322,7 +322,7 @@ const Profile = () => {
                           {isPaid ? (
                             <Link to={`/orders/${o.id}`} className="btn-bracket">Показать чек</Link>
                           ) : (
-                            <Link to={`/orders/${o.id}`} className="inline-block bg-ink text-white px-[10px] py-[6px] text-[11px] font-mono font-bold uppercase tracking-[0.04em]">
+                            <Link to={`/orders/${o.id}`} className="inline-block bg-ink text-on-ink px-[10px] py-[6px] text-[11px] font-mono font-bold uppercase tracking-[0.04em]">
                               Оплатить
                             </Link>
                           )}

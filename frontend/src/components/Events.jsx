@@ -275,7 +275,7 @@ const Events = () => {
               <button
                 key={dayKey(d)}
                 onClick={() => setSelected(d)}
-                className={`shrink-0 w-[50px] flex flex-col items-center gap-[2px] py-2 ${active ? 'bg-ink text-white' : ''}`}
+                className={`shrink-0 w-[50px] flex flex-col items-center gap-[2px] py-2 ${active ? 'bg-ink text-on-ink' : ''}`}
               >
                 <span className={`font-mono text-[10px] tracking-[0.04em] ${active ? '' : 'text-ink-soft'}`}>{WEEKDAYS_SHORT[d.getDay()]}</span>
                 <span className="font-display font-bold text-[20px] leading-tight">{d.getDate()}</span>
@@ -292,7 +292,7 @@ const Events = () => {
               <button
                 key={dayKey(d)}
                 onClick={() => setSelected(d)}
-                className={`shrink-0 flex flex-col items-center gap-[2px] px-[10px] py-2 transition ${active ? 'bg-ink text-white' : 'hover:bg-surface-2'}`}
+                className={`shrink-0 flex flex-col items-center gap-[2px] px-[10px] py-2 transition ${active ? 'bg-ink text-on-ink' : 'hover:bg-surface-2'}`}
               >
                 <span className={`font-mono text-[10px] tracking-[0.04em] ${active ? '' : 'text-ink-soft'}`}>{WEEKDAYS_SHORT[d.getDay()]}</span>
                 <span className={`font-display font-bold text-[20px] leading-tight ${active ? '' : 'text-ink'}`}>{d.getDate()}</span>
