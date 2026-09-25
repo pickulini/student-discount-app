@@ -47,3 +47,4 @@ uploads/
 # Production env
 .env.prod
 .env.production
+.stage/

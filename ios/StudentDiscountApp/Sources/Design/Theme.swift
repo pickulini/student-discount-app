@@ -1,88 +1,153 @@
 import SwiftUI
+import UIKit
 
-/// Единая дизайн-система приложения: тёмный, редакторский, urban discovery —
-/// НЕ маркетплейс. 95% оттенков серого / 5% акцентного лайма.
-enum Theme {
+/*
+ * «Студент−%» — визуальный язык кассового чека (Figma «Концепция «Чек»»).
+ * Белая бумага, чёрная краска, никаких рамок, теней и скруглений:
+ * структуру держат пунктир, двойная черта и строки с отточием.
+ * Красный — «вторая краска принтера», 1–2 места на экран.
+ *
+ * Тёмная тема — «B · тёплая тьма»: тёплый почти-чёрный фон, кремовые текст
+ * и линии. Чек заказа в тёмной теме остаётся бумажным (Palette.paper).
+ */
 
-    enum Colors {
-        static let background = Color(hex: "121316")
-        static let surface = Color(hex: "1B1C1F")
-        static let surfaceSecondary = Color(hex: "222327")
+// MARK: - Палитра
 
-        static let textPrimary = Color(hex: "F2F2F2")
-        static let textSecondary = Color(hex: "8A8A8A")
-        static let textMuted = Color(hex: "5C5C5C")
+struct Palette {
+    let bg: Color
+    let surface2: Color
+    let ink: Color
+    let inkSoft: Color
+    let inkFaint: Color
+    let line: Color
+    let accent: Color
+    let onInk: Color
+    let desk: Color
+    let plateSoft: Color
+    let accentInk: Color
 
-        static let divider = Color(hex: "292929")
+    static let light = Palette(
+        bg: Color(hex: 0xFFFFFF), surface2: Color(hex: 0xF4F4F4),
+        ink: Color(hex: 0x121212), inkSoft: Color(hex: 0x6B6B6B), inkFaint: Color(hex: 0xA8A8A8),
+        line: Color(hex: 0xBDBDBD), accent: Color(hex: 0xD12B1F), onInk: Color(hex: 0xFFFFFF),
+        desk: Color(hex: 0xEDEDEA), plateSoft: Color(hex: 0xCFCFCF), accentInk: Color(hex: 0xFFFFFF))
 
-        /// Лаймовый акцент — используется точечно: CTA, ключевые цифры,
-        /// активные состояния. Никогда не заливать весь интерфейс.
-        static let accent = Color(hex: "D7FF3F")
-    }
+    static let dark = Palette(
+        bg: Color(hex: 0x17140F), surface2: Color(hex: 0x221D16),
+        ink: Color(hex: 0xECE1C8), inkSoft: Color(hex: 0xA69679), inkFaint: Color(hex: 0x6F6452),
+        line: Color(hex: 0x4B4335), accent: Color(hex: 0xF2674F), onInk: Color(hex: 0x17140F),
+        desk: Color(hex: 0x0E0C09), plateSoft: Color(hex: 0x4B4335), accentInk: Color(hex: 0x17140F))
 
-    enum Spacing {
-        static let xs: CGFloat = 4
-        static let s: CGFloat = 8
-        static let m: CGFloat = 12
-        static let l: CGFloat = 16
-        static let xl: CGFloat = 20
-        static let xxl: CGFloat = 24
-        static let xxxl: CGFloat = 32
-    }
+    /// Бумага чека в тёмной теме.
+    static let paperDark = Palette(
+        bg: Color(hex: 0xE2D5B7), surface2: Color(hex: 0xD6C8A7),
+        ink: Color(hex: 0x2B2118), inkSoft: Color(hex: 0x6E5F4A), inkFaint: Color(hex: 0x9F8E72),
+        line: Color(hex: 0xB3A284), accent: Color(hex: 0xB53222), onInk: Color(hex: 0xE2D5B7),
+        desk: Color(hex: 0x0E0C09), plateSoft: Color(hex: 0xB3A284), accentInk: Color(hex: 0xE2D5B7))
+}
 
-    /// Более угловатая версия: прямые линии — часть визуального языка,
-    /// скругления используются минимально, только чтобы снять остроту углов.
-    enum Radius {
-        static let small: CGFloat = 4
-        static let medium: CGFloat = 6
-        static let hero: CGFloat = 10
-    }
+private struct PaletteKey: EnvironmentKey {
+    static let defaultValue = Palette.light
+}
 
-    /// Фиксированные размеры, которые не должны "плавать" от исходной
-    /// фотографии — иначе карточки в ленте получают разную высоту и
-    /// заезжают друг на друга.
-    enum Sizing {
-        static let cardImageHeight: CGFloat = 168
-        static let heroImageHeight: CGFloat = 260
-    }
-
-    enum Typography {
-        static let largeTitle = Font.system(size: 30, weight: .semibold, design: .default)
-        static let title = Font.system(size: 22, weight: .semibold, design: .default)
-        static let headline = Font.system(size: 17, weight: .medium, design: .default)
-        static let body = Font.system(size: 15, weight: .regular, design: .default)
-        static let caption = Font.system(size: 13, weight: .regular, design: .default)
-        /// Мелкий технический/uppercase-лейбл — «КОФЕЙНЯ · 450 М», категории.
-        static let label = Font.system(size: 11, weight: .semibold, design: .default)
-            .smallCaps()
-        /// Крупная цифра — процент скидки, дата события.
-        static let metric = Font.system(size: 26, weight: .bold, design: .rounded)
+extension EnvironmentValues {
+    var palette: Palette {
+        get { self[PaletteKey.self] }
+        set { self[PaletteKey.self] = newValue }
     }
 }
 
-extension Color {
-    init(hex: String) {
-        var hexString = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-        hexString = hexString.replacingOccurrences(of: "#", with: "")
-        var value: UInt64 = 0
-        Scanner(string: hexString).scanHexInt64(&value)
-        let r = Double((value >> 16) & 0xFF) / 255
-        let g = Double((value >> 8) & 0xFF) / 255
-        let b = Double(value & 0xFF) / 255
-        self.init(red: r, green: g, blue: b)
-    }
-}
-
-/// Единая тёмная схема — это не «поддержка тёмной темы», а осознанная
-/// визуальная идентичность продукта, поэтому применяется принудительно.
-struct ThemedBackground: ViewModifier {
+/// Ставит палитру по текущей схеме (светлая/тёмная) для всего поддерева.
+struct ThemedRoot: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
     func body(content: Content) -> some View {
+        let p = scheme == .dark ? Palette.dark : Palette.light
         content
-            .preferredColorScheme(.dark)
-            .tint(Theme.Colors.accent)
+            .environment(\.palette, p)
+            .tint(p.ink)
+            .background(p.bg.ignoresSafeArea())
+    }
+}
+
+/// Бумажный чек: в тёмной теме — своя «бумажная» палитра, в светлой — обычная.
+struct PaperPalette: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+    func body(content: Content) -> some View {
+        content.environment(\.palette, scheme == .dark ? Palette.paperDark : Palette.light)
     }
 }
 
 extension View {
-    func themed() -> some View { modifier(ThemedBackground()) }
+    func themedRoot() -> some View { modifier(ThemedRoot()) }
+    func paperPalette() -> some View { modifier(PaperPalette()) }
+}
+
+extension Color {
+    init(hex: UInt32) {
+        self.init(.sRGB,
+                  red: Double((hex >> 16) & 0xFF) / 255,
+                  green: Double((hex >> 8) & 0xFF) / 255,
+                  blue: Double(hex & 0xFF) / 255,
+                  opacity: 1)
+    }
+}
+
+// MARK: - Тема оформления (Авто / Светлая / Тёмная)
+
+enum ThemePref: String, CaseIterable {
+    case auto, light, dark
+
+    var scheme: ColorScheme? {
+        switch self {
+        case .auto: return nil
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .auto: return "Авто"
+        case .light: return "Светлая"
+        case .dark: return "Тёмная"
+        }
+    }
+}
+
+// MARK: - Шрифты
+//
+// Unbounded — заголовки и крупные суммы. JetBrains Mono — всё, что
+// «напечатала касса»: метки, суммы, даты, номера. Manrope — текст, который
+// пишет человек.
+
+enum AppFont {
+    static func display(_ size: CGFloat, medium: Bool = false) -> Font {
+        .custom(medium ? "Unbounded-Medium" : "Unbounded-Bold", fixedSize: size)
+    }
+
+    static func mono(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
+        let name: String
+        switch weight {
+        case .bold, .heavy, .black, .semibold: name = "JetBrainsMono-Bold"
+        case .medium: name = "JetBrainsMono-Medium"
+        default: name = "JetBrainsMono-Regular"
+        }
+        return .custom(name, fixedSize: size)
+    }
+
+    static func text(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
+        let name: String
+        switch weight {
+        case .bold, .heavy, .black: name = "Manrope-Bold"
+        case .semibold: name = "Manrope-SemiBold"
+        case .medium: name = "Manrope-Medium"
+        default: name = "Manrope-Regular"
+        }
+        return .custom(name, fixedSize: size)
+    }
+}
+
+/// Межбуквенный интервал в em, как в макете (tracking-[0.06em] и т.п.).
+extension View {
+    func em(_ value: CGFloat, _ size: CGFloat) -> some View { tracking(value * size) }
 }

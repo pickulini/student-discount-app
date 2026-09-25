@@ -8,7 +8,7 @@ configs:
   Release: release
 settings:
   base:
-    SWIFT_VERSION: "5.9"
+    SWIFT_VERSION: "5.0"
     ENABLE_PREVIEWS: YES
 targets:
   StudentDiscountApp:
@@ -17,13 +17,32 @@ targets:
     deploymentTarget: "16.0"
     sources:
       - path: StudentDiscountApp/Sources
-    resources:
       - path: StudentDiscountApp/Resources
+        excludes:
+          - Info.plist
     info:
       path: StudentDiscountApp/Resources/Info.plist
       properties:
-        UILaunchScreen: {}
-        CFBundleDisplayName: Студенческие скидки
+        CFBundleDisplayName: Студент−%
+        CFBundleDevelopmentRegion: ru
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UIAppFonts:
+          - Unbounded-Medium.ttf
+          - Unbounded-Bold.ttf
+          - Manrope-Regular.ttf
+          - Manrope-Medium.ttf
+          - Manrope-SemiBold.ttf
+          - Manrope-Bold.ttf
+          - JetBrainsMono-Regular.ttf
+          - JetBrainsMono-Medium.ttf
+          - JetBrainsMono-Bold.ttf
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        NSCameraUsageDescription: Камера нужна, чтобы сфотографировать студенческий билет для верификации.
+        NSLocationWhenInUseUsageDescription: Геопозиция нужна, чтобы показать места со скидками рядом с вами и расстояние до них.
+        NSPhotoLibraryUsageDescription: Доступ к фото нужен, чтобы выбрать снимок студенческого билета или аватар.
+        ITSAppUsesNonExemptEncryption: false
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
     settings:
