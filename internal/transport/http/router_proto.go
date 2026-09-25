@@ -82,6 +82,7 @@ func NewRouterProto(
 	r.Get("/payments/sbp/checkout/{id}", paymentHandler.ConfirmPayment)
 	r.Post("/payments/sbp/checkout/{id}", paymentHandler.ConfirmPayment)
 	r.Post("/payments/sbp/confirm/{id}", paymentHandler.ConfirmPayment)
+	r.Get("/payments/sbp/done", paymentHandler.PaymentDone)
 	r.Post("/api/v1/payments/webhook", paymentHandler.WebhookHandler)
 
 	// Защищённые

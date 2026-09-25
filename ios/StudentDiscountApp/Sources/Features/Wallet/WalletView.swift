@@ -15,6 +15,10 @@ struct WalletView: View {
     @State private var error: String?
     @State private var payURL: URL?
 
+    #if DEBUG
+    static var autopayDone = false
+    #endif
+
     private var amount: Int { preset == 0 ? Int(custom.filter(\.isNumber)) ?? 0 : preset }
 
     var body: some View {
@@ -96,8 +100,16 @@ struct WalletView: View {
                 LoadingView(label: "Открываем кошелёк…").frame(height: 300)
             }
         }
-        .task { if wallet == nil { await load() } }
-        .sheet(item: $payURL, onDismiss: { Task { await load() } }) { SafariView(url: $0).ignoresSafeArea() }
+        .task {
+            if wallet == nil { await load() }
+            #if DEBUG
+            if UserDefaults.standard.bool(forKey: "uitest_autopay"), !WalletView.autopayDone {
+                WalletView.autopayDone = true
+                await topUp()
+            }
+            #endif
+        }
+        .sheet(item: $payURL, onDismiss: { Task { await load() } }) { PaymentSheet(url: $0) }
     }
 
     private func load() async {
@@ -115,7 +127,7 @@ struct WalletView: View {
         error = nil
         defer { busy = false }
         do {
-            let r = try await API.shared.post("payments/init", ["amount": amount])
+            let r = try await API.shared.post("payments/init", ["amount": amount, "return_to": "/wallet"])
             if let u = URL(string: r.payment_url.str) { payURL = u }
         } catch {
             self.error = "Не удалось начать оплату через СБП"

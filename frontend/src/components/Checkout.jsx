@@ -75,7 +75,7 @@ const Checkout = () => {
     setBusy(true);
     setError('');
     try {
-      const r = await api.post('/payments/init', { amount });
+      const r = await api.post('/payments/init', { amount, return_to: `/offers/${id}/checkout` });
       window.location.href = r.data.payment_url;
     } catch (e) {
       setError(e.response?.data?.error || 'Не удалось начать оплату через СБП');

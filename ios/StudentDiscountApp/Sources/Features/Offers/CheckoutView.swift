@@ -1,5 +1,5 @@
 import SwiftUI
-import SafariServices
+import WebKit
 
 /// Оплата (макеты 20 и 21). Заказ создаётся в момент нажатия «Оплатить»:
 /// деньги списываются с кошелька, затем показываем чек.
@@ -20,7 +20,7 @@ struct CheckoutView: View {
     var body: some View {
         if let offer, let wallet, let bonus {
             content(offer, wallet, bonus)
-                .sheet(item: $payURL, onDismiss: { Task { await load() } }) { SafariView(url: $0).ignoresSafeArea() }
+                .sheet(item: $payURL, onDismiss: { Task { await load() } }) { PaymentSheet(url: $0) }
         } else {
             LoadingScreen("Готовим оплату…") { BackHeader { HeaderMeta("Новый заказ") } }
                 .task {
@@ -141,7 +141,7 @@ struct CheckoutView: View {
         error = nil
         defer { busy = false }
         do {
-            let r = try await API.shared.post("payments/init", ["amount": max(1, amount)])
+            let r = try await API.shared.post("payments/init", ["amount": max(1, amount), "return_to": "/offers/\(offerID)/checkout"])
             if let u = URL(string: r.payment_url.str) { payURL = u }
         } catch {
             self.error = "Не удалось начать оплату через СБП"
@@ -175,9 +175,96 @@ extension URL: @retroactive Identifiable {
     public var id: String { absoluteString }
 }
 
-/// Оплата СБП открывается во встроенном браузере; после закрытия обновляем баланс.
-struct SafariView: UIViewControllerRepresentable {
+/// Окно оплаты СБП. Страница оплаты открывается во встроенном WebView; как только
+/// платёж подтверждён (или отменён), окно закрывается само и экран обновляет баланс.
+/// Вход на сайт здесь не нужен: страницу защищает токен в ссылке.
+struct PaymentSheet: View {
+    @Environment(\.palette) private var p
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.dismiss) private var dismiss
     let url: URL
-    func makeUIViewController(context: Context) -> SFSafariViewController { SFSafariViewController(url: url) }
-    func updateUIViewController(_ vc: SFSafariViewController, context: Context) {}
+    @State private var loading = true
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                MonoLink(text: "× Закрыть") { dismiss() }
+                Spacer()
+                HeaderMeta("Оплата · СБП")
+            }
+            .padding(.horizontal, 20).padding(.vertical, 16)
+            ZStack {
+                PaymentWebView(url: themed(url), loading: $loading) { dismiss() }
+                if loading { LoadingView() }
+            }
+        }
+        .background((scheme == .dark ? Palette.dark.desk : Palette.light.desk).ignoresSafeArea())
+    }
+
+    private func themed(_ u: URL) -> URL {
+        guard var c = URLComponents(url: u, resolvingAgainstBaseURL: false) else { return u }
+        let items = c.queryItems ?? []
+        c.queryItems = items + [URLQueryItem(name: "theme", value: scheme == .dark ? "dark" : "light")]
+        return c.url ?? u
+    }
+}
+
+struct PaymentWebView: UIViewRepresentable {
+    let url: URL
+    @Binding var loading: Bool
+    let onFinish: () -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIView(context: Context) -> WKWebView {
+        let cfg = WKWebViewConfiguration()
+        cfg.websiteDataStore = .nonPersistent()
+        let v = WKWebView(frame: .zero, configuration: cfg)
+        v.navigationDelegate = context.coordinator
+        v.isOpaque = false
+        v.backgroundColor = .clear
+        v.load(URLRequest(url: url))
+        return v
+    }
+
+    func updateUIView(_ v: WKWebView, context: Context) {}
+
+    final class Coordinator: NSObject, WKNavigationDelegate {
+        let parent: PaymentWebView
+        private var finished = false
+        init(_ p: PaymentWebView) { parent = p }
+
+        func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+            let path = action.request.url?.path ?? ""
+            // Всё, что уходит со страницы оплаты (отмена → /wallet, «Продолжить» и т.п.), — закрываем окно.
+            if path.hasPrefix("/payments/sbp/checkout") || path.hasPrefix("/payments/sbp/done") || action.request.url?.scheme == "about" {
+                decisionHandler(.allow)
+            } else {
+                decisionHandler(.cancel)
+                finish()
+            }
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            parent.loading = false
+            #if DEBUG
+            if UserDefaults.standard.bool(forKey: "uitest_autoconfirm"), webView.url?.path.hasPrefix("/payments/sbp/checkout") == true {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) { webView.evaluateJavaScript("document.querySelector('form')?.submit()") }
+            }
+            #endif
+            // «Оплачено» показываем секунду и закрываемся сами.
+            if webView.url?.path.hasPrefix("/payments/sbp/done") == true {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { self.finish() }
+            }
+        }
+
+        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { parent.loading = false }
+        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { parent.loading = false }
+
+        private func finish() {
+            guard !finished else { return }
+            finished = true
+            parent.onFinish()
+        }
+    }
 }
