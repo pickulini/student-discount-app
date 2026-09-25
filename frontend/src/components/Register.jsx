@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { PrimaryButton, Leader } from './merchant/kit';
+import { PrimaryButton, OutlineButton, Leader, Rule } from './merchant/kit';
 import { AuthLayout, AuthField } from './auth/AuthShared';
 import { useMobileTop } from '../context/MobileChrome';
 
@@ -68,7 +68,7 @@ const Register = () => {
         password: form.password,
         referral_code: form.referral_code.trim(),
       });
-      await login(res.data.token);
+      await login(res.data.token, res.data.refresh_token);
       navigate('/verification', { replace: true, state: { afterRegister: true } });
     } catch (err) {
       const msg = err.response?.data?.error || '';
@@ -137,6 +137,12 @@ const Register = () => {
         </PrimaryButton>
       </form>
       <p className="text-[12px] leading-[18px] text-ink-soft">Нажимая кнопку, вы соглашаетесь с условиями и политикой конфиденциальности.</p>
+      {/* Телефон: вход — большой кнопкой внизу, под большим пальцем, а не мелкой ссылкой в углу. */}
+      <div className="md:hidden flex flex-col gap-4 pt-2">
+        <Rule />
+        <span className="text-[15px] text-ink-soft text-center">Уже есть аккаунт?</span>
+        <OutlineButton as={Link} to="/login" className="w-full">Войти</OutlineButton>
+      </div>
     </AuthLayout>
   );
 };

@@ -41,7 +41,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
         clientIP = r.RemoteAddr
     }
 
-    user, token, err := h.authUsecase.Register(r.Context(), req.Email, req.Password, req.FullName,
+    user, token, refreshToken, err := h.authUsecase.Register(r.Context(), req.Email, req.Password, req.FullName,
         req.UniversityID, req.Course, req.ReferralCode, clientIP, r.Header.Get("User-Agent"))
     if err != nil {
         switch err {
@@ -53,9 +53,29 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
         return
     }
     writeJSON(w, http.StatusCreated, map[string]interface{}{
-        "user":  user,
-        "token": token,
+        "user":          user,
+        "token":         token,
+        "access_token":  token,
+        "refresh_token": refreshToken,
     })
+}
+
+// Refresh — новый access-токен по refresh-токену. Без него сайт выкидывал
+// на вход каждые JWT_EXPIRY_MIN минут.
+func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
+    var req struct {
+        RefreshToken string `json:"refresh_token"`
+    }
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        writeError(w, http.StatusBadRequest, "invalid request")
+        return
+    }
+    token, err := h.authUsecase.Refresh(r.Context(), req.RefreshToken)
+    if err != nil {
+        writeError(w, http.StatusUnauthorized, "session expired")
+        return
+    }
+    writeJSON(w, http.StatusOK, map[string]string{"access_token": token})
 }
 
 type LoginRequest struct {

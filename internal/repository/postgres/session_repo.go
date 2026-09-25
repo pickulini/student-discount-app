@@ -112,3 +112,10 @@ func (r *SessionRepo) Touch(ctx context.Context, id, userID int64) (bool, error)
     }
     return tag.RowsAffected() > 0, nil
 }
+
+// Extend — продлить сессию (при обновлении токена) и отметить активность.
+func (r *SessionRepo) Extend(ctx context.Context, id int64, until time.Time) error {
+    _, err := r.db.Pool.Exec(ctx,
+        `UPDATE user_sessions SET expires_at = $2, last_used_at = NOW() WHERE id = $1 AND revoked_at IS NULL`, id, until)
+    return err
+}

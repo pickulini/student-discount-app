@@ -66,17 +66,25 @@ const TicketItem = ({ t, active, onClick }) => {
 const Support = () => {
   const [params, setParams] = useSearchParams();
   const orderRef = params.get('order');
+  const topic = params.get('topic');
+  const prefill = orderRef
+    ? `Проблема с заказом № ${String(orderRef).padStart(6, '0')}`
+    : topic === 'verification'
+      ? 'Верификация отклонена'
+      : '';
   const [tickets, setTickets] = useState(null);
   const [activeId, setActiveId] = useState(null);
-  const [creating, setCreating] = useState(Boolean(orderRef));
+  const [creating, setCreating] = useState(Boolean(prefill));
   const [thread, setThread] = useState([]);
   const [text, setText] = useState('');
-  const [subject, setSubject] = useState(orderRef ? `Проблема с заказом № ${String(orderRef).padStart(6, '0')}` : '');
+  const [subject, setSubject] = useState(prefill);
   const [first, setFirst] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const fileRef = useRef(null);
   const bottomRef = useRef(null);
+  const formRef = useRef(null);
+  const subjectRef = useRef(null);
   // Телефон: список обращений и переписка — отдельные экраны (макеты 55 и 56).
   const [chatOpen, setChatOpen] = useState(false);
   const activeStatus = tickets?.find((t) => t.id === activeId)?.status;
@@ -102,7 +110,7 @@ const Support = () => {
       .then((r) => {
         const list = r.data || [];
         setTickets(list);
-        setActiveId((cur) => cur ?? (orderRef ? null : list[0]?.id ?? null));
+        setActiveId((cur) => cur ?? (prefill ? null : list[0]?.id ?? null));
         if (!list.length) setCreating(true);
         return list;
       })
@@ -189,7 +197,7 @@ const Support = () => {
       setCreating(false);
       setSubject('');
       setFirst('');
-      if (orderRef) setParams({}, { replace: true });
+      if (prefill) setParams({}, { replace: true });
       await loadTickets();
       setActiveId(r.data.id);
     } catch (err) {
@@ -221,7 +229,13 @@ const Support = () => {
           className="w-full"
           onClick={() => {
             setCreating(true);
+            setChatOpen(false);
             setError('');
+            // Форма может быть ниже списка обращений (на телефоне) — показываем её и ставим курсор в тему.
+            setTimeout(() => {
+              formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              subjectRef.current?.focus({ preventScroll: true });
+            }, 50);
           }}
         >
           + Новое обращение
@@ -254,7 +268,7 @@ const Support = () => {
 
       <div className={`${chatShown || creating || !active ? 'flex' : 'hidden md:flex'} flex-1 min-w-0 w-full flex-col gap-6`}>
         {creating || !active ? (
-          <form onSubmit={create} className="flex flex-col gap-6">
+          <form ref={formRef} onSubmit={create} className="flex flex-col gap-6 scroll-mt-6">
             <Rule2 className="md:hidden" />
             <div className="font-mono text-[11px] tracking-[0.04em] text-ink-soft">
               НОВОЕ ОБРАЩЕНИЕ<span className="md:hidden"> — ФОРМА</span>
@@ -262,6 +276,7 @@ const Support = () => {
             <label className="flex flex-col gap-2">
               <span className="font-mono font-medium text-[11px] tracking-[0.06em] uppercase text-ink-soft">Тема</span>
               <input
+                ref={subjectRef}
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 maxLength={200}
@@ -327,12 +342,13 @@ const Support = () => {
                       </div>
                     ) : (
                       <div className="flex gap-[14px] pr-6 md:pr-[120px] xl:pr-[240px]">
-                        <div className="w-px self-stretch border-l border-dashed border-ink" />
+                        {/* Ответы поддержки — красной «второй краской», чтобы сразу отличались от своих. */}
+                        <div className="w-px self-stretch border-l border-dashed border-accent" />
                         <div className="flex-1 min-w-0 flex flex-col gap-[6px]">
-                          <span className="font-mono font-bold text-[10px] tracking-[0.06em] text-ink uppercase whitespace-nowrap">
+                          <span className="font-mono font-bold text-[10px] tracking-[0.06em] text-accent uppercase whitespace-nowrap">
                             Поддержка{m.author_name ? ` · ${m.author_name}` : ''} · {ddmm(m.created_at)} {hhmm(m.created_at)}
                           </span>
-                          <p className="text-[15px] md:text-[16px] leading-[22px] md:leading-[24px] text-ink whitespace-pre-line break-words">
+                          <p className="text-[15px] md:text-[16px] leading-[22px] md:leading-[24px] text-accent whitespace-pre-line break-words">
                             <MessageText text={m.message} />
                           </p>
                         </div>

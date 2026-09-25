@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import api from '../api/client';
+import api, { setTokens, clearTokens } from '../api/client';
 
 const AuthContext = createContext();
 
@@ -13,8 +13,10 @@ export const AuthProvider = ({ children }) => {
       setUser(res.data);
       return res.data;
     } catch (err) {
-      console.error('Failed to fetch user:', err);
-      logout();
+      // Разлогиниваем только если сервер сказал «не авторизован» (это уже сделал
+      // перехватчик в api/client). Сеть моргнула — токены не трогаем.
+      if (err.response?.status === 401) logout();
+      else setUser(null);
       throw err;
     }
   };
@@ -22,20 +24,22 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     if (token) {
-      fetchUser().finally(() => setLoading(false));
+      fetchUser()
+        .catch(() => {})
+        .finally(() => setLoading(false));
     } else {
       setLoading(false);
     }
   }, []);
 
-  const login = async (token) => {
-    localStorage.setItem('access_token', token);
+  const login = async (token, refreshToken) => {
+    setTokens(token, refreshToken);
     const userData = await fetchUser();
     return userData;
   };
 
   const logout = () => {
-    localStorage.removeItem('access_token');
+    clearTokens();
     setUser(null);
   };
 

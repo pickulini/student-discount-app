@@ -59,6 +59,7 @@ func NewRouterProto(
 	// никакой защиты от перебора паролей.
 	r.With(middleware.RateLimit(loginRateLimitPerMin)).Post("/api/v1/auth/register", authHandler.Register)
 	r.With(middleware.RateLimit(loginRateLimitPerMin)).Post("/api/v1/auth/login", authHandler.Login)
+	r.Post("/api/v1/auth/refresh", authHandler.Refresh)
 	r.Get("/api/v1/companies", companyHandler.ListCompanies)
 	r.Get("/api/v1/universities", companyHandler.ListUniversities)
 	r.Get("/api/v1/stats/public", cabinetHandler.PublicStats)

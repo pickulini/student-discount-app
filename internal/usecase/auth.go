@@ -70,34 +70,34 @@ func NewAuthUsecase(
 }
 
 // Register — с проверками антифрода
-func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName string, universityID *int64, course *int, referralCode, clientIP, userAgent string) (*domain.User, string, error) {
+func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName string, universityID *int64, course *int, referralCode, clientIP, userAgent string) (*domain.User, string, string, error) {
     email = strings.TrimSpace(email)
     fullName = strings.TrimSpace(fullName)
     if !strings.Contains(email, "@") || strings.HasPrefix(email, "@") || strings.HasSuffix(email, "@") {
-        return nil, "", errors.New("invalid email")
+        return nil, "", "", errors.New("invalid email")
     }
     if utf8.RuneCountInString(password) < 8 {
-        return nil, "", errors.New("password must be at least 8 characters")
+        return nil, "", "", errors.New("password must be at least 8 characters")
     }
     if fullName == "" {
-        return nil, "", errors.New("full name is required")
+        return nil, "", "", errors.New("full name is required")
     }
     // TODO: в продакшене заменить на device fingerprint + 2FA (email/SMS)
     // === ANTIFRAUD: Rate limit по IP (100 регистраций в час) ===
     ipHash := hashString(clientIP)
     count, err := u.antifraudRepo.CountRegistrationsByIPHash(ctx, ipHash, 60)
     if err == nil && count >= 100 {
-        return nil, "", errors.New("too many registrations from your IP, try again later")
+        return nil, "", "", errors.New("too many registrations from your IP, try again later")
     }
 
     existing, _ := u.userRepo.GetByEmail(ctx, email)
     if existing != nil {
-        return nil, "", domain.ErrEmailAlreadyExists
+        return nil, "", "", domain.ErrEmailAlreadyExists
     }
 
     hash, err := u.hasher.Hash(password)
     if err != nil {
-        return nil, "", err
+        return nil, "", "", err
     }
 
     code := generateReferralCode()
@@ -116,7 +116,7 @@ func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName st
         // === ANTIFRAUD: нельзя пригласить самого себя ===
         // Проверяем по email (поскольку новый пользователь ещё не создан)
         if referrer != nil && referrer.Email == email {
-            return nil, "", errors.New("cannot refer yourself")
+            return nil, "", "", errors.New("cannot refer yourself")
         }
     }
 
@@ -159,7 +159,7 @@ func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName st
         Role:          "student",
     }
     if err := u.userRepo.Create(ctx, user); err != nil {
-        return nil, "", err
+        return nil, "", "", err
     }
 
     // Логируем попытку регистрации для антифрода
@@ -176,7 +176,7 @@ func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName st
     }
     if err := u.accountRepo.Create(ctx, account); err != nil {
         log.Printf("failed to create account for user %d: %v", user.ID, err)
-        return nil, "", err
+        return nil, "", "", err
     }
 
     bonusAcc := &domain.BonusAccount{
@@ -185,7 +185,7 @@ func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName st
     }
     if err := u.bonusRepo.CreateAccount(ctx, bonusAcc); err != nil {
         log.Printf("failed to create bonus account for user %d: %v", user.ID, err)
-        return nil, "", err
+        return nil, "", "", err
     }
 
     // Создаём referral_invite
@@ -209,7 +209,7 @@ func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName st
         DeviceName:       "unknown",
         UserAgent:        userAgent,
         IP:               clientIP,
-        ExpiresAt:        time.Now().Add(7 * 24 * time.Hour),
+        ExpiresAt:        time.Now().Add(sessionTTL),
     }
     var sid int64
     if err := u.sessionRepo.Create(ctx, sess); err == nil {
@@ -217,9 +217,12 @@ func (u *AuthUsecase) Register(ctx context.Context, email, password, fullName st
     }
     token, err := u.jwtManager.GenerateForSession(user.ID, sid)
     if err != nil {
-        return nil, "", err
+        return nil, "", "", err
     }
-    return user, token, nil
+    if sid == 0 {
+        rt = "" // сессия не создалась — обновлять токен будет нечем
+    }
+    return user, token, rt, nil
 }
 
 func (u *AuthUsecase) Login(ctx context.Context, email, password, deviceName, userAgent, ip string) (accessToken, refreshToken string, err error) {
@@ -251,7 +254,7 @@ func (u *AuthUsecase) Login(ctx context.Context, email, password, deviceName, us
         DeviceName:       deviceName,
         UserAgent:        userAgent,
         IP:               ip,
-        ExpiresAt:        time.Now().Add(7 * 24 * time.Hour),
+        ExpiresAt:        time.Now().Add(sessionTTL),
     }
     if err := u.sessionRepo.Create(ctx, session); err != nil {
         return "", "", err
@@ -262,6 +265,32 @@ func (u *AuthUsecase) Login(ctx context.Context, email, password, deviceName, us
         return "", "", err
     }
     return accessToken, refreshToken, nil
+}
+
+// sessionTTL — сколько живёт сессия без входа. Каждое обновление токена продлевает её заново,
+// так что активный пользователь не вылетает никогда, а забытый — через 30 дней.
+const sessionTTL = 30 * 24 * time.Hour
+
+// Refresh — новый access-токен по refresh-токену сессии. Refresh-токен не меняется:
+// его делят все вкладки браузера, и смена при каждом обновлении приводила бы
+// к гонкам, когда две вкладки обновляются одновременно.
+func (u *AuthUsecase) Refresh(ctx context.Context, refreshToken string) (string, error) {
+    if refreshToken == "" {
+        return "", domain.ErrInvalidCredentials
+    }
+    h := sha256.Sum256([]byte(refreshToken))
+    sess, err := u.sessionRepo.GetByRefreshTokenHash(ctx, hex.EncodeToString(h[:]))
+    if err != nil || sess == nil || sess.RevokedAt != nil || time.Now().After(sess.ExpiresAt) {
+        return "", domain.ErrInvalidCredentials
+    }
+    user, err := u.userRepo.GetByID(ctx, sess.UserID)
+    if err != nil || user == nil || !user.IsActive {
+        return "", domain.ErrInvalidCredentials
+    }
+    if err := u.sessionRepo.Extend(ctx, sess.ID, time.Now().Add(sessionTTL)); err != nil {
+        return "", err
+    }
+    return u.jwtManager.GenerateForSession(user.ID, sess.ID)
 }
 
 type VerificationRequest struct {

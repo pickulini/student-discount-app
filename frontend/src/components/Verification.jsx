@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useLocation } from 'react-router-dom';
 import api from '../api/client';
+import { compressImage } from '../utils/image';
 import { useMobileTop } from '../context/MobileChrome';
 import { useAuth } from '../context/AuthContext';
 import { RouteLoadingView } from '../design/DottedPath';
-import { PrimaryButton, TextButton, Leader, Rule, Rule2, VRule, AlertBlock, SectionLabel, pad6, ddmm, ddmmyy, hhmm } from './merchant/kit';
+import { PrimaryButton, OutlineButton, TextButton, Leader, Rule, Rule2, VRule, AlertBlock, SectionLabel, pad6, ddmm, ddmmyy, hhmm } from './merchant/kit';
 
 /**
  * D12 · Верификация (форма) и D13 · Верификация — статус заявки.
@@ -35,25 +36,35 @@ const UploadBox = ({ n, title, sub, value, onChange }) => {
   const input = useRef(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [preview, setPreview] = useState('');
+
+  useEffect(() => () => preview && URL.revokeObjectURL(preview), [preview]);
 
   const pick = async (e) => {
-    const file = e.target.files?.[0];
+    const original = e.target.files?.[0];
     e.target.value = '';
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) return setErr('Файл больше 5 МБ');
-    setBusy(true);
+    if (!original) return;
     setErr('');
+    // Превью — сразу, из самого файла: не ждём, пока он долетит до сервера.
+    setPreview(URL.createObjectURL(original));
+    setBusy(true);
     try {
+      const file = await compressImage(original);
+      if (file.size > 5 * 1024 * 1024) throw new Error('Файл больше 5 МБ');
       const fd = new FormData();
       fd.append('file', file);
       const r = await api.post('/users/upload-avatar', fd);
       onChange(r.data.url);
     } catch (e2) {
-      setErr(e2.response?.data?.error || 'Не удалось загрузить');
+      setErr(e2.response?.data?.error || e2.message || 'Не удалось загрузить');
+      setPreview('');
+      onChange('');
     } finally {
       setBusy(false);
     }
   };
+
+  const shown = preview || value;
 
   return (
     <div className="flex-1 min-w-0 flex flex-col gap-3">
@@ -61,14 +72,22 @@ const UploadBox = ({ n, title, sub, value, onChange }) => {
       <button
         type="button"
         onClick={() => input.current?.click()}
-        className={`w-full border border-dashed px-4 py-10 flex flex-col items-center gap-[6px] transition hover:bg-surface-2 ${
-          value ? 'border-ink' : 'border-line'
-        }`}
+        disabled={busy}
+        className={`relative w-full border border-dashed overflow-hidden transition hover:bg-surface-2 ${value ? 'border-ink' : 'border-line'}`}
       >
-        <span className="font-mono font-bold text-[12px] tracking-[0.04em] text-ink">
-          {busy ? 'ЗАГРУЖАЕМ…' : value ? '✓ ЗАГРУЖЕНО' : '+ ЗАГРУЗИТЬ ФОТО'}
-        </span>
-        <span className="text-[13px] text-ink-soft">{value ? 'Нажмите, чтобы заменить' : sub}</span>
+        {shown ? (
+          <>
+            <img src={shown} alt="" className={`w-full h-[200px] object-cover ${busy ? 'opacity-50' : ''}`} />
+            <span className="absolute left-0 right-0 bottom-0 bg-ink/85 text-on-ink font-mono font-bold text-[11px] tracking-[0.04em] uppercase py-2">
+              {busy ? 'Загружаем…' : value ? '✓ Загружено · нажмите, чтобы заменить' : 'Не загрузилось · выбрать снова'}
+            </span>
+          </>
+        ) : (
+          <span className="flex flex-col items-center gap-[6px] px-4 py-10">
+            <span className="font-mono font-bold text-[12px] tracking-[0.04em] text-ink">+ ЗАГРУЗИТЬ ФОТО</span>
+            <span className="text-[13px] text-ink-soft">{sub}</span>
+          </span>
+        )}
       </button>
       {err && <span className="font-mono text-[11px] text-accent uppercase">{err}</span>}
       <input ref={input} type="file" accept="image/*" className="hidden" onChange={pick} />
@@ -122,7 +141,13 @@ const VerificationForm = ({ user, last, onSent, step }) => {
       </div>
       <Leader label="Статус" value={<b>{expired ? 'ВЕРИФИКАЦИЯ ИСТЕКЛА' : rejected ? 'ЗАЯВКА ОТКЛОНЕНА' : 'НЕ ВЕРИФИЦИРОВАН'}</b>} />
       {rejected && (
-        <AlertBlock title="Заявка отклонена">{last.rejection_reason ? `${last.rejection_reason.replace(/\.$/, '')}. ` : ''}Загрузите снимки заново.</AlertBlock>
+        <>
+          <AlertBlock title="Заявка отклонена">{last.rejection_reason ? `${last.rejection_reason.replace(/\.$/, '')}. ` : ''}Загрузите снимки заново.</AlertBlock>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 -mt-2">
+            <span className="text-[14px] text-ink-soft">Не согласны с решением или что-то непонятно?</span>
+            <OutlineButton as={Link} to="/support?topic=verification" className="w-full sm:w-auto">Обратиться в поддержку</OutlineButton>
+          </div>
+        </>
       )}
       {expired && !rejected && (
         <div className="flex flex-col gap-[6px]">
@@ -176,15 +201,18 @@ const VerificationForm = ({ user, last, onSent, step }) => {
       </div>
       {error && <div className="font-mono text-[12px] text-accent uppercase">{error}</div>}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
-        <PrimaryButton onClick={submit} disabled={!ready || busy}>
+        <PrimaryButton onClick={submit} disabled={!ready || busy} className="w-full sm:w-auto">
           {busy ? 'Отправляем…' : 'Отправить на проверку'}
         </PrimaryButton>
-        <p className="flex-1 text-[13px] text-ink-soft">Фото видят только модераторы.</p>
+        <p className="flex-1 text-[13px] text-ink-soft text-center sm:text-left">Фото видят только модераторы.</p>
       </div>
       {step && (
-        <div>
-          <TextButton as={Link} to="/">Пропустить — сделаю позже</TextButton>
-        </div>
+        <>
+          <span className="hidden sm:block">
+            <TextButton as={Link} to="/">Пропустить — сделаю позже</TextButton>
+          </span>
+          <OutlineButton as={Link} to="/" className="sm:hidden w-full">Пропустить — на главную</OutlineButton>
+        </>
       )}
     </div>
   );
@@ -229,6 +257,9 @@ const VerificationStatus = ({ user, last }) => {
           />
           <Check done={verified} title="Все скидки открыты" />
         </div>
+        <PrimaryButton as={Link} to="/" className="w-full sm:w-auto sm:self-start">
+          {verified ? 'К скидкам' : 'На главную'}
+        </PrimaryButton>
       </div>
 
       <VRule className="hidden lg:block" />

@@ -1,3 +1,4 @@
+import { freshAccessToken } from '../api/client';
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 
@@ -26,7 +27,7 @@ export const NotificationProvider = ({ children }) => {
   const connectCountRef = useRef(0);
 
   const fetchCount = useCallback(async () => {
-    const token = localStorage.getItem('access_token');
+    const token = await freshAccessToken();
     if (!token) return;
     try {
       const res = await fetch('/api/v1/notifications/unread/count', {
@@ -54,9 +55,12 @@ export const NotificationProvider = ({ children }) => {
 
     cancelledRef.current = false;
 
-    const connect = () => {
+    const connect = async () => {
       if (cancelledRef.current) return;
-      const token = localStorage.getItem('access_token');
+      // Поток открывается с токеном в URL: берём свежий, иначе через полчаса
+      // переподключение упиралось бы в просроченный токен.
+      const token = await freshAccessToken();
+      if (cancelledRef.current) return;
       if (!token) return;
 
       if (esRef.current) {

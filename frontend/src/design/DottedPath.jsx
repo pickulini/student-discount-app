@@ -58,9 +58,13 @@ export const RouteLoadingIndicator = ({ className = '' }) => (
   </span>
 );
 
-/** Полноэкранное состояние загрузки. */
+/**
+ * Полноэкранное состояние загрузки: по центру видимой области, а не прижатым
+ * к верху или левому краю (родители часто — flex с items-start).
+ * Высота — экран минус шапка и нижнее меню.
+ */
 export const RouteLoadingView = ({ label }) => (
-  <div className="flex flex-col items-center justify-center gap-4 py-24">
+  <div className="w-full self-stretch flex-1 min-h-[calc(100dvh-190px)] md:min-h-[calc(100dvh-240px)] flex flex-col items-center justify-center gap-4 text-center">
     <RouteMark />
     <RouteLoadingIndicator />
     {label && <div className="text-sm text-ink-soft font-mono">{label}</div>}

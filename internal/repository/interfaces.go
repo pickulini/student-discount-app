@@ -58,6 +58,7 @@ type SessionRepository interface {
     GetByID(ctx context.Context, id int64) (*domain.UserSession, error)
     RevokeAllExcept(ctx context.Context, userID, keepID int64) error
     Touch(ctx context.Context, id, userID int64) (bool, error)
+    Extend(ctx context.Context, id int64, until time.Time) error
 }
 
 // ---- University ----

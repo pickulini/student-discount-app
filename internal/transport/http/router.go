@@ -23,6 +23,7 @@ func NewRouter(
 
     r.Post("/api/v1/auth/register", authHandler.Register)
     r.Post("/api/v1/auth/login", authHandler.Login)
+    r.Post("/api/v1/auth/refresh", authHandler.Refresh)
 
     r.Group(func(r chi.Router) {
         r.Use(middleware.Auth(jwtManager))

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { PrimaryButton, TextButton, Rule, plural } from './merchant/kit';
+import { PrimaryButton, OutlineButton, TextButton, Rule, plural } from './merchant/kit';
 import { AuthLayout, AuthField, AuthBrandMobile } from './auth/AuthShared';
 import { useMobileTop } from '../context/MobileChrome';
 
@@ -24,7 +24,7 @@ const Login = () => {
     setError(null);
     try {
       const res = await api.post('/auth/login', { email: email.trim(), password });
-      await login(res.data.access_token);
+      await login(res.data.access_token, res.data.refresh_token);
       const from = location.state?.from?.pathname;
       navigate(from && from !== '/login' ? from : '/', { replace: true });
     } catch (err) {
@@ -83,9 +83,12 @@ const Login = () => {
         )}
       </div>
       <Rule />
-      <div className="flex flex-col md:flex-row items-center md:justify-between gap-3 md:gap-4">
+      <div className="flex flex-col md:flex-row items-center md:justify-between gap-4">
         <span className="text-[15px] text-ink-soft">Ещё нет аккаунта?</span>
-        <TextButton as={Link} to="/register">Регистрация</TextButton>
+        <span className="hidden md:inline">
+          <TextButton as={Link} to="/register">Регистрация</TextButton>
+        </span>
+        <OutlineButton as={Link} to="/register" className="md:hidden w-full">Зарегистрироваться</OutlineButton>
       </div>
     </AuthLayout>
   );
