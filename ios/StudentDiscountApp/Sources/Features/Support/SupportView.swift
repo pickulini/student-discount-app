@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Поддержка (макеты 55 и 56): список обращений, новое обращение, переписка.
+/// Поддержка: сразу «чат» для нового обращения (тема + сообщение + «Отправить»),
+/// ниже — активные обращения и история. Отдельной кнопки «Новое обращение» нет.
 struct SupportView: View {
     @Environment(\.palette) private var p
     @EnvironmentObject private var session: Session
@@ -8,64 +9,55 @@ struct SupportView: View {
     var topic: String?
 
     @State private var tickets: [JSON]?
-    @State private var creating = false
-    @State private var subject = ""
-    @State private var first = ""
+    @State private var loadError: String?
+    @State private var theme = "order"
+    @State private var orderRef: Int64?
+    @State private var text = ""
     @State private var busy = false
     @State private var error: String?
-    @FocusState private var subjectFocused: Bool
+    @FocusState private var focused: Bool
+
+    /// Темы обращения — вместо ручного ввода заголовка.
+    private static let themes: [(String, String)] = [
+        ("order", "Заказ и оплата"),
+        ("wallet", "Кошелёк и бонусы"),
+        ("verification", "Верификация"),
+        ("events", "Ивенты"),
+        ("account", "Аккаунт"),
+        ("other", "Другое"),
+    ]
 
     private func isOpen(_ t: JSON) -> Bool { ["open", "in_progress"].contains(t.status.str) }
+    private var canSend: Bool { !busy && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
     var body: some View {
         if let tickets {
-            ScrollViewReader { proxy in
-                Screen(spacing: 20, onRefresh: load) {
-                    BackHeader("Профиль")
-                } content: {
-                    Text("ПОДДЕРЖКА").font(AppFont.display(34)).em(-0.02, 34).foregroundColor(p.ink)
-                    Text("Отвечаем с 9:00 до 23:00, обычно за 15 минут.").font(AppFont.text(14)).foregroundColor(p.inkSoft).padding(.top, -6)
-                    Button("+ Новое обращение") {
-                        creating = true
-                        error = nil
-                        // Форма ниже списка — прокручиваем к ней и ставим курсор в тему.
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            withAnimation { proxy.scrollTo("form", anchor: .top) }
-                            subjectFocused = true
-                        }
-                    }
-                    .buttonStyle(.primary)
+            let active = tickets.filter(isOpen)
+            let closed = tickets.filter { !isOpen($0) }
+            Screen(spacing: 20, onRefresh: load) {
+                BackHeader("Профиль")
+            } content: {
+                Text("ПОДДЕРЖКА").font(AppFont.display(34)).em(-0.02, 34).foregroundColor(p.ink)
+                Text("Отвечаем с 9:00 до 23:00, обычно за 15 минут.").font(AppFont.text(14)).foregroundColor(p.inkSoft).padding(.top, -6)
+
+                if let loadError {
+                    AlertBlock(title: "Не удалось загрузить обращения", text: loadError)
+                    Button("Повторить") { Task { await load() } }.buttonStyle(.bracket)
+                }
+
+                if !active.isEmpty {
                     Rule2()
-                    SectionLabel("Ваши обращения")
-                    if tickets.isEmpty {
-                        Text("Обращений пока не было.").font(AppFont.text(14)).foregroundColor(p.inkSoft)
-                    }
-                    ForEach(Array(tickets.enumerated()), id: \.offset) { i, t in
-                        if i > 0 { Rule() }
-                        Button { session.push(.supportChat(t["id"].id)) } label: { ticketRow(t) }.buttonStyle(.plain)
-                    }
-                    if creating || tickets.isEmpty {
-                        Rule2().id("form")
-                        Meta("Новое обращение — форма")
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("ТЕМА").font(AppFont.mono(11, .medium)).em(0.06, 11).foregroundColor(p.inkSoft)
-                            TextField("", text: $subject, prompt: Text("Коротко: что случилось").foregroundColor(p.inkFaint))
-                                .font(AppFont.text(16)).foregroundColor(p.ink).focused($subjectFocused)
-                                .padding(.bottom, 10).overlay(alignment: .bottom) { subjectFocused ? AnyView(Rectangle().fill(p.ink).frame(height: 1)) : AnyView(Rule()) }
-                        }
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("СООБЩЕНИЕ").font(AppFont.mono(11, .medium)).em(0.06, 11).foregroundColor(p.inkSoft)
-                            TextField("", text: $first, prompt: Text("Опишите проблему: номер заказа, место, что пошло не так").foregroundColor(p.inkFaint), axis: .vertical)
-                                .lineLimit(3...8)
-                                .font(AppFont.text(16)).foregroundColor(p.ink)
-                                .padding(.bottom, 10).overlay(alignment: .bottom) { Rule() }
-                        }
-                        ErrorText(text: error)
-                        HStack(spacing: 20) {
-                            Button(busy ? "Отправляем…" : "Создать") { Task { await create() } }.buttonStyle(.primary).disabled(busy)
-                            if !tickets.isEmpty { Button("Отмена") { creating = false }.buttonStyle(.bracket) }
-                        }
-                    }
+                    SectionLabel(active.count == 1 ? "Активное обращение" : "Активные обращения")
+                    ticketList(active)
+                }
+
+                Rule2()
+                composer
+
+                if !closed.isEmpty {
+                    Rule2()
+                    SectionLabel("История")
+                    ticketList(closed)
                 }
             }
             .task {
@@ -88,11 +80,58 @@ struct SupportView: View {
         }
     }
 
+    /// Новое обращение в виде чата: выбрать тему и сразу писать.
+    private var composer: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            SectionLabel("Новое обращение")
+            VStack(alignment: .leading, spacing: 8) {
+                Text("ТЕМА").font(AppFont.mono(11, .medium)).em(0.06, 11).foregroundColor(p.inkSoft)
+                ChipTabs(items: Self.themes, value: $theme, scroll: true)
+                if let orderRef, theme == "order" {
+                    Meta("Заказ № \(Fmt.pad(orderRef))")
+                }
+            }
+            HStack(alignment: .bottom, spacing: 12) {
+                TextField("", text: $text, prompt: Text(placeholder).foregroundColor(p.inkFaint), axis: .vertical)
+                    .lineLimit(1...6).font(AppFont.text(16)).foregroundColor(p.ink).focused($focused)
+                MonoLink(text: busy ? "…" : "Отправить →", bold: true, color: canSend ? p.ink : p.inkSoft) {
+                    Task { await send() }
+                }
+                .disabled(!canSend)
+            }
+            .padding(.bottom, 12)
+            .overlay(alignment: .bottom) { Rectangle().fill(focused ? p.ink : p.inkFaint).frame(height: 1) }
+            ErrorText(text: error)
+        }
+    }
+
+    private var placeholder: String {
+        switch theme {
+        case "order": return "Что случилось с заказом?"
+        case "wallet": return "Что не так с балансом или бонусами?"
+        case "verification": return "Что не получилось с подтверждением?"
+        case "events": return "Какой ивент и что случилось?"
+        case "account": return "Что случилось с аккаунтом?"
+        default: return "Напишите, чем помочь"
+        }
+    }
+
+    private func ticketList(_ list: [JSON]) -> some View {
+        VStack(spacing: 14) {
+            ForEach(Array(list.enumerated()), id: \.offset) { i, t in
+                if i > 0 { Rule() }
+                Button { session.push(.supportChat(t["id"].id)) } label: { ticketRow(t) }.buttonStyle(.plain)
+            }
+        }
+    }
+
     private func prefill() {
-        guard let topic, subject.isEmpty else { return }
-        if topic == "verification" { subject = "Верификация отклонена" }
-        if topic.hasPrefix("order:"), let id = Int64(topic.dropFirst(6)) { subject = "Проблема с заказом № \(Fmt.pad(id))" }
-        creating = !subject.isEmpty
+        guard let topic else { return }
+        if topic == "verification" { theme = "verification" }
+        if topic.hasPrefix("order:"), let id = Int64(topic.dropFirst(6)) {
+            theme = "order"
+            orderRef = id
+        }
     }
 
     private func ticketRow(_ t: JSON) -> some View {
@@ -108,7 +147,7 @@ struct SupportView: View {
             HStack(spacing: 10) {
                 if open {
                     Text("\(t.last_from_staff.bool ? "ОТВЕТ" : "ОТПРАВЛЕНО") \(Fmt.ago(t.last_message_at.date ?? t.updated_at.date).uppercased())").foregroundColor(p.inkSoft)
-                    if t.last_from_staff.bool { Text("● НОВЫЙ ОТВЕТ").bold().foregroundColor(p.ink) }
+                    if t.last_from_staff.bool { Text("● НОВЫЙ ОТВЕТ").bold().foregroundColor(p.accent) }
                 } else {
                     Text("\(Fmt.ddmm(t.closed_at.date ?? t.updated_at.date)) · РЕШЕНО").foregroundColor(p.inkSoft)
                 }
@@ -119,19 +158,28 @@ struct SupportView: View {
         .contentShape(Rectangle())
     }
 
-    private func create() async {
-        guard !subject.trimmingCharacters(in: .whitespaces).isEmpty, !first.trimmingCharacters(in: .whitespaces).isEmpty else {
-            error = "Заполните тему и сообщение"
-            return
+    /// Тема обращения для списка и админки: выбранная тема (+ номер заказа).
+    private var subject: String {
+        let label = Self.themes.first { $0.0 == theme }?.1 ?? "Другое"
+        if theme == "order", let orderRef { return "Проблема с заказом № \(Fmt.pad(orderRef))" }
+        if theme == "other" {
+            let t = text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "\n", with: " ")
+            return t.count > 60 ? String(t.prefix(57)) + "…" : t
         }
+        return label
+    }
+
+    private func send() async {
+        let msg = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !msg.isEmpty else { return }
         busy = true
         error = nil
         defer { busy = false }
         do {
-            let r = try await API.shared.post("support/tickets", ["subject": subject.trimmingCharacters(in: .whitespaces), "first_message": first.trimmingCharacters(in: .whitespaces)])
-            subject = ""
-            first = ""
-            creating = false
+            let r = try await API.shared.post("support/tickets", ["subject": subject, "first_message": msg])
+            text = ""
+            orderRef = nil
+            focused = false
             await load()
             session.push(.supportChat(r["id"].id))
         } catch {
@@ -140,7 +188,17 @@ struct SupportView: View {
     }
 
     private func load() async {
-        tickets = (try? await API.shared.get("support/overview"))?.array ?? []
+        do {
+            let r = try await API.shared.get("support/overview")
+            tickets = r.array
+            loadError = nil
+        } catch is CancellationError {
+            return
+        } catch {
+            // Раньше ошибка молча превращалась в «Обращений пока не было».
+            loadError = error.localizedDescription
+            if tickets == nil { tickets = [] }
+        }
     }
 }
 

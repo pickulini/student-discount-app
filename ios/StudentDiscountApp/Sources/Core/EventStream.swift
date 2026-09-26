@@ -23,6 +23,7 @@ final class EventStream {
         cfg.timeoutIntervalForRequest = 70
         cfg.timeoutIntervalForResource = 24 * 3600
         cfg.requestCachePolicy = .reloadIgnoringLocalCacheData
+        cfg.urlCache = nil
         return URLSession(configuration: cfg)
     }()
 

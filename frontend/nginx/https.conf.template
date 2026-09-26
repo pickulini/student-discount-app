@@ -2,9 +2,22 @@
 # (308, а не 301, чтобы POST-запросы старых клиентов не превращались в GET).
 # Исключение: запрос уже пришёл по HTTPS через прокси (Tailscale Funnel/Serve) —
 # тогда отдаём сайт, иначе получится бесконечный редирект.
+# Редиректы не кэшируем: 308 браузеры и iOS запоминают навсегда, и ошибка в настройке
+# продолжала бы действовать даже после исправления. Переменная непуста только у редиректов
+# (пустой add_header nginx не отправляет, а обычные ответы сохраняют свои заголовки).
+map $fwd_proto $redirect_nocache_80 {
+    https   "";
+    default "no-store";
+}
+map $host $redirect_nocache_443 {
+    "${PUBLIC_HOST}" "";
+    default          "no-store";
+}
+
 server {
     listen 80;
     server_name _;
+    add_header Cache-Control $redirect_nocache_80 always;
     if ($fwd_proto != "https") {
         return 308 https://${PUBLIC_HOST}$request_uri;
     }
@@ -26,6 +39,7 @@ server {
 
     # Зашли по IP или другому имени — отправляем на имя из сертификата,
     # иначе браузер покажет предупреждение о несовпадении.
+    add_header Cache-Control $redirect_nocache_443 always;
     if ($host != "${PUBLIC_HOST}") {
         return 308 https://${PUBLIC_HOST}$request_uri;
     }

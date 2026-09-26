@@ -107,6 +107,15 @@ actor API {
         let c = URLSessionConfiguration.default
         c.timeoutIntervalForRequest = 25
         c.waitsForConnectivity = false
+        // Ответы API не кэшируем: иначе постоянные редиректы (308) запоминаются навсегда —
+        // так запросы, попавшие в петлю редиректов на сервере, продолжали падать и после её починки.
+        c.urlCache = nil
+        c.requestCachePolicy = .reloadIgnoringLocalCacheData
+        // Разово чистим общий кэш от уже запомненных редиректов.
+        if !UserDefaults.standard.bool(forKey: "cache_purged_v1") {
+            URLCache.shared.removeAllCachedResponses()
+            UserDefaults.standard.set(true, forKey: "cache_purged_v1")
+        }
         return URLSession(configuration: c)
     }()
 
@@ -235,6 +244,9 @@ actor API {
         } catch let e as APIError {
             throw e
         } catch {
+            // Запрос отменён (экран закрыли/пересоздали) — это не «нет связи».
+            if error is CancellationError || (error as? URLError)?.code == .cancelled { throw CancellationError() }
+            NSLog("[API] %@ %@ failed: %@", method, path, String(describing: error))
             throw APIError.network
         }
 
