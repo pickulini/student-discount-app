@@ -68,7 +68,7 @@ struct PhotoUploadBox: View {
                 ZStack(alignment: .bottom) {
                     if let preview {
                         Image(uiImage: preview).resizable().scaledToFill()
-                            .frame(maxWidth: .infinity).frame(height: 200).clipped()
+                            .frame(maxWidth: .infinity).frame(height: 200).clipped().contentShape(Rectangle())
                             .opacity(busy ? 0.5 : 1)
                         Text(busy ? "ЗАГРУЖАЕМ…" : uploadedURL.isEmpty ? "НЕ ЗАГРУЗИЛОСЬ · ВЫБРАТЬ СНОВА" : "✓ ЗАГРУЖЕНО · НАЖМИТЕ, ЧТОБЫ ЗАМЕНИТЬ")
                             .font(AppFont.mono(11, .bold)).em(0.04, 11).foregroundColor(p.onInk)

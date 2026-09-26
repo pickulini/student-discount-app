@@ -88,6 +88,9 @@ struct RemoteImage: View {
         ZStack {
             if let image {
                 Image(uiImage: image).resizable().scaledToFill()
+                    // scaledToFill вылезает за рамку, а .clipped() обрезает только картинку, не касания:
+                    // невидимая часть вертикальной обложки перехватывала нажатия на кнопку «назад» над ней.
+                    .allowsHitTesting(false)
                     .transition(.opacity)
             } else {
                 Color.clear

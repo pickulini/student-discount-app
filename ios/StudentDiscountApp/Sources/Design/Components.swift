@@ -348,6 +348,7 @@ struct Photo: View {
         .frame(maxWidth: .infinity)
         .frame(height: height)
         .clipped()
+        .contentShape(Rectangle()) // зона касания — ровно рамка фото
     }
 }
 

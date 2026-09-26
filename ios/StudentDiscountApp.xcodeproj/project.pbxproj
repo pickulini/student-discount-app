@@ -12,6 +12,7 @@
 		083D4E545FEA76CC8E5452E1 /* EventStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49F439B0D8257ED6651FAB1D /* EventStream.swift */; };
 		290734B42A36C9B28657527E /* Manrope-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BB304579BE217731B86ECCCC /* Manrope-Medium.ttf */; };
 		2EF261368D5E0C29F66EB893 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA49F66CA869B42C3063432 /* HomeView.swift */; };
+		40F507DB6D2C7D59C549245D /* NavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2E58C2340EF3A7B5A2E9B75 /* NavigationUITests.swift */; };
 		45CC668D61E68E3A31096298 /* JSON.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62D59C6AA7FE06658031FD1 /* JSON.swift */; };
 		48F925CCF7741C4AFFA5F9A5 /* StudentDiscountApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C18A6FEF222F1ADCC7A97EFC /* StudentDiscountApp.swift */; };
 		4D7EAB30C882AE7A84824617 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49F680185A26DE257C2E9E89 /* ProfileView.swift */; };
@@ -51,12 +52,23 @@
 		FC85B0151F5AAD4C49D052F8 /* VerificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 042B5010BC0D485011B4EBA0 /* VerificationView.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		7AF88269FE57250221190485 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6C29C9349B0C7719EA4A0D86 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3AFC2130FFD8BD174E73B380;
+			remoteInfo = StudentDiscountApp;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		0167FDF9227C13ECC0FD94E9 /* Session.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Session.swift; sourceTree = "<group>"; };
 		042B5010BC0D485011B4EBA0 /* VerificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerificationView.swift; sourceTree = "<group>"; };
 		17D6C523320136EB5EBAF6E4 /* CheckoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckoutView.swift; sourceTree = "<group>"; };
 		1DE863D87B5D6CF50800E93D /* ImageTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageTools.swift; sourceTree = "<group>"; };
 		2A675F277DFF8447C39EA8FE /* SocialViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialViews.swift; sourceTree = "<group>"; };
+		2F803155DBC8CD7F3C374224 /* StudentDiscountUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = StudentDiscountUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		349D6291331E3C8110591970 /* Cards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cards.swift; sourceTree = "<group>"; };
 		3BA49F66CA869B42C3063432 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		3FA5F7B8D3DBF2CFE89C91E2 /* OrdersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrdersView.swift; sourceTree = "<group>"; };
@@ -80,6 +92,7 @@
 		B9B596041438B4F8F569EB26 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		BB304579BE217731B86ECCCC /* Manrope-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Manrope-Medium.ttf"; sourceTree = "<group>"; };
 		C18A6FEF222F1ADCC7A97EFC /* StudentDiscountApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudentDiscountApp.swift; sourceTree = "<group>"; };
+		C2E58C2340EF3A7B5A2E9B75 /* NavigationUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationUITests.swift; sourceTree = "<group>"; };
 		C921269A846AA8BC7DCD4CD8 /* EventDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventDetailView.swift; sourceTree = "<group>"; };
 		C9E31695DE531E0E147FF8EB /* JetBrainsMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Bold.ttf"; sourceTree = "<group>"; };
 		CA0CDA4A30DBB7137184F16A /* JetBrainsMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Medium.ttf"; sourceTree = "<group>"; };
@@ -112,6 +125,7 @@
 			children = (
 				670AAB815C4DBA7E65EF42AA /* Resources */,
 				14CA7B012DF58065F5D12B84 /* Sources */,
+				B68D79551CAA1DB6F5FB65FB /* UITests */,
 				8097C3F631343B849B4BDF7C /* Products */,
 			);
 			sourceTree = "<group>";
@@ -231,6 +245,7 @@
 			isa = PBXGroup;
 			children = (
 				EDD55831555B16D563493A58 /* StudentDiscountApp.app */,
+				2F803155DBC8CD7F3C374224 /* StudentDiscountUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -251,6 +266,14 @@
 				405CAA381C25DE309CEFACC4 /* SettingsViews.swift */,
 			);
 			path = Settings;
+			sourceTree = "<group>";
+		};
+		B68D79551CAA1DB6F5FB65FB /* UITests */ = {
+			isa = PBXGroup;
+			children = (
+				C2E58C2340EF3A7B5A2E9B75 /* NavigationUITests.swift */,
+			);
+			path = UITests;
 			sourceTree = "<group>";
 		};
 		CF33AC122BBB6A8F910908E7 /* Fonts */ = {
@@ -314,6 +337,24 @@
 			productReference = EDD55831555B16D563493A58 /* StudentDiscountApp.app */;
 			productType = "com.apple.product-type.application";
 		};
+		3E092D0ABB756D69336A7C46 /* StudentDiscountUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 42801DEEFC8501A146AECC3D /* Build configuration list for PBXNativeTarget "StudentDiscountUITests" */;
+			buildPhases = (
+				46D2144C7107FC000EF39794 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				89E8BAF22DB84CB23CF2D923 /* PBXTargetDependency */,
+			);
+			name = StudentDiscountUITests;
+			packageProductDependencies = (
+			);
+			productName = StudentDiscountUITests;
+			productReference = 2F803155DBC8CD7F3C374224 /* StudentDiscountUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -323,6 +364,9 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					3E092D0ABB756D69336A7C46 = {
+						TestTargetID = 3AFC2130FFD8BD174E73B380;
+					};
 				};
 			};
 			buildConfigurationList = CAE240A7091A0646128FCA17 /* Build configuration list for PBXProject "StudentDiscountApp" */;
@@ -340,6 +384,7 @@
 			projectRoot = "";
 			targets = (
 				3AFC2130FFD8BD174E73B380 /* StudentDiscountApp */,
+				3E092D0ABB756D69336A7C46 /* StudentDiscountUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -365,6 +410,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		46D2144C7107FC000EF39794 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				40F507DB6D2C7D59C549245D /* NavigationUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		7FA440AA0FA22D7D7EC0DCBD /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -406,7 +459,33 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		89E8BAF22DB84CB23CF2D923 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3AFC2130FFD8BD174E73B380 /* StudentDiscountApp */;
+			targetProxy = 7AF88269FE57250221190485 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		41678007774E36609C1DDFF8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.studentdiscount.app.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = StudentDiscountApp;
+			};
+			name = Release;
+		};
 		806A75B3A033CACEBAD9535B /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -549,6 +628,24 @@
 			};
 			name = Release;
 		};
+		B6A97CAEABD515432F517D4C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.studentdiscount.app.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = StudentDiscountApp;
+			};
+			name = Debug;
+		};
 		E7F3B329C385D328E5D36856 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -578,6 +675,15 @@
 			buildConfigurations = (
 				E7F3B329C385D328E5D36856 /* Debug */,
 				806A75B3A033CACEBAD9535B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		42801DEEFC8501A146AECC3D /* Build configuration list for PBXNativeTarget "StudentDiscountUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B6A97CAEABD515432F517D4C /* Debug */,
+				41678007774E36609C1DDFF8 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
