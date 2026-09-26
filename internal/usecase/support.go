@@ -106,11 +106,15 @@ func (u *SupportUsecase) AddMessage(ctx context.Context, ticketID, userID int64,
                     ReferenceID:   &ticketID,
                 })
             }
-            // Broadcast в SSE для real-time обновления чата
-            u.notifUC.BroadcastSupportMessage(map[string]interface{}{
+            // SSE для живого чата — только участникам: владельцу обращения и админам.
+            // Раньше событие с текстом сообщения уходило всем подключённым пользователям.
+            owner := ticket.UserID
+            if isInternal {
+                owner = 0 // внутренняя заметка — только админам
+            }
+            u.notifUC.PublishSupportMessage(ctx, owner, map[string]interface{}{
                 "ticket_id":   ticketID,
                 "user_id":     userID,
-                "message":     message,
                 "is_internal": isInternal,
                 "created_at":  msg.CreatedAt,
             })

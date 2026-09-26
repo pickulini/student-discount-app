@@ -4,6 +4,7 @@ import SwiftUI
 struct SupportView: View {
     @Environment(\.palette) private var p
     @EnvironmentObject private var session: Session
+    @Environment(\.scenePhase) private var phase
     var topic: String?
 
     @State private var tickets: [JSON]?
@@ -67,6 +68,14 @@ struct SupportView: View {
                     }
                 }
             }
+            .task {
+                // Метка «● НОВЫЙ ОТВЕТ» появляется без обновления экрана.
+                while !Task.isCancelled {
+                    try? await Task.sleep(nanoseconds: 10_000_000_000)
+                    if phase == .active { await load() }
+                }
+            }
+            .onChange(of: phase) { ph in if ph == .active { Task { await load() } } }
         } else {
             LoadingScreen("Загружаем обращения…") { BackHeader("Профиль") }
                 .task {
@@ -135,6 +144,7 @@ struct SupportView: View {
 /// Переписка по обращению: свои сообщения справа, ответы поддержки — красным слева.
 struct SupportChatView: View {
     @Environment(\.palette) private var p
+    @Environment(\.scenePhase) private var phase
     let ticketID: Int64
 
     @State private var ticket: JSON = .null
@@ -186,12 +196,13 @@ struct SupportChatView: View {
         }
         .task {
             await load()
-            // Пока экран открыт — подтягиваем ответы раз в 20 секунд.
+            // Живой чат: пока экран открыт и приложение активно — подтягиваем ответы каждые 4 секунды.
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 20_000_000_000)
-                await load()
+                try? await Task.sleep(nanoseconds: 4_000_000_000)
+                if phase == .active { await load() }
             }
         }
+        .onChange(of: phase) { ph in if ph == .active { Task { await load() } } }
     }
 
     @ViewBuilder

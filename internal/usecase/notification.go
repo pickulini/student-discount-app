@@ -206,9 +206,18 @@ func (u *NotificationUsecase) NotifyAdmins(ctx context.Context, in CreateNotific
     return nil
 }
 
-// BroadcastSupportMessage — рассылает SSE-событие support_message всем.
-func (u *NotificationUsecase) BroadcastSupportMessage(payload interface{}) {
-    u.hub.Broadcast("support_message", payload)
+// PublishSupportMessage — SSE-событие support_message владельцу обращения и всем админам.
+func (u *NotificationUsecase) PublishSupportMessage(ctx context.Context, ownerID int64, payload interface{}) {
+    if ownerID > 0 {
+        u.hub.PublishToUser(ownerID, "support_message", payload)
+    }
+    if ids, err := u.userRepo.ListAdminIDs(ctx); err == nil {
+        for _, id := range ids {
+            if id != ownerID {
+                u.hub.PublishToUser(id, "support_message", payload)
+            }
+        }
+    }
 }
 
 // BroadcastAdminEvent — SSE-событие для админов (новая модерация и т.п.)

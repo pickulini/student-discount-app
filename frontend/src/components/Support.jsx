@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import { RouteLoadingView } from '../design/DottedPath';
 import { useMobileTop } from '../context/MobileChrome';
+import { useNotifications } from '../context/NotificationContext';
 import { Rule, Rule2, VRule, SectionLabel, PrimaryButton, SmallButton, TextButton } from './merchant/kit';
 
 /** D55 · Поддержка: слева обращения, справа переписка или новое обращение. */
@@ -128,16 +129,39 @@ const Support = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Живой чат: новое сообщение приходит событием support_message по SSE —
+  // сразу перечитываем переписку и список. Опрос раз в 10 секунд — на случай,
+  // если поток событий оборвался (плохая сеть, спящая вкладка).
+  const { events, reconnectCount } = useNotifications();
+  const liveEvent = events?.support_message;
+  useEffect(() => {
+    if (!liveEvent) return;
+    loadTickets();
+    if (activeId && Number(liveEvent.payload?.ticket_id) === Number(activeId)) loadThread(activeId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveEvent?.ts]);
+
   useEffect(() => {
     if (!activeId || creating) return undefined;
     loadThread(activeId);
     const t = setInterval(() => {
+      if (document.hidden) return;
       loadThread(activeId);
       loadTickets();
-    }, 20000);
-    return () => clearInterval(t);
+    }, 10000);
+    const onVisible = () => {
+      if (!document.hidden) {
+        loadThread(activeId);
+        loadTickets();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeId, creating]);
+  }, [activeId, creating, reconnectCount]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: 'nearest' });

@@ -28,6 +28,7 @@ enum DebugLaunch {
         case "subscriptions": return .subscriptions
         case "notifications": return .notifications
         case "support": return .support(topic: arg.isEmpty ? nil : arg)
+        case "supportChat": return .supportChat(id)
         case "settings": return .settings
         case "settingsProfile": return .settingsProfile
         case "settingsPrivacy": return .settingsPrivacy
@@ -42,7 +43,7 @@ enum DebugLaunch {
 
     @MainActor
     static func apply(_ session: Session) async {
-        if let e = email, let p = password, session.phase != .signedIn {
+        if let e = email, let p = password, session.phase != .signedIn || session.user.email.string != e {
             if let r = try? await API.shared.request("POST", "auth/login", body: .json(["email": e, "password": p]), auth: false) {
                 try? await session.signIn(access: r.access_token.str, refresh: r.refresh_token.string)
             }
