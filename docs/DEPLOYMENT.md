@@ -116,23 +116,34 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build fro
 
 ## HTTPS (Tailscale, Let's Encrypt)
 
-Сервер доступен в сети Tailscale, поэтому сертификат выпускает сам Tailscale на имя
-`<машина>.<tailnet>.ts.net` — это настоящий сертификат Let's Encrypt, браузеры и iOS ему доверяют.
-Нужно, чтобы в панели Tailscale (DNS) были включены MagicDNS и HTTPS Certificates.
+### Сейчас: Tailscale Funnel
+
+На сервере включён Tailscale Funnel: он держит порт 443, сам выпускает и продлевает сертификат
+на `server.<tailnet>.ts.net`, отдаёт сайт по HTTPS и HTTP/2 и публикует его в интернет.
+Запросы Funnel передаёт в nginx на `http://127.0.0.1:80` с заголовком `X-Forwarded-Proto: https`.
 
 ```bash
-# выпустить сертификат и включить автообновление (раз в неделю, cron)
+tailscale funnel status         # что опубликовано
+sudo tailscale funnel --bg 80   # опубликовать сайт (если выключен)
+```
+
+Свой сертификат в nginx при этом **не нужен**: `scripts/tls-cert.sh` видит Funnel и ничего не делает.
+
+Чтобы сайт снаружи был доступен только через Funnel, в `.env.prod` можно задать
+`HTTP_PORT=127.0.0.1:80` — тогда nginx не будет слушать 80-й порт на внешних адресах.
+
+### Без Funnel: сертификат в nginx
+
+Если Funnel/Serve выключен (`tailscale funnel reset`), сертификат можно выпустить в nginx:
+
+```bash
 sudo ./scripts/tls-cert.sh --install-cron
 ```
 
 Скрипт кладёт `fullchain.pem`, `privkey.pem` и `host.txt` в `./certs` (в git не попадает) и
-перезапускает frontend. После этого:
-
-- сайт открывается по `https://<машина>.<tailnet>.ts.net`, по HTTP/2;
-- запросы на `http://…` и на IP-адрес перенаправляются туда же (308, POST не теряется);
-- в `.env.prod` стоит поменять `FRONTEND_URL` на новый адрес.
-
-Чтобы вернуться на HTTP, достаточно убрать файлы из `./certs` и перезапустить frontend.
+перезапускает frontend; nginx переключается на HTTPS + HTTP/2 (в `.env.prod` задайте `HTTPS_PORT=443`), с 80-го и
+с IP-адреса — редирект 308 на имя из сертификата. Вернуться на HTTP — убрать файлы из `./certs`
+и перезапустить frontend.
 
 ---
 

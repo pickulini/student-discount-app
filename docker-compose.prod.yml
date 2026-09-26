@@ -70,7 +70,9 @@ services:
       - api
     ports:
       - "${HTTP_PORT:-80}:80"
-      - "${HTTPS_PORT:-443}:443"
+      # 443 по умолчанию занимает Tailscale Funnel (он и даёт HTTPS), поэтому HTTPS nginx
+      # слушает только локально. Свой сертификат без Funnel — задайте HTTPS_PORT=443.
+      - "${HTTPS_PORT:-127.0.0.1:8443}:443"
     environment:
       # Имя сайта для HTTPS. Пусто — берётся из certs/host.txt (его пишет scripts/tls-cert.sh).
       PUBLIC_HOST: ${PUBLIC_HOST:-}

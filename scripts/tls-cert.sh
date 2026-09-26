@@ -17,6 +17,15 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
+# Если HTTPS уже раздаёт Tailscale Funnel/Serve (он держит порт 443 и сам выпускает сертификат),
+# свой сертификат в nginx не нужен: Funnel принимает HTTPS и передаёт запросы в nginx на порт 80.
+if tailscale serve status 2>/dev/null | grep -q '^https://'; then
+    echo "HTTPS уже обслуживает Tailscale Funnel/Serve:" >&2
+    tailscale serve status >&2
+    echo "Сертификат для nginx не нужен — ничего не делаю. (Отключить Funnel: tailscale funnel reset)" >&2
+    exit 0
+fi
+
 # Имя сервера в сети Tailscale (например, server.tailXXXX.ts.net).
 HOST="${PUBLIC_HOST:-$(tailscale status --json | tr -d ' \n' | grep -o '"CertDomains":\["[^"]*"' | cut -d'"' -f4 || true)}"
 if [ -z "$HOST" ]; then

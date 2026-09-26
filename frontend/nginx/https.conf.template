@@ -1,9 +1,14 @@
-# Режим с сертификатом: HTTPS + HTTP/2. С порта 80 — постоянный редирект на HTTPS.
-# 308 (а не 301), чтобы POST-запросы старых клиентов не превращались в GET.
+# Режим с сертификатом: HTTPS + HTTP/2. С порта 80 — постоянный редирект на HTTPS
+# (308, а не 301, чтобы POST-запросы старых клиентов не превращались в GET).
+# Исключение: запрос уже пришёл по HTTPS через прокси (Tailscale Funnel/Serve) —
+# тогда отдаём сайт, иначе получится бесконечный редирект.
 server {
     listen 80;
     server_name _;
-    return 308 https://${PUBLIC_HOST}$request_uri;
+    if ($fwd_proto != "https") {
+        return 308 https://${PUBLIC_HOST}$request_uri;
+    }
+    include /etc/nginx/snippets/app.conf;
 }
 
 server {
