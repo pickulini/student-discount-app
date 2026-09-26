@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		056D27E95C3C45AE9447F090 /* JetBrainsMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = C9E31695DE531E0E147FF8EB /* JetBrainsMono-Bold.ttf */; };
 		066D4333CC332E47A4C46308 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DDBED6649E0D2ABAD4D91E9 /* Theme.swift */; };
+		083D4E545FEA76CC8E5452E1 /* EventStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49F439B0D8257ED6651FAB1D /* EventStream.swift */; };
 		290734B42A36C9B28657527E /* Manrope-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BB304579BE217731B86ECCCC /* Manrope-Medium.ttf */; };
 		2EF261368D5E0C29F66EB893 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA49F66CA869B42C3063432 /* HomeView.swift */; };
 		45CC668D61E68E3A31096298 /* JSON.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62D59C6AA7FE06658031FD1 /* JSON.swift */; };
@@ -58,6 +59,7 @@
 		3BA49F66CA869B42C3063432 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		3FA5F7B8D3DBF2CFE89C91E2 /* OrdersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrdersView.swift; sourceTree = "<group>"; };
 		405CAA381C25DE309CEFACC4 /* SettingsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViews.swift; sourceTree = "<group>"; };
+		49F439B0D8257ED6651FAB1D /* EventStream.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventStream.swift; sourceTree = "<group>"; };
 		49F680185A26DE257C2E9E89 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		581A3A2E69D6CAAC7D35C022 /* AuthViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViews.swift; sourceTree = "<group>"; };
 		6790E45F23748176B04F2EDB /* Manrope-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Manrope-Bold.ttf"; sourceTree = "<group>"; };
@@ -275,6 +277,7 @@
 			isa = PBXGroup;
 			children = (
 				8F30C3C4A7CFE7A476EC9CDD /* API.swift */,
+				49F439B0D8257ED6651FAB1D /* EventStream.swift */,
 				DD07031CE762BFA0AEC4C353 /* Format.swift */,
 				1DE863D87B5D6CF50800E93D /* ImageTools.swift */,
 				B62D59C6AA7FE06658031FD1 /* JSON.swift */,
@@ -368,6 +371,7 @@
 				A3D54423823FF24566813B3F /* DebugLaunch.swift in Sources */,
 				C337F213184A2789E1BA020A /* EventDetailView.swift in Sources */,
 				80CBD76317D8FCDAC4CB3371 /* EventFormView.swift in Sources */,
+				083D4E545FEA76CC8E5452E1 /* EventStream.swift in Sources */,
 				C5AF87F7056DC9A46D5C5688 /* EventsCore.swift in Sources */,
 				8FFCBE38230A6523CE6203CC /* EventsView.swift in Sources */,
 				E317D8EE9F74E01C0224CDBB /* Format.swift in Sources */,
