@@ -65,6 +65,7 @@ struct Bell: View {
 struct BackHeader<Right: View>: View {
     @Environment(\.palette) private var p
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var session: Session
     var label = "Назад"
     var mark = "←"
     var action: (() -> Void)? = nil
@@ -79,16 +80,27 @@ struct BackHeader<Right: View>: View {
 
     var body: some View {
         HStack {
-            Button { if let action { action() } else { dismiss() } } label: {
+            Button(action: goBack) {
+                // Зона нажатия ~44×44 pt: раньше нажимался только сам текст высотой 22 pt.
                 Text("\(mark) \(label.uppercased())").font(AppFont.mono(11, .medium)).em(0.06, 11).foregroundColor(p.ink)
-                    .padding(.vertical, 8).contentShape(Rectangle())
+                    .padding(.vertical, 12).padding(.trailing, 24)
+                    .frame(minWidth: 44, alignment: .leading)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             Spacer()
             right
         }
         .frame(minHeight: 22)
-        .padding(.vertical, -8)
+        .padding(.vertical, -12)
+    }
+
+    /// Назад — явно по стеку вкладки. Системный dismiss() в стеках, которыми управляет
+    /// Session, иногда молча ничего не делал; он остаётся запасным вариантом (вход/регистрация).
+    private func goBack() {
+        if let action { action(); return }
+        if session.phase == .signedIn, session.pop() { return }
+        dismiss()
     }
 }
 

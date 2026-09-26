@@ -35,6 +35,7 @@ import Order from './components/Order';
 import Savings from './components/Savings';
 import Verification from './components/Verification';
 import EventDetail from './components/EventDetail';
+import EventStats from './components/EventStats';
 import TransactionHistory from './components/TransactionHistory';
 import Support from './components/Support';
 import MerchantLayout from './components/MerchantLayout';
@@ -92,6 +93,7 @@ function App() {
             <Route path="notifications" element={<Notifications />} />
             <Route path="events/new" element={<EventForm />} />
             <Route path="events/:id" element={<EventDetail />} />
+            <Route path="events/:id/stats" element={<EventStats />} />
             <Route path=":handle" element={<PublicProfile />} />
             <Route path="order" element={<Order />} />
             <Route path="orders" element={<Order />} />

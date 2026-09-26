@@ -151,9 +151,11 @@ func NewRouterProto(
 		// Ивенты
 		r.Get("/api/v1/events", eventHandler.List)
 		r.Get("/api/v1/events/my", eventHandler.My)
+		r.Get("/api/v1/events/my/stats", cabinetHandler.MyEventsStats)
 		r.Get("/api/v1/events/meta", cabinetHandler.EventsMeta)
 		r.Get("/api/v1/events/friends", cabinetHandler.EventFriends)
-		r.Get("/api/v1/events/{id}", eventHandler.Get)
+		r.Get("/api/v1/events/{id}", cabinetHandler.TrackEventView(eventHandler.Get))
+		r.Get("/api/v1/events/{id}/stats", cabinetHandler.MyEventStat)
 		r.Post("/api/v1/events", eventHandler.Create)
 		r.Post("/api/v1/events/{id}/submit", eventHandler.Submit)
 		r.Post("/api/v1/events/{id}/schedule", eventHandler.Schedule)

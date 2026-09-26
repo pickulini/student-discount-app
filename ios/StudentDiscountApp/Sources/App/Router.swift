@@ -10,6 +10,7 @@ enum Route: Hashable {
     case savings
     case event(Int64)
     case eventNew
+    case eventStats(Int64)
     case referral
     case friends
     case subscriptions
@@ -37,6 +38,7 @@ extension Route {
         case .savings: SavingsView()
         case let .event(id): EventDetailView(id: id)
         case .eventNew: EventFormView()
+        case let .eventStats(id): EventStatsView(id: id)
         case .referral: ReferralView()
         case .friends: FriendsView()
         case .subscriptions: SubscriptionsView()

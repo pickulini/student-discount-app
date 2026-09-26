@@ -7,6 +7,7 @@ struct EventsView: View {
 
     @State private var events: [JSON]?
     @State private var mine: [JSON] = []
+    @State private var myStats: JSON = .null
     @State private var meta: [String: JSON] = [:]
     @State private var tab = "all"
     @State private var selected = Calendar.current.startOfDay(for: Date())
@@ -68,7 +69,9 @@ struct EventsView: View {
                 .padding(.horizontal, -20)
             }
             Rule2()
-            if events == nil {
+            if tab == "mine" {
+                mineContent
+            } else if events == nil {
                 LoadingView(label: "Собираем афишу…").frame(height: 240)
             } else if groups.isEmpty {
                 Text(tab == "mine" ? "Вы ещё не предлагали ивентов." : tab == "going" ? "В эти дни вы никуда не записаны." : "В эти дни ивентов нет.")
@@ -86,7 +89,32 @@ struct EventsView: View {
             Rule()
             Button("+ Предложить ивент") { session.push(.eventNew) }.buttonStyle(.bracket).frame(maxWidth: .infinity)
         }
-        .task { if events == nil { await load() } }
+        .task {
+            #if DEBUG
+            if let t = UserDefaults.standard.string(forKey: "uitest_events_tab") { tab = t }
+            #endif
+            if events == nil { await load() }
+        }
+    }
+
+    /// «Мои»: сводка организатора и ивенты с цифрами; нажатие — подробная статистика.
+    @ViewBuilder
+    private var mineContent: some View {
+        let list = myStats.events.array
+        if myStats.isNull && events == nil {
+            LoadingView(label: "Считаем статистику…").frame(height: 240)
+        } else if list.isEmpty {
+            Text("Вы ещё не предлагали ивентов. Когда предложите — здесь появятся просмотры, кто идёт и продажи билетов.")
+                .font(AppFont.text(15)).foregroundColor(p.inkSoft)
+        } else {
+            MyEventsSummary(totals: myStats.totals)
+            Rule2()
+            SectionLabel("Мои ивенты")
+            ForEach(Array(list.enumerated()), id: \.offset) { i, e in
+                if i > 0 { Rule() }
+                Button { session.push(.eventStats(e["id"].id)) } label: { MyEventStatRow(e: e) }.buttonStyle(.plain)
+            }
+        }
     }
 
     private static let statusLabel = ["draft": "Черновик", "pending_review": "На модерации", "rejected": "Отклонён",
@@ -130,10 +158,12 @@ struct EventsView: View {
     private func load() async {
         async let a = try? API.shared.get("events", ["limit": "200"])
         async let m = try? API.shared.get("events/my")
+        async let st = try? API.shared.get("events/my/stats")
         let all = (await a)?.array ?? []
         let my = (await m)?.array ?? []
         events = all
         mine = my
+        myStats = await st ?? JSON.object(["events": .array([]), "totals": .null])
         meta = await EventsCore.meta(Array(Set((all + my).map { $0["id"].id })))
     }
 }

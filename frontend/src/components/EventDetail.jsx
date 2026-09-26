@@ -223,7 +223,9 @@ const EventDetail = () => {
       )}
       {isOwner && (
         <div className="text-[14px] text-ink-soft">
-          Это ваш ивент. <Link to="/events?tab=mine" className="underline hover:text-ink">Все мои ивенты</Link>
+          Это ваш ивент.{' '}
+          <Link to={`/events/${event.id}/stats`} className="underline font-semibold text-ink hover:text-accent">Статистика ивента →</Link>{' '}
+          · <Link to="/events?tab=mine" className="underline hover:text-ink">Все мои ивенты</Link>
         </div>
       )}
     </div>
@@ -324,7 +326,9 @@ const EventDetail = () => {
           )}
           {isOwner && (
             <div className="text-[14px] text-ink-soft">
-              Это ваш ивент. <Link to="/events?tab=mine" className="underline hover:text-ink">Все мои ивенты</Link>
+              Это ваш ивент.{' '}
+          <Link to={`/events/${event.id}/stats`} className="underline font-semibold text-ink hover:text-accent">Статистика ивента →</Link>{' '}
+          · <Link to="/events?tab=mine" className="underline hover:text-ink">Все мои ивенты</Link>
             </div>
           )}
 

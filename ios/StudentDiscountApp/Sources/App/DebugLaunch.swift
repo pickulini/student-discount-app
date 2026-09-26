@@ -23,6 +23,7 @@ enum DebugLaunch {
         case "savings": return .savings
         case "event": return .event(id)
         case "eventNew": return .eventNew
+        case "eventStats": return .eventStats(id)
         case "referral": return .referral
         case "friends": return .friends
         case "subscriptions": return .subscriptions

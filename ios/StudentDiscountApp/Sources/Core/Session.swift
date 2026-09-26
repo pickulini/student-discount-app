@@ -122,6 +122,15 @@ final class Session: ObservableObject {
 
     func popToRoot() { paths[tab] = NavigationPath() }
 
+    /// Шаг назад в стеке текущей вкладки. false — стек пуст (закрывать нечего).
+    @discardableResult
+    func pop() -> Bool {
+        guard var p = paths[tab], !p.isEmpty else { return false }
+        p.removeLast()
+        paths[tab] = p
+        return true
+    }
+
     func open(_ tab: AppTab, _ route: Route? = nil) {
         self.tab = tab
         var p = NavigationPath()

@@ -125,7 +125,8 @@ struct EventDetailView: View {
                     .font(AppFont.text(12)).foregroundColor(p.inkSoft).frame(maxWidth: .infinity)
             }
             if isOwner {
-                Text("Это ваш ивент.").font(AppFont.text(14)).foregroundColor(p.inkSoft)
+                Button("Статистика ивента →") { session.push(.eventStats(id)) }.buttonStyle(.primary)
+                Text("Это ваш ивент: просмотры, кто идёт и продажи — в статистике.").font(AppFont.text(13)).foregroundColor(p.inkSoft)
             }
         }
     }
