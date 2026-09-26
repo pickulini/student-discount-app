@@ -227,15 +227,15 @@ const Profile = () => {
         </div>
 
         <div className="mt-6 flex">
-          <div className="flex-1">
-            <div className="text-editorial text-3xl text-ink">{friends.length}</div>
-            <div className="text-caption text-xs text-ink-faint mt-1">ДРУЗЕЙ</div>
-          </div>
+          <Link to="/friends" className="flex-1 group">
+            <div className="text-editorial text-3xl text-ink group-hover:text-accent transition">{friends.length}</div>
+            <div className="text-caption text-xs text-ink-faint mt-1">ДРУЗЕЙ →</div>
+          </Link>
           <div className="w-px self-stretch" style={{ borderLeft: '1px solid var(--color-line)' }} />
-          <div className="flex-1 pl-5">
-            <div className="text-editorial text-3xl text-ink">{subs.length}</div>
-            <div className="text-caption text-xs text-ink-faint mt-1">ПОДПИСОК</div>
-          </div>
+          <Link to="/subscriptions" className="flex-1 pl-5 group">
+            <div className="text-editorial text-3xl text-ink group-hover:text-accent transition">{subs.length}</div>
+            <div className="text-caption text-xs text-ink-faint mt-1">ПОДПИСОК →</div>
+          </Link>
         </div>
 
         <RuleDouble className="mt-6" />
@@ -351,19 +351,19 @@ const Profile = () => {
                 {events.map((ev, i) => (
                   <React.Fragment key={ev.id}>
                     {i > 0 && <RuleDashed className="mb-3" />}
-                    <div className="pb-3 flex items-center gap-3">
+                    <Link to={`/events/${ev.id}`} className="pb-3 flex items-center gap-3 group">
                       {ev.image_url ? (
-                        <div className="w-14 h-14 bg-cover bg-center bg-surface-2 shrink-0" style={{ backgroundImage: `url('${ev.image_url}')` }} />
+                        <div className="w-14 h-14 bg-cover bg-center bg-surface-2 shrink-0" style={{ backgroundImage: `url('${thumb(ev.image_url, 192)}')` }} />
                       ) : (
                         <div className="w-14 h-14 bg-surface-2 shrink-0" />
                       )}
                       <div className="min-w-0">
-                        <div className="text-sm text-ink line-clamp-1">{ev.title}</div>
+                        <div className="text-sm text-ink line-clamp-1 group-hover:text-accent transition">{ev.title}</div>
                         <div className="text-caption text-xs text-ink-faint mt-1">
                           {new Date(ev.start_at).toLocaleDateString('ru-RU', { weekday: 'short' }).toUpperCase().replace('.', '')} {new Date(ev.start_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} · {new Date(ev.start_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   </React.Fragment>
                 ))}
               </div>
@@ -372,13 +372,16 @@ const Profile = () => {
             <RuleDashed className="mt-1" />
 
             <div className="mt-4">
-              <Eyebrow>Друзья недавно</Eyebrow>
+              <div className="flex items-center justify-between">
+                <Eyebrow>Друзья недавно</Eyebrow>
+                <Link to="/friends" className="text-caption text-xs text-ink-faint hover:text-ink transition">ВСЕ →</Link>
+              </div>
               {friends.length === 0 ? (
                 <div className="mt-3 text-sm text-ink-soft">Пока нет друзей</div>
               ) : (
                 <div className="mt-3 flex flex-col gap-4">
                   {friends.slice(0, 2).map((f) => (
-                    <div key={f.id} className="flex items-center gap-3">
+                    <Link key={f.id} to={f.username ? `/@${f.username}` : '/friends'} className="flex items-center gap-3 group">
                       {f.avatar_url ? (
                         <img src={thumb(f.avatar_url, 128)} alt="" loading="lazy" className="w-10 h-10 rounded-full object-cover" />
                       ) : (
@@ -387,14 +390,14 @@ const Profile = () => {
                         </div>
                       )}
                       <div className="min-w-0">
-                        <div className="text-sm text-ink line-clamp-1">{f.nickname || f.full_name}</div>
+                        <div className="text-sm text-ink line-clamp-1 group-hover:text-accent transition">{f.nickname || f.full_name}</div>
                         {(f.username || f.university) && (
                           <div className="text-caption text-xs text-ink-faint mt-1 line-clamp-1">
                             {[f.username && `@${f.username}`, f.university].filter(Boolean).join(' · ')}
                           </div>
                         )}
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}

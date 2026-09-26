@@ -9,12 +9,19 @@ import { WEEKDAYS_SHORT, hhmm, ddmm, nextOccurrence, eventPrice, priceLabel } fr
 
 /** D51 · Публичный профиль: слева человек и действия, справа — куда идёт и на что подписан. */
 
-const Stat = ({ value, label }) => (
-  <div className="flex-1 min-w-0 flex flex-col gap-1">
-    <span className="font-display font-bold text-[22px] tracking-[-0.01em] text-ink">{value}</span>
-    <span className="font-mono text-[10px] tracking-[0.04em] uppercase text-ink-soft">{label}</span>
-  </div>
-);
+const Stat = ({ value, label, to }) => {
+  const body = (
+    <>
+      <span className={`font-display font-bold text-[22px] tracking-[-0.01em] text-ink ${to ? 'group-hover:text-accent transition' : ''}`}>{value}</span>
+      <span className="font-mono text-[10px] tracking-[0.04em] uppercase text-ink-soft">{label}{to ? ' →' : ''}</span>
+    </>
+  );
+  return to ? (
+    <Link to={to} className="flex-1 min-w-0 flex flex-col gap-1 group">{body}</Link>
+  ) : (
+    <div className="flex-1 min-w-0 flex flex-col gap-1">{body}</div>
+  );
+};
 
 const Menu = ({ items: given, getItems, bracket = false }) => {
   const items = getItems ? getItems() : given;
@@ -184,11 +191,11 @@ const PublicProfile = () => {
       <div className="flex">{primary}</div>
       {error && <div className="font-mono text-[12px] text-accent uppercase -mt-2">{error}</div>}
       <div className="flex gap-4 items-stretch">
-        <Stat value={extras.friends_count != null ? num(extras.friends_count) : '—'} label="Друзей" />
+        <Stat value={extras.friends_count != null ? num(extras.friends_count) : '—'} label="Друзей" to={isSelf ? '/friends' : undefined} />
         <VRule />
         <Stat value={isSelf ? '—' : num(extras.mutual_count || 0)} label="Общих" />
         <VRule />
-        <Stat value={extras.subscriptions_count != null ? num(extras.subscriptions_count) : '—'} label="Подписок" />
+        <Stat value={extras.subscriptions_count != null ? num(extras.subscriptions_count) : '—'} label="Подписок" to={isSelf ? '/subscriptions' : undefined} />
       </div>
       <Rule2 />
       <SectionLabel>Планирует посетить</SectionLabel>
@@ -252,11 +259,11 @@ const PublicProfile = () => {
           </div>
           {error && <div className="font-mono text-[12px] text-accent uppercase -mt-3">{error}</div>}
           <div className="flex gap-4 items-stretch">
-            <Stat value={extras.friends_count != null ? num(extras.friends_count) : '—'} label="Друзей" />
+            <Stat value={extras.friends_count != null ? num(extras.friends_count) : '—'} label="Друзей" to={isSelf ? '/friends' : undefined} />
             <VRule />
             <Stat value={isSelf ? '—' : num(extras.mutual_count || 0)} label="Общих" />
             <VRule />
-            <Stat value={extras.subscriptions_count != null ? num(extras.subscriptions_count) : '—'} label="Подписок" />
+            <Stat value={extras.subscriptions_count != null ? num(extras.subscriptions_count) : '—'} label="Подписок" to={isSelf ? '/subscriptions' : undefined} />
           </div>
           {!isSelf && extras.mutual?.length > 0 && (
             <>
@@ -327,10 +334,10 @@ const PublicProfile = () => {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-6">
               {extras.subscriptions.slice(0, 10).map((s) => (
-                <div key={s.id} className="flex flex-col gap-2 min-w-0">
+                <Link key={s.id} to={`/?q=${encodeURIComponent(s.name)}`} className="flex flex-col gap-2 min-w-0 group">
                   <Photo src={s.cover} className="w-full h-[80px] overflow-hidden" />
-                  <span className="font-mono font-bold text-[11px] tracking-[0.03em] uppercase text-ink truncate">{s.name}</span>
-                </div>
+                  <span className="font-mono font-bold text-[11px] tracking-[0.03em] uppercase text-ink truncate group-hover:text-accent transition">{s.name}</span>
+                </Link>
               ))}
             </div>
           )}
