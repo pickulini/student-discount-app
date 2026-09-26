@@ -214,8 +214,29 @@ struct SupportChatView: View {
     @State private var text = ""
     @State private var busy = false
     @State private var error: String?
+    @FocusState private var focused: Bool
 
     private var open: Bool { ["open", "in_progress"].contains(ticket.status.str) }
+    private var canSend: Bool { !busy && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
+    private func composer(_ proxy: ScrollViewProxy) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ErrorText(text: error)
+            HStack(alignment: .bottom, spacing: 12) {
+                TextField("", text: $text, prompt: Text("Введите сообщение…").foregroundColor(p.inkFaint), axis: .vertical)
+                    .lineLimit(1...5).font(AppFont.text(16)).foregroundColor(p.ink).focused($focused)
+                MonoLink(text: busy ? "…" : "Отправить →", bold: true, color: canSend ? p.ink : p.inkSoft) {
+                    Task { await send() }
+                }
+                .disabled(!canSend)
+            }
+            .padding(.bottom, 10)
+            .overlay(alignment: .bottom) { Rectangle().fill(focused ? p.ink : p.inkFaint).frame(height: 1) }
+        }
+        .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8)
+        .background(p.bg.ignoresSafeArea(edges: .bottom))
+        .overlay(alignment: .top) { DashLine().stroke(p.inkFaint, style: StrokeStyle(lineWidth: 1, dash: [3, 3])).frame(height: 1) }
+    }
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -236,25 +257,23 @@ struct SupportChatView: View {
                     }
                     Color.clear.frame(height: 1).id("bottom")
                 }
-                Rule2()
                 if open {
-                    HStack(spacing: 12) {
-                        TextField("", text: $text, prompt: Text("Введите сообщение…").foregroundColor(p.inkFaint), axis: .vertical)
-                            .lineLimit(1...5).font(AppFont.text(16)).foregroundColor(p.ink)
-                        MonoLink(text: busy ? "…" : "Отправить →", bold: true, color: text.trimmingCharacters(in: .whitespaces).isEmpty ? p.inkSoft : p.ink) {
-                            Task { await send() }
-                        }
-                        .disabled(busy || text.trimmingCharacters(in: .whitespaces).isEmpty)
-                    }
-                    .padding(.bottom, 12)
-                    .overlay(alignment: .bottom) { Rectangle().fill(p.ink).frame(height: 1) }
-                    ErrorText(text: error)
+                    Rule2()
                     Button("Вопрос решён — закрыть") { Task { await close() } }.buttonStyle(.bracket).frame(maxWidth: .infinity).disabled(busy)
                 } else if !ticket.isNull {
+                    Rule2()
                     Text("Обращение закрыто. Если вопрос остался — напишите новое.").font(AppFont.text(14)).foregroundColor(p.inkSoft)
                 }
             }
+            // Поле ввода закреплено внизу: переписка листается, а оно всегда на виду
+            // (и поднимается вместе с клавиатурой).
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if open { composer(proxy) }
+            }
             .onChange(of: thread.count) { _ in withAnimation { proxy.scrollTo("bottom") } }
+            .onChange(of: focused) { f in
+                if f { DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { withAnimation { proxy.scrollTo("bottom") } } }
+            }
         }
         .task {
             await load()
