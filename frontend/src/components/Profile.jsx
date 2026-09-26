@@ -4,7 +4,7 @@ import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { Eyebrow, LeaderRow } from '../design/UI';
 import { RouteLoadingView, RuleDashed, RuleDouble } from '../design/DottedPath';
-import { Avatar, Rule, Rule2, plural } from './merchant/kit';
+import { Avatar, Rule, Rule2, plural, thumb } from './merchant/kit';
 import { useMobileTop } from '../context/MobileChrome';
 import { useNotifications } from '../context/NotificationContext';
 
@@ -380,7 +380,7 @@ const Profile = () => {
                   {friends.slice(0, 2).map((f) => (
                     <div key={f.id} className="flex items-center gap-3">
                       {f.avatar_url ? (
-                        <img src={f.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
+                        <img src={thumb(f.avatar_url, 128)} alt="" loading="lazy" className="w-10 h-10 rounded-full object-cover" />
                       ) : (
                         <div className="w-10 h-10 rounded-full bg-surface-2 flex items-center justify-center text-accent font-bold">
                           {(f.nickname || f.full_name || '?')[0].toUpperCase()}

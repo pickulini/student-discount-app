@@ -37,7 +37,9 @@ struct EventFormView: View {
             Rule2()
             UnderlineField(label: "Название *", text: $title, placeholder: "Встреча студентов МГУ")
             UnderlineField(label: "Описание", text: $details, placeholder: "Что будет, для кого, программа…")
-            HStack(alignment: .top, spacing: 20) {
+            // Дата и время каждая занимают свою строку: в две колонки выбор даты не помещался
+            // по ширине, и страница уезжала вбок.
+            VStack(alignment: .leading, spacing: 20) {
                 dateField("Начало *", $start)
                 VStack(alignment: .leading, spacing: 8) {
                     fieldLabel("Окончание")

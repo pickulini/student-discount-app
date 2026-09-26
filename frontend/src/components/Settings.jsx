@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Card, Eyebrow } from '../design/UI';
+import { thumb } from './merchant/kit';
 
 const TILES = [
   { to: '/settings/profile', title: 'Профиль', hint: 'Никнейм, username, аватар' },
@@ -22,7 +23,7 @@ const Settings = () => {
     <div>
       <Card className="p-5 mb-4 flex items-center gap-4">
         {user.avatar_url ? (
-          <img src={user.avatar_url} alt="" className="w-16 h-16 rounded-full object-cover" />
+          <img src={thumb(user.avatar_url, 192)} alt="" className="w-16 h-16 rounded-full object-cover" />
         ) : (
           <div className="w-16 h-16 rounded-full bg-surface-2 border border-line flex items-center justify-center text-accent text-xl font-bold">
             {displayName?.[0]?.toUpperCase() || '?'}

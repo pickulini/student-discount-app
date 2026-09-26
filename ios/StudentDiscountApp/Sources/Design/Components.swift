@@ -333,14 +333,9 @@ struct Photo: View {
     var body: some View {
         ZStack(alignment: .bottomLeading) {
             PhotoPlaceholder(seed: seed)
-            if let u = AppConfig.mediaURL(url) {
-                AsyncImage(url: u, transaction: Transaction(animation: .easeOut(duration: 0.2))) { phase in
-                    if case let .success(img) = phase {
-                        img.resizable().scaledToFill()
-                    } else {
-                        Color.clear
-                    }
-                }
+            if url != nil {
+                // Карточки и обложки — копия 1024 px по короткой стороне.
+                RemoteImage(ImageLoader.url(url, points: 390))
             }
             if let caption, !caption.isEmpty {
                 Text(caption.uppercased())
@@ -366,10 +361,8 @@ struct Avatar: View {
                            startPoint: .topLeading, endPoint: .bottomTrailing)
             Text(String(name.trimmingCharacters(in: .whitespaces).prefix(1)).uppercased())
                 .font(AppFont.mono(size * 0.4, .bold)).foregroundColor(.white)
-            if let u = AppConfig.mediaURL(url) {
-                AsyncImage(url: u) { phase in
-                    if case let .success(img) = phase { img.resizable().scaledToFill() } else { Color.clear }
-                }
+            if url != nil {
+                RemoteImage(ImageLoader.url(url, points: size))
             }
         }
         .frame(width: size, height: size)

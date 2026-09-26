@@ -333,9 +333,25 @@ export const Leader = ({ label, value, strong = false, soft = false, big = false
   </div>
 );
 
+// Уменьшенная копия загруженной картинки: сервер отдаёт /uploads/x.jpg?w=N
+// (N — короткая сторона в пикселях), вместо оригинала на несколько мегабайт.
+const THUMB_WIDTHS = [64, 128, 256, 512, 1024];
+export const thumb = (src, px) => {
+  if (!src || !src.startsWith('/uploads/') || src.includes('?')) return src;
+  const w = THUMB_WIDTHS.find((x) => x >= px) || 1024;
+  return `${src}?w=${w}`;
+};
+
 export const Avatar = ({ src, name, size = 28 }) =>
   src ? (
-    <img src={src} alt="" className="rounded-full object-cover shrink-0" style={{ width: size, height: size }} />
+    <img
+      src={thumb(src, size * Math.min(3, Math.ceil(window.devicePixelRatio || 2)))}
+      alt=""
+      loading="lazy"
+      decoding="async"
+      className="rounded-full object-cover shrink-0"
+      style={{ width: size, height: size }}
+    />
   ) : (
     <div
       className="rounded-full shrink-0 flex items-center justify-center font-mono font-bold text-white"
@@ -347,7 +363,7 @@ export const Avatar = ({ src, name, size = 28 }) =>
 
 export const Photo = ({ src, className = '', children }) =>
   src ? (
-    <div className={`relative bg-cover bg-center bg-surface-2 ${className}`} style={{ backgroundImage: `url('${src}')` }}>
+    <div className={`relative bg-cover bg-center bg-surface-2 ${className}`} style={{ backgroundImage: `url('${thumb(src, 1024)}')` }}>
       {children}
     </div>
   ) : (

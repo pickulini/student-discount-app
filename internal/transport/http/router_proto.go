@@ -64,7 +64,9 @@ func NewRouterProto(
 	r.Get("/api/v1/universities", companyHandler.ListUniversities)
 	r.Get("/api/v1/stats/public", cabinetHandler.PublicStats)
 	r.Get("/api/v1/offers", cabinetHandler.ListOffers)
-    r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir("/app/uploads"))))
+	// Картинки: кэш «навсегда» и уменьшенные копии по ?w= (см. handlers/media.go).
+	// Раньше здесь был http.FileServer — он ещё и показывал список всех файлов по /uploads/.
+	r.Handle("/uploads/*", handlers.NewMediaHandler("/app/uploads"))
 	r.Get("/api/v1/offers/nearby", companyHandler.GetNearbyOffers)
 	r.With(middleware.OptionalAuth(jwtManager)).Get("/api/v1/offers/{id}", cabinetHandler.GetOffer)
 	r.With(middleware.OptionalAuth(jwtManager)).Get("/api/v1/companies/{id}/stats", subscriptionHandler.CompanyStats)
