@@ -164,6 +164,15 @@ actor API {
         return v
     }
 
+    /// Токен для потока событий: он передаётся в URL, поэтому берём заведомо живой.
+    func streamToken() async -> String? {
+        guard let t = API.accessToken else { return nil }
+        if let left = API.secondsLeft(t), left < 300, API.refreshToken != nil {
+            return await refresh() ?? t
+        }
+        return t
+    }
+
     private func freshToken() async -> String? {
         guard let t = API.accessToken else { return nil }
         if let left = API.secondsLeft(t), left < 60, API.refreshToken != nil {

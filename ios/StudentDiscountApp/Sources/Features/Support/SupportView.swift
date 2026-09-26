@@ -69,11 +69,14 @@ struct SupportView: View {
                 }
             }
             .task {
-                // Метка «● НОВЫЙ ОТВЕТ» появляется без обновления экрана.
+                // Метка «● НОВЫЙ ОТВЕТ» появляется без обновления экрана; опрос — запасной путь.
                 while !Task.isCancelled {
-                    try? await Task.sleep(nanoseconds: 10_000_000_000)
+                    try? await Task.sleep(nanoseconds: 30_000_000_000)
                     if phase == .active { await load() }
                 }
+            }
+            .onChange(of: session.liveEvent) { e in
+                if e?.name == "support_message" { Task { await load() } }
             }
             .onChange(of: phase) { ph in if ph == .active { Task { await load() } } }
         } else {
@@ -145,6 +148,7 @@ struct SupportView: View {
 struct SupportChatView: View {
     @Environment(\.palette) private var p
     @Environment(\.scenePhase) private var phase
+    @EnvironmentObject private var session: Session
     let ticketID: Int64
 
     @State private var ticket: JSON = .null
@@ -196,11 +200,16 @@ struct SupportChatView: View {
         }
         .task {
             await load()
-            // Живой чат: пока экран открыт и приложение активно — подтягиваем ответы каждые 4 секунды.
+            // Запасной опрос — на случай, если поток событий оборвался.
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 4_000_000_000)
+                try? await Task.sleep(nanoseconds: 15_000_000_000)
                 if phase == .active { await load() }
             }
+        }
+        // Живой чат: новое сообщение приходит событием support_message — перечитываем сразу.
+        .onChange(of: session.liveEvent) { e in
+            guard let e, e.name == "support_message", e.payload.ticket_id.int64 == ticketID else { return }
+            Task { await load() }
         }
         .onChange(of: phase) { ph in if ph == .active { Task { await load() } } }
     }

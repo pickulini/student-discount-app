@@ -108,11 +108,9 @@ func (u *SupportUsecase) AddMessage(ctx context.Context, ticketID, userID int64,
             }
             // SSE для живого чата — только участникам: владельцу обращения и админам.
             // Раньше событие с текстом сообщения уходило всем подключённым пользователям.
-            owner := ticket.UserID
-            if isInternal {
-                owner = 0 // внутренняя заметка — только админам
-            }
-            u.notifUC.PublishSupportMessage(ctx, owner, map[string]interface{}{
+            // isInternal здесь — «ответ поддержки», а не скрытая заметка (заметки идут отдельным
+            // запросом), поэтому владелец обращения получает событие всегда.
+            u.notifUC.PublishSupportMessage(ctx, ticket.UserID, map[string]interface{}{
                 "ticket_id":   ticketID,
                 "user_id":     userID,
                 "is_internal": isInternal,

@@ -12,12 +12,33 @@ final class Session: ObservableObject {
     /// Переход «наверх» по повторному тапу вкладки: у каждой вкладки свой стек.
     @Published var paths: [AppTab: NavigationPath] = [:]
 
+    /// Последнее событие живого потока (support_message и др.) — экраны подписываются через onChange.
+    @Published var liveEvent: LiveEvent?
+
     private var pollTask: Task<Void, Never>?
+    private let stream = EventStream()
 
     init() {
         API.onSessionExpired = { [weak self] in
             self?.signOutLocally()
         }
+        stream.onEvent = { [weak self] e in
+            guard let self else { return }
+            if e.name == "notification" {
+                self.unread += 1
+            } else {
+                self.liveEvent = e
+            }
+        }
+        stream.onConnected = { [weak self] in
+            Task { await self?.refreshUnread() }
+        }
+    }
+
+    /// Приложение вернулось на экран: соединение из фона обычно уже мёртвое — поднимаем заново.
+    func resumeLive() {
+        guard phase == .signedIn else { return }
+        stream.restart()
     }
 
     var isVerified: Bool { user.student_status.str == "verified" }
@@ -63,6 +84,7 @@ final class Session: ObservableObject {
     private func signOutLocally() {
         API.clearTokens()
         pollTask?.cancel()
+        stream.stop()
         user = .null
         unread = 0
         paths = [:]
@@ -76,6 +98,7 @@ final class Session: ObservableObject {
     }
 
     private func startPolling() {
+        stream.start()
         pollTask?.cancel()
         pollTask = Task { [weak self] in
             while !Task.isCancelled {

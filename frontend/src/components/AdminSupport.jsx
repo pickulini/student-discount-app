@@ -98,9 +98,36 @@ const Thread = ({ id, onChanged }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // Живой чат: сообщение пользователя приходит событием support_message — перечитываем
+  // открытое обращение сразу. Опрос раз в 10 с и возврат на вкладку — на случай обрыва потока.
+  const { events, reconnectCount } = useNotifications();
+  const live = events?.support_message;
+  useEffect(() => {
+    if (live && Number(live.payload?.ticket_id) === Number(id)) load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live?.ts]);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (!document.hidden) load();
+    }, 10000);
+    const onVisible = () => {
+      if (!document.hidden) load();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    if (reconnectCount) load();
+    return () => {
+      clearInterval(t);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, reconnectCount]);
+
+  // Прокручиваем вниз только когда появилось новое сообщение, а не на каждом опросе.
+  const msgCount = d?.messages?.length || 0;
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'nearest' });
-  }, [d]);
+  }, [msgCount]);
 
   if (!d) return error ? <span className="font-mono text-[12px] uppercase text-accent">{error}</span> : <RouteLoadingView label="Открываем переписку..." />;
 

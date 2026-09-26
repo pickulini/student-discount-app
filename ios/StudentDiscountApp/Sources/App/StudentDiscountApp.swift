@@ -4,6 +4,8 @@ import SwiftUI
 struct StudentDiscountApp: App {
     @StateObject private var session = Session()
     @AppStorage("theme") private var theme: String = ThemePref.auto.rawValue
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var wasInBackground = false
 
     var body: some Scene {
         WindowGroup {
@@ -17,6 +19,13 @@ struct StudentDiscountApp: App {
                     await DebugLaunch.apply(session)
                     #endif
                 }
+        }
+        .onChange(of: scenePhase) { ph in
+            if ph == .background { wasInBackground = true }
+            if ph == .active, wasInBackground {
+                wasInBackground = false
+                session.resumeLive()
+            }
         }
     }
 }
