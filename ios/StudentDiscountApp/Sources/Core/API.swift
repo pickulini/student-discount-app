@@ -6,11 +6,17 @@ import Security
 enum AppConfig {
     /// Боевой сервер. Можно поменять на экране входа (долгое нажатие на логотип) —
     /// значение хранится в UserDefaults.
-    static let defaultServer = "http://100.71.89.81"
+    /// Имя сервера в сети Tailscale: на него выпущен HTTPS-сертификат (HTTP/2, без предупреждений).
+    static let defaultServer = "https://server.tailacb603.ts.net"
+    /// Старые адреса того же сервера (до HTTPS) — если такой сохранён, используем новый.
+    private static let legacyServers: Set<String> = ["http://100.71.89.81", "http://server.tailacb603.ts.net"]
     private static let key = "server_base_url"
 
     static var server: String {
-        get { UserDefaults.standard.string(forKey: key) ?? defaultServer }
+        get {
+            guard let v = UserDefaults.standard.string(forKey: key), !legacyServers.contains(v) else { return defaultServer }
+            return v
+        }
         set {
             let v = newValue.trimmingCharacters(in: .whitespacesAndNewlines).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
             UserDefaults.standard.set(v.isEmpty ? nil : v, forKey: key)

@@ -47,4 +47,9 @@ uploads/
 # Production env
 .env.prod
 .env.production
+
+# TLS-сертификаты сервера (scripts/tls-cert.sh)
+/certs/
+
+# Локальная сборка iOS/тесты
 .stage/

@@ -97,73 +97,42 @@ docker compose -f docker-compose.prod.yml up -d --force-recreate api frontend
 
 ## Nginx и SSE
 
-`frontend/nginx.conf` — критично для SSE:
+Конфиги nginx лежат в `frontend/nginx/`:
 
-```nginx
-location = /api/v1/notifications/stream {
-    proxy_pass http://api:8080;
-    proxy_http_version 1.1;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_set_header Connection "";
+- `main.conf` — главный конфиг (лимит соединений поднят до 16384 на процесс);
+- `app.conf` — сайт: статика, `/api/`, `/payments/`, `/uploads/` и поток событий SSE;
+- `http.conf` / `https.conf.template` — сервер без сертификата и с ним;
+- `40-pick-site.sh` — при старте контейнера выбирает режим: есть сертификат в `./certs` → HTTPS, нет → HTTP.
 
-    gzip off;
-    proxy_buffering off;
-    proxy_request_buffering off;
-    proxy_cache off;
-    proxy_buffer_size 4k;
-    proxy_buffers 8 4k;
-    chunked_transfer_encoding on;
+Для потока событий (`/api/v1/notifications/stream`) критично `proxy_buffering off` и `gzip off` —
+без них SSE рвётся каждые пару секунд.
 
-    keepalive_timeout 0;
-    proxy_connect_timeout 24h;
-    proxy_read_timeout 24h;
-    proxy_send_timeout 24h;
-    send_timeout 24h;
-}
-```
-
-**Без `proxy_buffering off` + `gzip off` SSE рвётся каждые 2 сек.**
-
-После изменения `nginx.conf` — пересобрать frontend:
+После изменения конфигов — пересобрать frontend:
 ```bash
-docker compose -f docker-compose.prod.yml build frontend
-docker compose -f docker-compose.prod.yml up -d --force-recreate frontend
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build frontend
 ```
 
 ---
 
-## HTTPS (Let's Encrypt)
+## HTTPS (Tailscale, Let's Encrypt)
 
-Внешний nginx перед контейнерами:
-
-```nginx
-server {
-    listen 443 ssl http2;
-    server_name your-domain.com;
-
-    ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
-
-    location / {
-        proxy_pass http://localhost:80;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        # Для SSE
-        proxy_buffering off;
-        proxy_read_timeout 24h;
-    }
-}
-```
+Сервер доступен в сети Tailscale, поэтому сертификат выпускает сам Tailscale на имя
+`<машина>.<tailnet>.ts.net` — это настоящий сертификат Let's Encrypt, браузеры и iOS ему доверяют.
+Нужно, чтобы в панели Tailscale (DNS) были включены MagicDNS и HTTPS Certificates.
 
 ```bash
-certbot --nginx -d your-domain.com
+# выпустить сертификат и включить автообновление (раз в неделю, cron)
+sudo ./scripts/tls-cert.sh --install-cron
 ```
+
+Скрипт кладёт `fullchain.pem`, `privkey.pem` и `host.txt` в `./certs` (в git не попадает) и
+перезапускает frontend. После этого:
+
+- сайт открывается по `https://<машина>.<tailnet>.ts.net`, по HTTP/2;
+- запросы на `http://…` и на IP-адрес перенаправляются туда же (308, POST не теряется);
+- в `.env.prod` стоит поменять `FRONTEND_URL` на новый адрес.
+
+Чтобы вернуться на HTTP, достаточно убрать файлы из `./certs` и перезапустить frontend.
 
 ---
 
